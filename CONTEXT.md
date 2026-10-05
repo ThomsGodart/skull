@@ -1,0 +1,34 @@
+# Vocabulaire du domaine
+
+Le code, les identifiants et les tests sont en anglais ; tout ce que voit le joueur est en français. Ce fichier fixe la correspondance. Les règles sont dans `GAME_RULES.md`.
+
+| Code | Interface | Sens |
+|---|---|---|
+| `Game` | partie | Dix manches (plus les éventuelles manches de départage). |
+| `Round` | manche | Une distribution, les paris, puis autant de plis que de cartes distribuées. |
+| `Trick` | pli | Une carte jouée par joueur ; une carte le remporte. |
+| `Bid` | pari | Nombre de plis qu'un joueur annonce pour la manche. |
+| `Seat` | joueur / siège | Position à la table, de 0 à n − 1, dans le sens horaire. |
+| `Dealer` | donneur | Distribue ; le siège à sa gauche entame. |
+| `Lead` | entame | Première carte d'un pli ; `leader` = joueur qui entame. |
+| `Hand` | main | Cartes qu'un joueur détient. |
+| `Suit` | couleur | `green` vert, `yellow` jaune, `purple` violet, `black` noir. |
+| `Trump` | atout | La couleur noire. |
+| `Lead suit` | couleur demandée | Couleur à suivre dans le pli, s'il y en a une. |
+| `Number card` | carte Couleur | Carte numérotée de 1 à 14. |
+| `Special card` | carte spéciale | Toute carte non numérotée. |
+| `Character` | personnage | Pirate, Tigresse jouée comme pirate, Skull King, sirène. |
+| `Escape` | fuite | Carte qui perd toujours. |
+| `Pirate` | pirate | |
+| `Tigress` | Tigresse | Jouée comme pirate ou comme fuite (`TigressMode`). |
+| `Skull King` | Skull King | |
+| `Mermaid` | sirène | |
+| `Bonus` | bonus | Points gagnés avec un pli, comptés seulement si le pari est réussi. |
+| `Capture` | capture | Un personnage en bat un autre et rapporte un bonus. |
+| `Loot` | butin | Carte d'extension. |
+| `Kraken` | Kraken | Carte d'extension. |
+| `White Whale` | Baleine blanche | Carte d'extension. |
+| `Question` / `Answer` / `Event` | — | Contrat entre le moteur et ce qui le pilote (voir `docs/REFERENCE_RTAROT.md`). |
+| `View` | — | Ce qu'un siège a le droit de voir de la partie. |
+
+À éviter : « tour » ou « levée » pour un pli, « mise » pour un pari (la mise est celle de Rascal le Flambeur), « round » pour un pli.
