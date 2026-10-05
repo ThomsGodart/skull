@@ -4,13 +4,16 @@ import 'package:skull_kings/engine/engine.dart';
 import 'support.dart';
 
 void main() {
-  test('holding the lead suit, a player may only play it or a special card', () {
-    final hand = [g(3), g(9), y(5), b(2), pirate(), esc()];
+  test(
+    'holding the lead suit, a player may only play it or a special card',
+    () {
+      final hand = [g(3), g(9), y(5), b(2), pirate(), esc()];
 
-    final legal = legalCards(hand, trick([g(7)]));
+      final legal = legalCards(hand, trick([g(7)]));
 
-    expect(legal, [g(3), g(9), pirate(), esc()]);
-  });
+      expect(legal, [g(3), g(9), pirate(), esc()]);
+    },
+  );
 
   test('without the lead suit, any card may be played, trump included', () {
     final hand = [y(5), b(2), p(14), esc()];
@@ -30,16 +33,19 @@ void main() {
     expect(legalCards(hand, trick([esc(), y(9)])), [y(5)]);
   });
 
-  test('a tigress led as an escape leaves the next number card to set the suit', () {
-    final hand = [g(3), y(5)];
+  test(
+    'a tigress led as an escape leaves the next number card to set the suit',
+    () {
+      final hand = [g(3), y(5)];
 
-    final legal = legalCards(
-      hand,
-      trick([tigress, y(9)], tigressAs: TigressMode.escape),
-    );
+      final legal = legalCards(
+        hand,
+        trick([tigress, y(9)], tigressAs: TigressMode.escape),
+      );
 
-    expect(legal, [y(5)]);
-  });
+      expect(legal, [y(5)]);
+    },
+  );
 
   test('when a character leads there is no suit to follow', () {
     final hand = [g(3), y(5), b(2)];

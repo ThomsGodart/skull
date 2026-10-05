@@ -95,6 +95,17 @@ void main() {
     });
   });
 
+  group('a trick still being played', () {
+    test('reports the seat winning so far', () {
+      expect(winner([g(7), b(2)]), 1);
+      expect(winner([g(7)]), 0);
+    });
+
+    test('an empty trick has no winner', () {
+      expect(() => resolveTrick(const []), throwsArgumentError);
+    });
+  });
+
   group('bonuses', () {
     test('a plain trick carries no bonus', () {
       expect(bonuses([g(7), g(12), g(8)]), isEmpty);
@@ -139,7 +150,9 @@ void main() {
 
     test('rulebook example: 14 yellow, pirate, skull king, mermaid '
         'gives the mermaid 10 + 40 and nothing else', () {
-      final result = resolveTrick(trick([y(14), pirate(), skullKing, mermaid()]));
+      final result = resolveTrick(
+        trick([y(14), pirate(), skullKing, mermaid()]),
+      );
 
       expect(result.winner, 3);
       expect(result.bonuses, [Bonus.standardFourteen, Bonus.skullKingCaptured]);

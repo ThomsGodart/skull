@@ -11,6 +11,7 @@ Le code, les identifiants et les tests sont en anglais ; tout ce que voit le jou
 | `Seat` | joueur / siège | Position à la table, de 0 à n − 1, dans le sens horaire. |
 | `Dealer` | donneur | Distribue ; le siège à sa gauche entame. |
 | `Lead` | entame | Première carte d'un pli ; `leader` = joueur qui entame. |
+| `Play` | carte jouée | Une carte posée dans un pli par un siège, avec le mode choisi si c'est la Tigresse. |
 | `Hand` | main | Cartes qu'un joueur détient. |
 | `Suit` | couleur | `green` vert, `yellow` jaune, `purple` violet, `black` noir. |
 | `Trump` | atout | La couleur noire. |

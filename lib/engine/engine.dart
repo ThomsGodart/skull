@@ -4,6 +4,7 @@ library;
 export 'card.dart';
 export 'trick.dart';
 export 'scoring.dart';
+export 'seeded_random.dart';
 export 'deck.dart';
 export 'game.dart';
 export 'protocol.dart';

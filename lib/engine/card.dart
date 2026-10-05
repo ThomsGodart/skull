@@ -12,7 +12,10 @@ final class Card {
     : kind = CardKind.number,
       copy = 1;
 
-  const Card.special(this.kind, [this.copy = 1]) : suit = null, value = null;
+  const Card.special(this.kind, [this.copy = 1])
+    : assert(kind != CardKind.number, 'use Card.number'),
+      suit = null,
+      value = null;
 
   final CardKind kind;
 

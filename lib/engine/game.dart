@@ -1,9 +1,8 @@
-import 'dart:math';
-
 import 'card.dart';
 import 'deck.dart';
 import 'protocol.dart';
 import 'scoring.dart';
+import 'seeded_random.dart';
 import 'trick.dart';
 
 /// What one seat is allowed to see of a game.
@@ -49,7 +48,7 @@ final class GameView {
 /// It never blocks: read [pending], reply with [answer], and render whatever
 /// [takeEvents] returns. A bot and a human are driven the same way.
 final class Game {
-  Game(this.config) : _random = Random(config.seed) {
+  Game(this.config) : _random = SeededRandom(config.seed) {
     if (config.players < 3 || config.players > 8) {
       throw ArgumentError.value(config.players, 'players', 'must be 3 to 8');
     }
@@ -65,7 +64,7 @@ final class Game {
   }
 
   final GameConfig config;
-  final Random _random;
+  final SeededRandom _random;
   final List<Answer> _answers = [];
   final List<Event> _events = [];
 
@@ -207,16 +206,16 @@ final class Game {
     }
     _events.add(RoundScored(round: _round, results: results));
 
-    final best = _scores.reduce(max);
-    final leaders = [
+    final best = _scores.reduce((a, b) => a > b ? a : b);
+    final topSeats = [
       for (var seat = 0; seat < _players; seat++)
         if (_scores[seat] == best) seat,
     ];
     // A tie for first place after round ten is played off, one round at a time.
-    if (_round >= standardRounds && leaders.length == 1) {
+    if (_round >= standardRounds && topSeats.length == 1) {
       _finished = true;
       _events.add(
-        GameFinished(winner: leaders.single, scores: List.of(_scores)),
+        GameFinished(winner: topSeats.single, scores: List.of(_scores)),
       );
       return;
     }
@@ -234,7 +233,8 @@ final class Game {
     _tricksWon = List.filled(_players, 0);
     _bonuses = List.generate(_players, (_) => []);
     _trick = [];
-    final deck = baseDeck()..shuffle(_random);
+    final deck = baseDeck();
+    _random.shuffle(deck);
     _hands = [
       for (var seat = 0; seat < _players; seat++)
         deck.sublist(seat * _cardsDealt, (seat + 1) * _cardsDealt),
@@ -248,7 +248,9 @@ final class Game {
       ),
     );
     for (var seat = 0; seat < _players; seat++) {
-      _events.add(HandDealt(seat: seat, cards: List.unmodifiable(_hands[seat])));
+      _events.add(
+        HandDealt(seat: seat, cards: List.unmodifiable(_hands[seat])),
+      );
     }
   }
 }

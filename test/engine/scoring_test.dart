@@ -42,6 +42,18 @@ void main() {
       expect(points(0, 0, 10), 100);
     });
 
+    test(
+      'with eight players, rounds nine and ten are worth 80 on a bid of zero',
+      () {
+        for (final round in [9, 10]) {
+          final cards = cardsDealt(round: round, players: 8);
+
+          expect(points(0, 0, cards), 80);
+          expect(points(0, 3, cards), -80);
+        }
+      },
+    );
+
     test('a missed bid of zero loses 10 per card dealt, '
         'however many tricks were taken', () {
       expect(points(0, 2, 9), -90);
@@ -76,6 +88,21 @@ void main() {
       expect(score.bonusPoints, 0);
       expect(score.total, -10);
     });
+
+    test(
+      'a 40-point capture counts on a made bid of one and not on a missed one',
+      () {
+        int bonus(int won) => scoreRound(
+          bid: 1,
+          tricksWon: won,
+          cardsDealt: 3,
+          bonuses: const [Bonus.skullKingCaptured],
+        ).bonusPoints;
+
+        expect(bonus(1), 40);
+        expect(bonus(0), 0);
+      },
+    );
 
     test('bonuses are lost on a missed bid of zero', () {
       final score = scoreRound(

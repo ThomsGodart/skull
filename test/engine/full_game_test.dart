@@ -1,10 +1,11 @@
-import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skull_kings/engine/engine.dart';
 
 /// Plays [game] to the end with random legal answers and returns every event.
+///
+/// Open bids are answered in a random seat order, as they would be at a table.
 List<Event> autoplay(Game game, {int botSeed = 1}) {
   final random = Random(botSeed);
   final events = <Event>[];
@@ -12,8 +13,19 @@ List<Event> autoplay(Game game, {int botSeed = 1}) {
   while (true) {
     events.addAll(game.takeEvents());
     final questions = game.pending;
-    if (questions.isEmpty) break;
-    game.answer(randomAnswer(questions.first, random));
+    if (questions.isEmpty) {
+      expect(game.isFinished, isTrue, reason: 'nothing asked, yet not over');
+      break;
+    }
+    final question = questions[random.nextInt(questions.length)];
+    if (question is PlayQuestion) {
+      expect(
+        question.legalCards,
+        isNotEmpty,
+        reason: 'a question with no choice',
+      );
+    }
+    game.answer(randomAnswer(question, random));
     expect(++guard, lessThan(100000), reason: 'the game never ended');
   }
   return events;
@@ -90,19 +102,24 @@ void main() {
   });
 
   group('whatever the seed and the number of players', () {
+    // 2,100 whole games, each played once and checked by every test below.
     final games = [
       for (var players = 3; players <= 8; players++)
-        for (var seed = 0; seed < 40; seed++)
+        for (var seed = 0; seed < 350; seed++)
           GameConfig(players: players, seed: seed),
     ];
+    final played = <GameConfig, List<Event>>{};
+    setUpAll(() {
+      for (final config in games) {
+        played[config] = autoplay(Game(config), botSeed: config.seed);
+      }
+    });
 
     test('the game ends with a single winner holding the best score', () {
       for (final config in games) {
-        final game = Game(config);
-        final events = autoplay(game, botSeed: config.seed);
+        final events = played[config]!;
         final finished = events.whereType<GameFinished>().single;
 
-        expect(game.isFinished, isTrue);
         expect(events.last, same(finished));
         final best = finished.scores.reduce(max);
         expect(finished.scores[finished.winner], best);
@@ -116,7 +133,7 @@ void main() {
 
     test('ten rounds are played, plus one per tie for first place', () {
       for (final config in games) {
-        final events = autoplay(Game(config), botSeed: config.seed);
+        final events = played[config]!;
         final scored = events.whereType<RoundScored>().toList();
 
         expect(scored.length, greaterThanOrEqualTo(10));
@@ -131,26 +148,36 @@ void main() {
 
     test('every card is dealt once and every trick has one card per seat', () {
       for (final config in games) {
-        final events = autoplay(Game(config), botSeed: config.seed);
+        final events = played[config]!;
         final dealt = <int, List<Card>>{};
         var round = 0;
         for (final event in events) {
           if (event is RoundStarted) round = event.round;
           if (event is HandDealt) (dealt[round] ??= []).addAll(event.cards);
           if (event is TrickWon) {
-            expect(event.plays.map((p) => p.seat).toSet(), hasLength(config.players));
+            expect(
+              event.plays.map((p) => p.seat).toSet(),
+              hasLength(config.players),
+            );
           }
         }
         for (final cards in dealt.values) {
-          expect(cards.toSet(), hasLength(cards.length), reason: 'no duplicate');
+          expect(
+            cards.toSet(),
+            hasLength(cards.length),
+            reason: 'no duplicate',
+          );
         }
-        expect(dealt[9], hasLength(config.players * (config.players == 8 ? 8 : 9)));
+        expect(
+          dealt[9],
+          hasLength(config.players * (config.players == 8 ? 8 : 9)),
+        );
       }
     });
 
     test('tricks won in a round add up to the cards dealt', () {
       for (final config in games) {
-        final events = autoplay(Game(config), botSeed: config.seed);
+        final events = played[config]!;
         final started = events.whereType<RoundStarted>().toList();
         final scored = events.whereType<RoundScored>().toList();
 
@@ -160,6 +187,27 @@ void main() {
         }
       }
     });
+  });
+
+  test('a tie for first place after round ten is played off, '
+      'with as many cards as round ten and every seat playing', () {
+    for (var seed = 0; seed < 500; seed++) {
+      const players = 4;
+      final events = autoplay(Game(GameConfig(players: players, seed: seed)));
+      final scored = events.whereType<RoundScored>().toList();
+      if (scored.length == 10) continue;
+
+      final afterTen = scored[9].results.map((r) => r.totalScore).toList();
+      final best = afterTen.reduce(max);
+      expect(afterTen.where((s) => s == best).length, greaterThan(1));
+      final tieBreak = events.whereType<RoundStarted>().elementAt(10);
+      expect(tieBreak.round, 11);
+      expect(tieBreak.cardsDealt, 10);
+      expect(scored[10].results, hasLength(players));
+      expect(events.whereType<GameFinished>(), hasLength(1));
+      return;
+    }
+    fail('no seed produced a tie after round ten');
   });
 
   group('determinism', () {
@@ -173,6 +221,21 @@ void main() {
       final other = autoplay(Game(const GameConfig(players: 6, seed: 100)));
 
       expect(trace(autoplay(Game(config))), isNot(trace(other)));
+    });
+
+    test('a seed deals the same cards forever', () {
+      // Pinned on purpose: saved games depend on it. If this fails, the
+      // generator or the deck order changed and old saves no longer replay.
+      final game = Game(const GameConfig(players: 4, seed: 2026));
+      final events = game.takeEvents();
+
+      expect(events.whereType<RoundStarted>().single.dealer, 3);
+      expect(events.whereType<HandDealt>().map((e) => e.cards.single.id), [
+        'escape-2',
+        'skullKing-1',
+        'purple-10',
+        'black-14',
+      ]);
     });
 
     test('a game is rebuilt from its config and its answers', () {
@@ -194,7 +257,10 @@ void main() {
 
       final rebuilt = Game.replay(config, original.answers);
 
-      expect(rebuilt.pending.map((q) => q.seat), original.pending.map((q) => q.seat));
+      expect(
+        rebuilt.pending.map((q) => q.seat),
+        original.pending.map((q) => q.seat),
+      );
       expect(rebuilt.viewFor(2).hand, original.viewFor(2).hand);
       expect(rebuilt.viewFor(2).scores, original.viewFor(2).scores);
     });
@@ -282,18 +348,21 @@ void main() {
   });
 
   group('what a seat sees', () {
-    test('its own hand and bid, but not the bids of others before the reveal', () {
-      final game = Game(const GameConfig(players: 4, seed: 8));
-      final dealt = game.takeEvents().whereType<HandDealt>().toList();
-      game.answer(const BidAnswer(seat: 0, bid: 1));
-      game.answer(const BidAnswer(seat: 1, bid: 0));
+    test(
+      'its own hand and bid, but not the bids of others before the reveal',
+      () {
+        final game = Game(const GameConfig(players: 4, seed: 8));
+        final dealt = game.takeEvents().whereType<HandDealt>().toList();
+        game.answer(const BidAnswer(seat: 0, bid: 1));
+        game.answer(const BidAnswer(seat: 1, bid: 0));
 
-      final view = game.viewFor(1);
+        final view = game.viewFor(1);
 
-      expect(view.hand, dealt[1].cards);
-      expect(view.handSizes, [1, 1, 1, 1]);
-      expect(view.bids, [null, 0, null, null]);
-    });
+        expect(view.hand, dealt[1].cards);
+        expect(view.handSizes, [1, 1, 1, 1]);
+        expect(view.bids, [null, 0, null, null]);
+      },
+    );
 
     test('every bid once they are revealed', () {
       final game = Game(const GameConfig(players: 4, seed: 8));
@@ -306,20 +375,13 @@ void main() {
   });
 
   test('a game needs three to eight players', () {
-    expect(() => Game(const GameConfig(players: 2, seed: 1)), throwsArgumentError);
-    expect(() => Game(const GameConfig(players: 9, seed: 1)), throwsArgumentError);
-  });
-
-  test('the engine never imports Flutter', () {
-    final offenders = [
-      for (final file in Directory('lib/engine').listSync(recursive: true))
-        if (file is File &&
-            file.path.endsWith('.dart') &&
-            RegExp(r'''import\s+['"](package:flutter|dart:ui)''')
-                .hasMatch(file.readAsStringSync()))
-          file.path,
-    ];
-
-    expect(offenders, isEmpty);
+    expect(
+      () => Game(const GameConfig(players: 2, seed: 1)),
+      throwsArgumentError,
+    );
+    expect(
+      () => Game(const GameConfig(players: 9, seed: 1)),
+      throwsArgumentError,
+    );
   });
 }

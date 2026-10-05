@@ -36,7 +36,10 @@ void main() {
 
       expect(questions, everyElement(isA<BidQuestion>()));
       expect(questions.map((q) => q.seat), unorderedEquals([0, 1, 2, 3]));
-      expect(questions.cast<BidQuestion>().map((q) => q.maxBid), everyElement(1));
+      expect(
+        questions.cast<BidQuestion>().map((q) => q.maxBid),
+        everyElement(1),
+      );
     });
 
     test('the seat left of the dealer leads the first trick', () {

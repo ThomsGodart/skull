@@ -39,13 +39,13 @@ Suit? _leadSuit(List<Play> trick) {
 /// A special card is always legal. Number cards must follow the lead suit when
 /// the hand holds it.
 List<Card> legalCards(List<Card> hand, List<Play> trick) {
-  final lead = _leadSuit(trick);
-  if (lead == null || !hand.any((card) => card.suit == lead)) {
+  final leadSuit = _leadSuit(trick);
+  if (leadSuit == null || !hand.any((card) => card.suit == leadSuit)) {
     return List.of(hand);
   }
   return [
     for (final card in hand)
-      if (!card.isNumber || card.suit == lead) card,
+      if (!card.isNumber || card.suit == leadSuit) card,
   ];
 }
 
@@ -73,8 +73,12 @@ final class TrickResult {
   final List<Bonus> bonuses;
 }
 
-/// Who wins a complete [trick], and the bonuses the trick carries.
+/// Who wins [trick], and the bonuses it carries.
+///
+/// Meant for a complete trick; on a trick still being played it gives the seat
+/// that is winning so far. [trick] must hold at least one card.
 TrickResult resolveTrick(List<Play> trick) {
+  if (trick.isEmpty) throw ArgumentError.value(trick, 'trick', 'is empty');
   final winner = _winningPlay(trick);
   int count(bool Function(Play) test) => trick.where(test).length;
 

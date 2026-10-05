@@ -1,17 +1,4 @@
-import 'dart:math';
-
 import 'trick.dart';
-
-/// Rounds in a game before any tie-break.
-const standardRounds = 10;
-
-/// Size of the base deck, which bounds how many cards a round can deal.
-const baseDeckSize = 70;
-
-/// Cards each player receives in [round] (numbered from 1) with [players]
-/// at the table. Tie-break rounds deal as many cards as round ten.
-int cardsDealt({required int round, required int players}) =>
-    min(min(round, standardRounds), baseDeckSize ~/ players);
 
 /// What one player scores in one round.
 final class RoundScore {
