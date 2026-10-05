@@ -78,4 +78,10 @@ void main() {
 
     expect(legalCards(hand, trick([y(9), pirate()])), [y(5)]);
   });
+
+  test('the lead suit of a trick is the suit players must follow, if any', () {
+    expect(leadSuit(trick([esc(), y(9), g(3)])), Suit.yellow);
+    expect(leadSuit(trick([pirate(), y(9)])), isNull);
+    expect(leadSuit(const []), isNull);
+  });
 }

@@ -135,12 +135,16 @@ final class SeatResult {
   const SeatResult({
     required this.bid,
     required this.tricksWon,
+    required this.bonuses,
     required this.score,
     required this.totalScore,
   });
 
   final int bid;
   final int tricksWon;
+
+  /// Every bonus in the tricks this seat won, counted or not.
+  final List<Bonus> bonuses;
   final RoundScore score;
 
   /// Running total after this round.

@@ -199,6 +199,7 @@ final class Game {
         SeatResult(
           bid: _bids[seat]!,
           tricksWon: _tricksWon[seat],
+          bonuses: List.unmodifiable(_bonuses[seat]),
           score: score,
           totalScore: _scores[seat],
         ),

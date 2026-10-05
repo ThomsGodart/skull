@@ -101,6 +101,31 @@ void main() {
     }
   });
 
+  test('a round result lists the bonuses a seat collected in its tricks', () {
+    for (var seed = 0; seed < 200; seed++) {
+      final events = autoplay(Game(GameConfig(players: 6, seed: seed)));
+      final rounds = events.whereType<RoundScored>().toList();
+      var cursor = 0;
+      for (final round in rounds) {
+        // The tricks of this round: as many as it scored.
+        final tricksInRound = round.results.fold(0, (n, r) => n + r.tricksWon);
+        final tricks = events
+            .whereType<TrickWon>()
+            .skip(cursor)
+            .take(tricksInRound)
+            .toList();
+        cursor += tricksInRound;
+        for (var seat = 0; seat < 6; seat++) {
+          final collected = [
+            for (final trick in tricks)
+              if (trick.winner == seat) ...trick.bonuses,
+          ];
+          expect(round.results[seat].bonuses, collected);
+        }
+      }
+    }
+  });
+
   group('whatever the seed and the number of players', () {
     // 2,100 whole games, each played once and checked by every test below.
     final games = [

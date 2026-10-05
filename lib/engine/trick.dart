@@ -26,7 +26,7 @@ final class Play {
 ///
 /// The first number card sets it, unless a character was played before: then
 /// nobody has to follow anything for the whole trick.
-Suit? _leadSuit(List<Play> trick) {
+Suit? leadSuit(List<Play> trick) {
   for (final play in trick) {
     if (play.card.isNumber) return play.card.suit;
     if (play.isCharacter) return null;
@@ -39,13 +39,13 @@ Suit? _leadSuit(List<Play> trick) {
 /// A special card is always legal. Number cards must follow the lead suit when
 /// the hand holds it.
 List<Card> legalCards(List<Card> hand, List<Play> trick) {
-  final leadSuit = _leadSuit(trick);
-  if (leadSuit == null || !hand.any((card) => card.suit == leadSuit)) {
+  final suit = leadSuit(trick);
+  if (suit == null || !hand.any((card) => card.suit == suit)) {
     return List.of(hand);
   }
   return [
     for (final card in hand)
-      if (!card.isNumber || card.suit == leadSuit) card,
+      if (!card.isNumber || card.suit == suit) card,
   ];
 }
 
@@ -129,5 +129,5 @@ Play _winningPlay(List<Play> trick) {
     return best;
   }
 
-  return highest(Suit.black) ?? highest(_leadSuit(trick)) ?? trick.first;
+  return highest(Suit.black) ?? highest(leadSuit(trick)) ?? trick.first;
 }
