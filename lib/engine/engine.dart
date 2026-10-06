@@ -9,3 +9,4 @@ export 'deck.dart';
 export 'game.dart';
 export 'protocol.dart';
 export 'random_bot.dart';
+export 'wire.dart';
