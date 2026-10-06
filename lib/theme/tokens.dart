@@ -11,6 +11,20 @@ abstract final class Tokens {
   static const mutedText = Color(0xFF9FB0C3);
   static const danger = Color(0xFFE07466);
   static const scrim = Color(0xD90A1420);
+  static const outline = Colors.white12;
+  static const onAvatar = Colors.white;
+  static const cardShadow = Colors.black45;
+
+  /// One colour per bot seat, in seat order.
+  static const botColors = [
+    Color(0xFF3F8EC4),
+    Color(0xFFD9667B),
+    Color(0xFF5FA36A),
+    Color(0xFFC98A3A),
+    Color(0xFF8A6FCB),
+    Color(0xFF4FA7A0),
+    Color(0xFFB7694A),
+  ];
 
   static const space1 = 4.0;
   static const space2 = 8.0;

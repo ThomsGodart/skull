@@ -43,10 +43,7 @@ class TrickArea extends StatelessWidget {
               Text(
                 [
                   seats[play.seat].name,
-                  if (play.tigressAs case final mode?)
-                    mode == TigressMode.pirate
-                        ? Strings.asPirate.toLowerCase()
-                        : Strings.asEscape.toLowerCase(),
+                  if (play.tigressAs case final mode?) Strings.playedAs(mode),
                 ].join(' · '),
                 style: TextStyle(
                   color: play.seat == winner ? Tokens.gold : Tokens.mutedText,

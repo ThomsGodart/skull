@@ -45,7 +45,7 @@ class SeatChip extends StatelessWidget {
         color: Tokens.panel,
         borderRadius: BorderRadius.circular(Tokens.radiusButton),
         border: Border.all(
-          color: isCurrent ? Tokens.gold : Colors.white12,
+          color: isCurrent ? Tokens.gold : Tokens.outline,
           width: isCurrent ? 2 : 1,
         ),
       ),
@@ -60,7 +60,7 @@ class SeatChip extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
+                color: Tokens.onAvatar,
               ),
             ),
           ),
@@ -91,7 +91,7 @@ class SeatChip extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(
-                          'D',
+                          Strings.dealerMark,
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w900,
@@ -145,7 +145,7 @@ class SeatChip extends StatelessWidget {
         color: Tokens.panel,
         borderRadius: BorderRadius.circular(Tokens.radiusButton),
         border: Border.all(
-          color: isCurrent ? Tokens.gold : Colors.white12,
+          color: isCurrent ? Tokens.gold : Tokens.outline,
           width: isCurrent ? 2 : 1,
         ),
       ),
@@ -157,6 +157,19 @@ class SeatChip extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                CircleAvatar(
+                  radius: 8,
+                  backgroundColor: identity.color,
+                  child: Text(
+                    identity.initials,
+                    style: const TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w800,
+                      color: Tokens.onAvatar,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: Tokens.space1),
                 Text(
                   identity.name,
                   style: TextStyle(
@@ -167,7 +180,7 @@ class SeatChip extends StatelessWidget {
                 ),
                 if (isDealer)
                   const Text(
-                    ' · D',
+                    ' · ${Strings.dealerMark}',
                     style: TextStyle(
                       color: Tokens.gold,
                       fontSize: 11,
@@ -180,7 +193,7 @@ class SeatChip extends StatelessWidget {
           line(Strings.bidAndTricks(bid, tricksWon), color: Tokens.text),
           line(
             [
-              '$score pts',
+              Strings.points(score),
               if (cardsLeft != null) Strings.cardsLeft(cardsLeft!),
             ].join(' · '),
           ),

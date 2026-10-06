@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../engine/engine.dart';
 import '../theme/tokens.dart';
+import '../ui/cards/card_look.dart';
 import '../ui/cards/hand_fan.dart';
 import '../ui/strings.dart';
 import 'bid_panel.dart';
@@ -82,16 +83,19 @@ class _TableScreenState extends State<TableScreen> {
         SimpleDialogOption(
           key: const Key('tigress-pirate'),
           onPressed: () => Navigator.pop(context, TigressMode.pirate),
-          child: const Text('⚔️  ${Strings.asPirate}'),
+          child: Text('${_emblem(CardKind.pirate)}  ${Strings.asPirate}'),
         ),
         SimpleDialogOption(
           key: const Key('tigress-escape'),
           onPressed: () => Navigator.pop(context, TigressMode.escape),
-          child: const Text('🏳️  ${Strings.asEscape}'),
+          child: Text('${_emblem(CardKind.escape)}  ${Strings.asEscape}'),
         ),
       ],
     ),
   );
+
+  static String _emblem(CardKind kind) =>
+      CardLook.of(Card.special(kind)).emblem;
 
   Future<void> _confirmQuit() async {
     final navigator = Navigator.of(context);
@@ -182,47 +186,63 @@ class _TableScreenState extends State<TableScreen> {
       },
       child: Scaffold(
         body: SafeArea(
-          child: Stack(
+          child: Column(
             children: [
+              // Outside the overlays: the score sheet and the last trick stay
+              // within reach while a round summary is shown.
               Padding(
-                padding: const EdgeInsets.all(Tokens.space2),
-                child: Column(
+                padding: const EdgeInsets.fromLTRB(
+                  Tokens.space2,
+                  Tokens.space2,
+                  Tokens.space2,
+                  0,
+                ),
+                child: _topBar(),
+              ),
+              Expanded(
+                child: Stack(
                   children: [
-                    _topBar(),
-                    const SizedBox(height: Tokens.space2),
-                    _opponents(),
-                    Expanded(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: game.skipHold,
-                        child: Center(
-                          child: SingleChildScrollView(child: _center()),
-                        ),
+                    Padding(
+                      padding: const EdgeInsets.all(Tokens.space2),
+                      child: Column(
+                        children: [
+                          _opponents(),
+                          Expanded(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: game.skipHold,
+                              child: Center(
+                                child: SingleChildScrollView(child: _center()),
+                              ),
+                            ),
+                          ),
+                          Text(
+                            _status(),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Tokens.text,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: Tokens.space2),
+                          _seatChip(game.humanSeat, showCards: false),
+                          const SizedBox(height: Tokens.space2),
+                          HandFan(
+                            cards: game.hand,
+                            legal: game.playQuestion?.legalCards,
+                            selected: _selected,
+                            onTap: _onCardTap,
+                            cardWidth: 64,
+                          ),
+                        ],
                       ),
                     ),
-                    Text(
-                      _status(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Tokens.text,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: Tokens.space2),
-                    _seatChip(game.humanSeat, showCards: false),
-                    const SizedBox(height: Tokens.space2),
-                    HandFan(
-                      cards: game.hand,
-                      legal: game.playQuestion?.legalCards,
-                      selected: _selected,
-                      onTap: _onCardTap,
-                      cardWidth: 64,
-                    ),
+                    if (game.roundSummary case final summary?)
+                      _roundOver(summary),
+                    if (over) _gameOver(game.result!),
                   ],
                 ),
               ),
-              if (game.roundSummary case final summary?) _roundOver(summary),
-              if (over) _gameOver(game.result!),
             ],
           ),
         ),
@@ -317,9 +337,7 @@ class _TableScreenState extends State<TableScreen> {
         if (bonuses.isNotEmpty) ...[
           const SizedBox(height: Tokens.space2),
           Text(
-            '+${bonuses.fold(0, (sum, bonus) => sum + bonus.points)} '
-            '(${bonuses.map(Strings.bonusName).join(', ')}) '
-            '${Strings.bonusIfBidMade}',
+            Strings.trickBonus(bonuses),
             textAlign: TextAlign.center,
             style: const TextStyle(color: Tokens.gold, fontSize: 12),
           ),
@@ -346,7 +364,7 @@ class _TableScreenState extends State<TableScreen> {
             decoration: BoxDecoration(
               color: Tokens.panel,
               borderRadius: BorderRadius.circular(Tokens.radiusPanel),
-              border: Border.all(color: Colors.white12),
+              border: Border.all(color: Tokens.outline),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,

@@ -17,7 +17,7 @@ final class TableSpeed {
 
   static const normal = TableSpeed(
     botPlay: Duration(milliseconds: 700),
-    trickHold: Duration(milliseconds: 1400),
+    trickHold: Duration(milliseconds: 1200),
     bidReveal: Duration(milliseconds: 900),
   );
 
@@ -59,6 +59,12 @@ class GameController extends ChangeNotifier {
   final Game _game;
   final Queue<Event> _events = Queue();
   bool _running = false;
+
+  /// True while the revealed bids are left on show, before anyone plays.
+  bool _revealingBids = false;
+
+  /// Called when the game cannot go on, for instance because a bot failed.
+  void Function(Object error)? onError;
   bool _disposed = false;
   Completer<void>? _hold;
 
@@ -107,6 +113,7 @@ class GameController extends ChangeNotifier {
   /// Whose turn it is to play a card, when a trick is open.
   int? get currentSeat {
     if (!bids.every((bid) => bid != null) || trickWinner != null) return null;
+    if (_revealingBids) return null;
     if (roundSummary != null || result != null) return null;
     return (_leader + trick.length) % players;
   }
@@ -116,13 +123,17 @@ class GameController extends ChangeNotifier {
 
   void start() => unawaited(_run());
 
+  /// Ignored unless the human is being asked to bid.
   void bid(int bid) {
+    if (bidQuestion == null) return;
     _game.answer(BidAnswer(seat: humanSeat, bid: bid));
     bidQuestion = null;
     unawaited(_run());
   }
 
+  /// Ignored unless the human is being asked to play.
   void play(Card card, {TigressMode? tigressAs}) {
+    if (playQuestion == null) return;
     _game.answer(PlayAnswer(seat: humanSeat, card: card, tigressAs: tigressAs));
     playQuestion = null;
     unawaited(_run());
@@ -152,6 +163,19 @@ class GameController extends ChangeNotifier {
   Future<void> _run() async {
     if (_running) return;
     _running = true;
+    try {
+      await _advance();
+    } catch (error) {
+      // Left unreported, a failing bot would freeze the table for good.
+      final report = onError;
+      if (report == null) rethrow;
+      report(error);
+    } finally {
+      _running = false;
+    }
+  }
+
+  Future<void> _advance() async {
     while (!_disposed) {
       _events.addAll(
         _game.takeEvents().where(
@@ -174,7 +198,6 @@ class GameController extends ChangeNotifier {
       if (_disposed) break;
       _game.answer(bot(question, _game.viewFor(question.seat)));
     }
-    _running = false;
   }
 
   void _ask(Question question) {
@@ -198,12 +221,16 @@ class GameController extends ChangeNotifier {
         bids = List.filled(players, null);
         tricksWon = List.filled(players, 0);
         trick = const [];
+        lastTrick = null;
+        lastTrickWinner = null;
       case HandDealt():
         hand = sortedHand(event.cards);
       case BidsRevealed():
         bids = List.of(event.bids);
+        _revealingBids = true;
         _notify();
         await _wait(speed.bidReveal);
+        _revealingBids = false;
       case CardPlayed(:final play):
         trick = [...trick, play];
         handSizes = [

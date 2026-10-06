@@ -8,6 +8,17 @@ abstract final class Strings {
   static const opponents = 'Adversaires';
   static const you = 'Toi';
 
+  /// Names of the bots, in seat order.
+  static const botNames = [
+    'Mako',
+    'Corail',
+    'Bosco',
+    'Sloop',
+    'Récif',
+    'Ancre',
+    'Rafale',
+  ];
+
   static String roundTitle(int round, int cards) =>
       'Manche $round · $cards carte${cards > 1 ? 's' : ''}';
   static String tieBreakTitle(int cards) =>
@@ -25,15 +36,25 @@ abstract final class Strings {
   static String thinking(String name) => '$name réfléchit…';
   static String trickFor(String name) => 'Pli pour $name';
   static const trickForYou = 'Pli pour toi';
-  static const bonusIfBidMade = 'si le pari est réussi';
+  static String trickBonus(List<Bonus> bonuses) {
+    final points = bonuses.fold(0, (sum, bonus) => sum + bonus.points);
+    return '+$points (${bonuses.map(bonusName).join(', ')}) '
+        'si le pari est réussi';
+  }
 
   static const tigressTitle = 'Jouer la Tigresse comme…';
   static const asPirate = 'Pirate';
   static const asEscape = 'Fuite';
+  static String playedAs(TigressMode mode) => switch (mode) {
+    TigressMode.pirate => 'pirate',
+    TigressMode.escape => 'fuite',
+  };
 
   static String bidAndTricks(int? bid, int tricks) =>
       'pari ${bid ?? '?'} · plis $tricks';
   static const dealer = 'Donneur';
+  static const dealerMark = 'D';
+  static String points(int score) => '$score pts';
   static String cardsLeft(int cards) => '$cards c.';
 
   static const lastTrick = 'Dernier pli';
@@ -50,11 +71,15 @@ abstract final class Strings {
   static const colPlayer = 'Joueur';
   static const colBid = 'Pari';
   static const colTricks = 'Plis';
-  static const colBidPoints = 'Pari';
+  static const colBidTricks = 'Pari/Plis';
+  static const colBidPoints = 'Points';
   static const colBonus = 'Bonus';
   static const colRound = 'Manche';
   static const colTotal = 'Total';
   static const bonusLost = 'perdu';
+  static const noBonus = '—';
+  static String bonusesOf(String name, List<Bonus> bonuses) =>
+      '$name : ${bonuses.map(bonusName).join(', ')}';
 
   static const gameOver = 'Partie terminée';
   static const youWin = 'Tu gagnes !';

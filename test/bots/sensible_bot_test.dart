@@ -140,6 +140,36 @@ void main() {
     });
   });
 
+  group('keeping its best cards', () {
+    test('needing tricks and leading, it does not open with the skull king '
+        'when a high number card can do the job', () {
+      final answer = playFor(view(hand: [skullKing, b(13), g(2)], bid: 2));
+
+      expect(answer.card, b(13));
+    });
+
+    test('ducking under a skull king, it does not hand over a pirate', () {
+      final answer = playFor(
+        view(
+          hand: [pirate(), g(4)],
+          trick: played([skullKing, g(8), g(3)]),
+          bid: 0,
+        ),
+      );
+
+      expect(answer.card, g(4));
+    });
+
+    test('ducking with only the tigress, it plays her as an escape '
+        'even under a skull king', () {
+      final answer = playFor(
+        view(hand: [tigress], trick: played([skullKing, g(8), g(3)]), bid: 0),
+      );
+
+      expect(answer.tigressAs, TigressMode.escape);
+    });
+  });
+
   test(
     'it only ever gives legal answers: whole games of sensible bots end',
     () {

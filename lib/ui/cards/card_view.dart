@@ -52,7 +52,7 @@ class CardView extends StatelessWidget {
               BoxShadow(
                 color: highlighted
                     ? Tokens.gold.withValues(alpha: 0.6)
-                    : Colors.black45,
+                    : Tokens.cardShadow,
                 blurRadius: highlighted ? 10 : 3,
                 offset: const Offset(0, 2),
               ),

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:skull_kings/bots/bot.dart';
 import 'package:skull_kings/engine/engine.dart';
 import 'package:skull_kings/game/game_controller.dart';
+import 'package:skull_kings/game/score_views.dart';
 import 'package:skull_kings/game/table_screen.dart';
 import 'package:skull_kings/theme/tokens.dart';
 import 'package:skull_kings/ui/strings.dart';
@@ -68,6 +69,28 @@ void main() {
 
     expect(controller.playQuestion, isNotNull, reason: 'only lifted so far');
     expect(find.text(Strings.tapAgain), findsOneWidget);
+  });
+
+  testWidgets('the score sheet stays within reach while a round summary '
+      'is shown', (tester) async {
+    final controller = await openTable(tester);
+    await tester.tap(find.byKey(const Key('bid-0')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('place-bid')));
+    await tester.pump();
+    final card = controller.playQuestion!.legalCards.first;
+    await tapCard(tester, card);
+    await tapCard(tester, card);
+    if (card.kind == CardKind.tigress) {
+      await tester.tap(find.byKey(const Key('tigress-escape')));
+    }
+    await tester.pump();
+    expect(find.text(Strings.roundOver(1)), findsOneWidget);
+
+    await tester.tap(find.byTooltip(Strings.scoreSheet));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ScoreSheet), findsOneWidget);
   });
 
   for (final players in [3, 8]) {

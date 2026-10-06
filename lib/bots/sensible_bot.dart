@@ -72,19 +72,38 @@ PlayAnswer _play(PlayQuestion question, GameView view) {
   if (needsTricks) {
     if (winning.isEmpty) {
       // The trick is lost: give away the least useful card.
-      choice = _weakest(losing);
+      choice = _weakest(_withoutGifts(losing, view.trick));
+    } else if (isLast) {
+      choice = _weakest(winning);
     } else {
-      // Last to play, the cheapest winner is enough; earlier, play strong so
-      // the cards still to come are less likely to take it back.
-      choice = isLast ? _weakest(winning) : _strongest(winning);
+      // Others still play: a high number card is tried first, the characters
+      // are kept for a trick they are sure to take.
+      final numbers = winning.where((o) => o.card.isNumber).toList();
+      choice = numbers.isEmpty ? _weakest(winning) : _strongest(numbers);
     }
   } else if (losing.isNotEmpty) {
     // Duck, and use the chance to get rid of a card that could win later.
-    choice = _strongest(losing);
+    choice = _strongest(_withoutGifts(losing, view.trick));
   } else {
     choice = _weakest(winning);
   }
   return PlayAnswer(seat: seat, card: choice.card, tigressAs: choice.tigressAs);
+}
+
+/// [losing] without the plays that hand a capture bonus to whoever wins the
+/// trick, unless nothing else is left.
+List<_Option> _withoutGifts(List<_Option> losing, List<Play> trick) {
+  final skullKingPlayed = trick.any((play) => play.isSkullKing);
+  final piratePlayed = trick.any((play) => play.isPirate);
+  bool isGift(_Option option) => switch (option.card.kind) {
+    CardKind.pirate => skullKingPlayed,
+    // As an escape she loses just as surely, and gives nothing away.
+    CardKind.tigress => option.tigressAs == TigressMode.pirate,
+    CardKind.mermaid => piratePlayed && !skullKingPlayed,
+    _ => false,
+  };
+  final safe = losing.where((option) => !isGift(option)).toList();
+  return safe.isEmpty ? losing : safe;
 }
 
 _Option _weakest(List<_Option> options) =>

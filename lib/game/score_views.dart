@@ -53,7 +53,7 @@ class RoundSummaryTable extends StatelessWidget {
             row([
               const Text(Strings.colPlayer, style: _head),
               for (final title in [
-                '${Strings.colBid}/${Strings.colTricks}',
+                Strings.colBidTricks,
                 Strings.colBidPoints,
                 Strings.colBonus,
                 Strings.colRound,
@@ -76,7 +76,7 @@ class RoundSummaryTable extends StatelessWidget {
                 number(Strings.signed(result.score.bidPoints)),
                 number(
                   result.bonuses.isEmpty
-                      ? '—'
+                      ? Strings.noBonus
                       : result.score.bonusPoints > 0
                       ? Strings.signed(result.score.bonusPoints)
                       : Strings.bonusLost,
@@ -96,8 +96,7 @@ class RoundSummaryTable extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: Tokens.space1),
               child: Text(
-                '${seats[seat].name} : '
-                '${result.bonuses.map(Strings.bonusName).join(', ')}',
+                Strings.bonusesOf(seats[seat].name, result.bonuses),
                 style: const TextStyle(color: Tokens.mutedText, fontSize: 11),
               ),
             ),

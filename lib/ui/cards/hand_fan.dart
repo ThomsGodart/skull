@@ -48,7 +48,9 @@ class HandFan extends StatelessWidget {
               for (final (index, card) in cards.indexed)
                 AnimatedPositioned(
                   key: ValueKey(card.id),
-                  duration: const Duration(milliseconds: 120),
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 120),
                   left: left + index * step,
                   top: card == selected ? 0 : _lift,
                   child: _tappable(card),

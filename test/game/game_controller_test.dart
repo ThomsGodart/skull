@@ -95,9 +95,13 @@ void main() {
 
   test('the last trick stays available after the table is cleared', () async {
     final controller = controllerFor()..start();
-    await playUntil(controller, () => controller.round == 2);
+    bool oneTrickPlayedInRoundTwo() =>
+        controller.round == 2 &&
+        controller.trick.isEmpty &&
+        controller.tricksWon.fold(0, (sum, won) => sum + won) == 1;
 
-    expect(controller.trick, isEmpty);
+    await playUntil(controller, oneTrickPlayedInRoundTwo);
+
     expect(controller.lastTrick, hasLength(4));
     expect(controller.lastTrickWinner, isNotNull);
   });
@@ -112,6 +116,70 @@ void main() {
     expect(controller.scoredRounds.length, greaterThanOrEqualTo(10));
     expect(controller.bidQuestion, isNull);
     expect(controller.playQuestion, isNull);
+  });
+
+  test('the last trick is forgotten when a new round is dealt', () async {
+    final controller = controllerFor()..start();
+
+    await playUntil(controller, () => controller.round == 2);
+
+    expect(controller.scoredRounds, hasLength(1), reason: 'a trick was played');
+    expect(controller.lastTrick, isNull);
+    expect(controller.lastTrickWinner, isNull);
+  });
+
+  test(
+    'nobody is shown as playing while the bids are being revealed',
+    () async {
+      final controller = GameController(
+        config: const GameConfig(players: 4, seed: 5),
+        bot: randomBot(Random(5)),
+        speed: const TableSpeed(
+          botPlay: Duration.zero,
+          trickHold: Duration.zero,
+          bidReveal: Duration(milliseconds: 40),
+        ),
+      )..start();
+      await settle();
+
+      controller.bid(0);
+      await settle();
+
+      expect(controller.bids, everyElement(isNotNull));
+      expect(controller.currentSeat, isNull);
+
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(controller.currentSeat, isNotNull);
+      controller.dispose();
+    },
+  );
+
+  test('an answer nobody asked for is ignored', () async {
+    final controller = controllerFor()..start();
+    await settle();
+    final card = controller.hand.single;
+
+    controller.play(card);
+    controller.bid(0);
+    controller.bid(1);
+    await settle();
+
+    expect(controller.bids[0], 0, reason: 'the second bid changed nothing');
+  });
+
+  test('a bot that fails does not freeze the table silently', () async {
+    final controller = GameController(
+      config: const GameConfig(players: 4, seed: 5),
+      bot: (question, view) => throw StateError('broken bot'),
+      speed: TableSpeed.instant,
+    );
+    Object? error;
+    controller.onError = (e) => error = e;
+
+    controller.start();
+    await settle();
+
+    expect(error, isStateError);
   });
 
   test('notifies its listeners as the table changes', () async {
