@@ -15,6 +15,7 @@ class HandFan extends StatelessWidget {
     this.selected,
     this.onTap,
     this.cardWidth = 64,
+    this.reduceMotion = false,
   });
 
   final List<Card> cards;
@@ -22,6 +23,10 @@ class HandFan extends StatelessWidget {
   final Card? selected;
   final ValueChanged<Card>? onTap;
   final double cardWidth;
+
+  /// Cards jump to their place instead of sliding, as the system setting
+  /// does when it asks for less motion.
+  final bool reduceMotion;
 
   static const _lift = 18.0;
 
@@ -48,7 +53,8 @@ class HandFan extends StatelessWidget {
               for (final (index, card) in cards.indexed)
                 AnimatedPositioned(
                   key: ValueKey(card.id),
-                  duration: MediaQuery.disableAnimationsOf(context)
+                  duration:
+                      reduceMotion || MediaQuery.disableAnimationsOf(context)
                       ? Duration.zero
                       : const Duration(milliseconds: 120),
                   left: left + index * step,

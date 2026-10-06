@@ -2,6 +2,8 @@ import 'package:flutter/material.dart' hide Card;
 import 'package:flutter/services.dart';
 
 import '../engine/engine.dart';
+import '../rules/rules_screen.dart';
+import '../settings/app_settings.dart';
 import '../theme/tokens.dart';
 import '../ui/cards/card_look.dart';
 import '../ui/cards/hand_fan.dart';
@@ -9,6 +11,7 @@ import '../ui/strings.dart';
 import 'bid_panel.dart';
 import 'game_controller.dart';
 import 'score_views.dart';
+import 'screen_awake.dart';
 import 'seat_chip.dart';
 import 'seat_identity.dart';
 import 'trick_area.dart';
@@ -20,7 +23,15 @@ class TableScreen extends StatefulWidget {
     required this.controller,
     required this.onPlayAgain,
     this.human = const SeatIdentity(Strings.you, Tokens.gold),
+    this.settings,
+    this.screenAwake = const WakelockScreenAwake(),
   });
+
+  /// The player's play options. Defaults apply when there are none.
+  final AppSettings? settings;
+
+  /// Keeps the screen on for as long as the table is open.
+  final ScreenAwake screenAwake;
 
   /// Who the human is, as shown at their seat.
   final SeatIdentity human;
@@ -50,10 +61,18 @@ class _TableScreenState extends State<TableScreen> {
     super.initState();
     _game.addListener(_onGameChanged);
     _game.start();
+    widget.screenAwake.keepOn();
+  }
+
+  bool get _singleTap => widget.settings?.singleTapPlay ?? false;
+
+  void _vibrate(Future<void> Function() feedback) {
+    if (widget.settings?.haptics ?? true) feedback();
   }
 
   @override
   void dispose() {
+    widget.screenAwake.release();
     _game
       ..removeListener(_onGameChanged)
       ..dispose();
@@ -66,8 +85,8 @@ class _TableScreenState extends State<TableScreen> {
   }
 
   Future<void> _onCardTap(Card card) async {
-    if (card != _selected) {
-      HapticFeedback.selectionClick();
+    if (card != _selected && !_singleTap) {
+      _vibrate(HapticFeedback.selectionClick);
       setState(() => _selected = card);
       return;
     }
@@ -76,7 +95,7 @@ class _TableScreenState extends State<TableScreen> {
       mode = await _askTigressMode();
       if (mode == null || !mounted) return;
     }
-    HapticFeedback.lightImpact();
+    _vibrate(HapticFeedback.lightImpact);
     _game.play(card, tigressAs: mode);
   }
 
@@ -110,7 +129,14 @@ class _TableScreenState extends State<TableScreen> {
       builder: (context) => AlertDialog(
         title: const Text(Strings.pause),
         content: const Text(Strings.gameIsSaved),
+        actionsOverflowButtonSpacing: Tokens.space1,
         actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const RulesScreen()),
+            ),
+            child: const Text(Strings.rules),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text(Strings.quit),
@@ -239,6 +265,8 @@ class _TableScreenState extends State<TableScreen> {
                             selected: _selected,
                             onTap: _onCardTap,
                             cardWidth: 64,
+                            reduceMotion:
+                                widget.settings?.reduceMotion ?? false,
                           ),
                         ],
                       ),

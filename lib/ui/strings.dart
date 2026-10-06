@@ -86,6 +86,64 @@ abstract final class Strings {
   static const saveFailed = 'La sauvegarde a échoué.';
   static const cannotStart = 'Impossible de lancer la partie.';
 
+  static const history = 'Historique';
+  static const historyEmpty = 'Aucune partie terminée pour l\'instant.';
+  static String historyResult(int rank, int score) =>
+      '${ordinal(rank)} · ${points(score)}';
+  static String playersCount(int players) => '$players joueurs';
+  static String wonBy(String name) => 'Gagnée par $name';
+  static const wonByYou = 'Gagnée par toi';
+  static const baseGameClassic = 'Jeu de base · score classique';
+  static const delete = 'Supprimer';
+  static const deleteGameTitle = 'Supprimer cette partie ?';
+  static const deleteGameBody =
+      'Elle disparaîtra de l\'historique et des statistiques.';
+  static const gameDetailTitle = 'Détail de la partie';
+  static const detailUnavailable =
+      'Le détail de cette partie n\'est plus disponible.';
+
+  static String ordinal(int rank) => rank == 1 ? '1er' : '${rank}e';
+
+  /// A day and a time, as in « 06/10/2026 à 21:30 ».
+  static String dateTime(DateTime date) {
+    String two(int value) => value.toString().padLeft(2, '0');
+    return '${two(date.day)}/${two(date.month)}/${date.year} '
+        'à ${two(date.hour)}:${two(date.minute)}';
+  }
+
+  static const statistics = 'Statistiques';
+  static const statGamesPlayed = 'Parties jouées';
+  static const statWins = 'Victoires';
+  static const statWinRate = 'Taux de victoire';
+  static const statAverageRank = 'Classement moyen';
+  static const statAverageScore = 'Score moyen';
+  static const statBestScore = 'Meilleur score';
+  static const statBidSuccess = 'Paris réussis';
+  static const statZeroBidSuccess = 'Paris à 0 réussis';
+  static String statMeasuredOn(int games) =>
+      'Paris mesurés sur $games partie${games > 1 ? 's' : ''}.';
+
+  /// Shown instead of a figure that has nothing to measure.
+  static const unavailable = '—';
+  static String percent(double ratio) => '${(ratio * 100).round()} %';
+  static String decimal(double value) =>
+      value.toStringAsFixed(1).replaceFirst('.', ',');
+
+  static const settings = 'Réglages';
+  static const botSpeedLabel = 'Vitesse des adversaires';
+  static const speedNormal = 'Normale';
+  static const speedFast = 'Rapide';
+  static const speedInstant = 'Instantanée';
+  static const singleTapPlay = 'Jouer en un seul appui';
+  static const singleTapPlayHelp =
+      'Sinon, un premier appui soulève la carte et un second la joue.';
+  static const hapticsLabel = 'Vibrations';
+  static const reduceMotionLabel = 'Réduire les animations';
+  static const licenses = 'Licences';
+
+  static const rules = 'Règles';
+  static const rulesTitle = 'Règles du jeu';
+
   static const profileTitle = 'Ton profil';
   static const playerNameLabel = 'Nom';
   static const playerColorLabel = 'Couleur';

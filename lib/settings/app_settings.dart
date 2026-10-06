@@ -1,9 +1,41 @@
 import 'package:flutter/foundation.dart';
 
 import '../engine/engine.dart';
+import '../game/table_speed.dart';
 import '../storage/settings_store.dart';
 import '../theme/tokens.dart';
 import '../ui/strings.dart';
+
+/// How fast the bots play.
+enum BotSpeed {
+  normal(
+    TableSpeed(
+      botPlay: Duration(milliseconds: 700),
+      trickHold: Duration(milliseconds: 1200),
+      bidReveal: Duration(milliseconds: 900),
+    ),
+  ),
+  fast(
+    TableSpeed(
+      botPlay: Duration(milliseconds: 250),
+      trickHold: Duration(milliseconds: 800),
+      bidReveal: Duration(milliseconds: 500),
+    ),
+  ),
+
+  /// The bots answer at once; a finished trick still stays a moment.
+  instant(
+    TableSpeed(
+      botPlay: Duration.zero,
+      trickHold: Duration(milliseconds: 600),
+      bidReveal: Duration(milliseconds: 300),
+    ),
+  );
+
+  const BotSpeed(this.table);
+
+  final TableSpeed table;
+}
 
 /// What the player has chosen, kept from one launch to the next.
 class AppSettings extends ChangeNotifier {
@@ -17,6 +49,10 @@ class AppSettings extends ChangeNotifier {
   static const _nameKey = 'playerName';
   static const _colorKey = 'playerColor';
   static const _opponentsKey = 'opponents';
+  static const _botSpeedKey = 'botSpeed';
+  static const _singleTapKey = 'singleTapPlay';
+  static const _hapticsKey = 'haptics';
+  static const _reduceMotionKey = 'reduceMotion';
 
   static Future<AppSettings> load(SettingsStore store) async {
     final values = await store.readAll();
@@ -26,6 +62,11 @@ class AppSettings extends ChangeNotifier {
     if (color != null && _isColor(color)) settings._playerColor = color;
     final opponents = int.tryParse(values[_opponentsKey] ?? '');
     if (opponents != null) settings._opponents = _clampOpponents(opponents);
+    settings._botSpeed =
+        BotSpeed.values.asNameMap()[values[_botSpeedKey]] ?? BotSpeed.normal;
+    settings._singleTapPlay = values[_singleTapKey] == 'true';
+    settings._haptics = values[_hapticsKey] != 'false';
+    settings._reduceMotion = values[_reduceMotionKey] == 'true';
     return settings;
   }
 
@@ -33,6 +74,10 @@ class AppSettings extends ChangeNotifier {
   String _playerName = defaultPlayerName;
   int _playerColor = 0;
   int _opponents = 3;
+  BotSpeed _botSpeed = BotSpeed.normal;
+  bool _singleTapPlay = false;
+  bool _haptics = true;
+  bool _reduceMotion = false;
 
   /// The name shown at the human's seat.
   String get playerName => _playerName;
@@ -42,6 +87,42 @@ class AppSettings extends ChangeNotifier {
 
   /// How many bots the last game was set up with.
   int get opponents => _opponents;
+
+  BotSpeed get botSpeed => _botSpeed;
+
+  /// A card is played by one tap instead of two.
+  bool get singleTapPlay => _singleTapPlay;
+
+  /// The phone vibrates lightly when a card is picked or played.
+  bool get haptics => _haptics;
+
+  /// Cards move without animation, whatever the system setting says.
+  bool get reduceMotion => _reduceMotion;
+
+  Future<void> setBotSpeed(BotSpeed speed) {
+    _botSpeed = speed;
+    return _changed(_botSpeedKey, speed.name);
+  }
+
+  Future<void> setSingleTapPlay(bool value) {
+    _singleTapPlay = value;
+    return _changed(_singleTapKey, '$value');
+  }
+
+  Future<void> setHaptics(bool value) {
+    _haptics = value;
+    return _changed(_hapticsKey, '$value');
+  }
+
+  Future<void> setReduceMotion(bool value) {
+    _reduceMotion = value;
+    return _changed(_reduceMotionKey, '$value');
+  }
+
+  Future<void> _changed(String key, String value) {
+    notifyListeners();
+    return _store.write(key, value);
+  }
 
   Future<void> setPlayer({required String name, required int color}) async {
     _playerName = _cleanName(name);

@@ -73,6 +73,50 @@ void main() {
     expect(settings.playerColor, 0);
   });
 
+  test(
+    'play options start at their defaults and are kept once changed',
+    () async {
+      final store = MemorySettingsStore();
+      final settings = await AppSettings.load(store);
+      expect(settings.botSpeed, BotSpeed.normal);
+      expect(settings.singleTapPlay, isFalse);
+      expect(settings.haptics, isTrue);
+      expect(settings.reduceMotion, isFalse);
+
+      await settings.setBotSpeed(BotSpeed.fast);
+      await settings.setSingleTapPlay(true);
+      await settings.setHaptics(false);
+      await settings.setReduceMotion(true);
+
+      final reloaded = await AppSettings.load(store);
+      expect(reloaded.botSpeed, BotSpeed.fast);
+      expect(reloaded.singleTapPlay, isTrue);
+      expect(reloaded.haptics, isFalse);
+      expect(reloaded.reduceMotion, isTrue);
+    },
+  );
+
+  test('a faster bot speed never waits longer', () {
+    final waits = [for (final speed in BotSpeed.values) speed.table.botPlay];
+
+    expect(BotSpeed.values, [BotSpeed.normal, BotSpeed.fast, BotSpeed.instant]);
+    expect(waits[1], lessThan(waits[0]));
+    expect(waits[2], Duration.zero);
+    expect(
+      BotSpeed.instant.table.trickHold,
+      greaterThan(Duration.zero),
+      reason: 'a finished trick must stay readable',
+    );
+  });
+
+  test('an unknown bot speed falls back to normal', () async {
+    final settings = await AppSettings.load(
+      MemorySettingsStore({'botSpeed': 'warp'}),
+    );
+
+    expect(settings.botSpeed, BotSpeed.normal);
+  });
+
   test('listeners are told when a setting changes', () async {
     final settings = await AppSettings.load(MemorySettingsStore());
     var notified = 0;

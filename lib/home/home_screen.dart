@@ -9,8 +9,12 @@ import '../game/game_controller.dart';
 import '../game/game_saver.dart';
 import '../game/seat_identity.dart';
 import '../game/table_screen.dart';
+import '../history/history_screen.dart';
+import '../rules/rules_screen.dart';
 import '../settings/app_settings.dart';
+import '../settings/settings_screen.dart';
 import '../setup/setup_screen.dart';
+import '../stats/stats_screen.dart';
 import '../storage/game_store.dart';
 import '../theme/tokens.dart';
 import '../ui/strings.dart';
@@ -81,9 +85,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final route = MaterialPageRoute<void>(
       builder: (context) => TableScreen(
         human: _human,
+        settings: _settings,
         controller: GameController(
           config: game.config,
           bot: sensibleBot(),
+          speed: _settings.botSpeed.table,
           savedAnswers: game.answers,
           onProgress: (progress) {
             saver.record(progress);
@@ -197,6 +203,13 @@ class _HomeScreenState extends State<HomeScreen> {
     await _start(players, replace: true);
   }
 
+  /// A secondary screen reached from the home.
+  Widget _entry(String label, WidgetBuilder screen) => TextButton(
+    onPressed: () =>
+        Navigator.of(context).push(MaterialPageRoute<void>(builder: screen)),
+    child: Text(label),
+  );
+
   @override
   Widget build(BuildContext context) {
     final saved = _saved;
@@ -256,7 +269,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     onPressed: _openSetup,
                     child: const Text(Strings.newGame),
                   ),
-                const SizedBox(height: Tokens.space6),
+                const SizedBox(height: Tokens.space4),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    _entry(
+                      Strings.history,
+                      (context) => HistoryScreen(games: _games, human: _human),
+                    ),
+                    _entry(
+                      Strings.statistics,
+                      (context) => StatsScreen(games: _games),
+                    ),
+                    _entry(Strings.rules, (context) => const RulesScreen()),
+                    _entry(
+                      Strings.settings,
+                      (context) => SettingsScreen(settings: _settings),
+                    ),
+                  ],
+                ),
                 TextButton.icon(
                   key: const Key('edit-profile'),
                   onPressed: () => showDialog<void>(
