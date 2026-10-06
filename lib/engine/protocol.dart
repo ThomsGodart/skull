@@ -3,7 +3,7 @@ import 'scoring.dart';
 import 'trick.dart';
 
 /// Fewest and most seats a game can have.
-const minPlayers = 3;
+const minPlayers = 2;
 const maxPlayers = 8;
 
 /// How a round is scored.

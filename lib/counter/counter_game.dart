@@ -114,11 +114,11 @@ final class CounterGame {
     this.draftBids,
   }) : players = List.unmodifiable(players),
        _rounds = List.of(rounds) {
-    if (players.length < minCounterPlayers || players.length > maxPlayers) {
+    if (players.length < minPlayers || players.length > maxPlayers) {
       throw ArgumentError.value(
         players.length,
         'players',
-        'must be $minCounterPlayers to $maxPlayers',
+        'must be $minPlayers to $maxPlayers',
       );
     }
   }
@@ -137,9 +137,6 @@ final class CounterGame {
     ],
     draftBids: (json['draftBids'] as List?)?.cast<int>(),
   );
-
-  /// Two can play with the real cards: the ghost's packet needs no entry.
-  static const minCounterPlayers = 2;
 
   final List<String> players;
 
@@ -163,11 +160,7 @@ final class CounterGame {
   int get nextRound => _rounds.length + 1;
 
   /// Cards each player holds in [round].
-  int cardsIn(int round) => cardsDealt(
-    round: round,
-    // Two players deal a third packet, so the deck bounds them the same.
-    players: players.length < minPlayers ? minPlayers : players.length,
-  );
+  int cardsIn(int round) => cardsDealt(round: round, players: players.length);
 
   /// The player who leads [round].
   int leaderOf(int round) => (firstLeader + round - 1) % players.length;

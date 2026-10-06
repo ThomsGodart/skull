@@ -8,6 +8,12 @@ abstract final class Strings {
   static const newGame = 'Nouvelle partie';
   static const opponents = 'Adversaires';
   static const you = 'Toi';
+  static const ghostName = 'Barbe Grise';
+  static String ghostTricks(int tricks) => 'fantôme · plis $tricks';
+  static const twoPlayersNote =
+      'À 2 joueurs, le fantôme de Barbe Grise joue un troisième paquet : il '
+      'ne parie pas, ne marque pas, mais prend des plis. Le Butin n\'est '
+      'pas utilisé.';
 
   /// Names of the bots, in seat order.
   static const botNames = [

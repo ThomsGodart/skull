@@ -51,7 +51,13 @@ class _TableScreenState extends State<TableScreen> {
   late final List<SeatIdentity> _seats = SeatIdentity.table(
     widget.controller.players,
     human: widget.human,
+    ghostSeat: widget.controller.ghostSeat,
   );
+
+  /// The seats that appear on a score sheet: every one but the ghost's.
+  late final List<SeatIdentity> _scoringSeats = _seats
+      .take(widget.controller.scoringSeats)
+      .toList();
 
   /// The card lifted by a first tap, waiting for the second.
   Card? _selected;
@@ -236,7 +242,7 @@ class _TableScreenState extends State<TableScreen> {
     builder: (context) => SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(Tokens.space3),
-        child: ScoreSheet(rounds: _game.scoredRounds, seats: _seats),
+        child: ScoreSheet(rounds: _game.scoredRounds, seats: _scoringSeats),
       ),
     ),
   );
@@ -559,7 +565,7 @@ class _TableScreenState extends State<TableScreen> {
       ),
       const SizedBox(height: Tokens.space3),
     ],
-    body: RoundSummaryTable(round: summary, seats: _seats),
+    body: RoundSummaryTable(round: summary, seats: _scoringSeats),
     actions: [
       FilledButton(
         key: const Key('continue'),
@@ -597,7 +603,7 @@ class _TableScreenState extends State<TableScreen> {
       ),
       const SizedBox(height: Tokens.space3),
     ],
-    body: Standings(scores: result.scores, seats: _seats),
+    body: Standings(scores: result.scores, seats: _scoringSeats),
     actions: [
       FilledButton(
         onPressed: widget.onPlayAgain,

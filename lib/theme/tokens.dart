@@ -24,6 +24,9 @@ abstract final class Tokens {
     Color(0xFF6FBF5A),
   ];
 
+  /// The ghost that sits in when only two play.
+  static const ghost = Color(0xFF8A96A3);
+
   /// One colour per bot seat, in seat order.
   static const botColors = [
     Color(0xFF3F8EC4),

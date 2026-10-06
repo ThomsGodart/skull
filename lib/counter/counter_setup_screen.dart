@@ -92,7 +92,7 @@ class _CounterSetupScreenState extends State<CounterSetupScreen> {
                             ),
                           ),
                         ),
-                        if (_names.length > CounterGame.minCounterPlayers)
+                        if (_names.length > minPlayers)
                           IconButton(
                             tooltip: Strings.counterRemovePlayer,
                             onPressed: () => setState(() {

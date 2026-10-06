@@ -34,7 +34,8 @@ List<Card> allCards() => [
 /// deck first, so that a base game deals the same whatever is added later.
 List<Card> deckFor(GameConfig config) => [
   ...baseDeck(),
-  if (config.loot) ...lootCards,
+  // Loot needs two players to ally: it is left out of a two-player game.
+  if (config.loot && config.players > 2) ...lootCards,
   if (config.kraken) krakenCard,
   if (config.whiteWhale) whiteWhaleCard,
 ];
@@ -45,4 +46,8 @@ List<Card> deckFor(GameConfig config) => [
 /// The base deck bounds it, expansion or not: eight players never get more
 /// than eight cards.
 int cardsDealt({required int round, required int players}) =>
-    min(min(round, standardRounds), baseDeck().length ~/ players);
+    min(min(round, standardRounds), baseDeck().length ~/ tableHands(players));
+
+/// Hands dealt for [players]: one each, plus the ghost's packet when only
+/// two play.
+int tableHands(int players) => players == 2 ? 3 : players;

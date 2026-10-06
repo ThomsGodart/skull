@@ -16,7 +16,8 @@ Bot sensibleBot() =>
         // Leading suits a hand that still wants tricks; otherwise pass it on.
         leader: _needsTricks(view)
             ? question.seat
-            : (question.seat + 1) % view.handSizes.length,
+            : question.seats[(question.seats.indexOf(question.seat) + 1) %
+                  question.seats.length],
       ),
       DiscardQuestion() => DiscardAnswer(
         seat: question.seat,

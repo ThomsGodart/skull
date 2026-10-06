@@ -189,6 +189,14 @@ class _SetupScreenState extends State<SetupScreen> {
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Tokens.mutedText),
                   ),
+                  if (players == minPlayers) ...[
+                    const SizedBox(height: Tokens.space2),
+                    const Text(
+                      Strings.twoPlayersNote,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Tokens.mutedText),
+                    ),
+                  ],
                   if (_lastRoundCards(players) < standardRounds) ...[
                     const SizedBox(height: Tokens.space2),
                     Text(

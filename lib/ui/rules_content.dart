@@ -91,6 +91,18 @@ abstract final class RulesContent {
           'un seul premier.',
     ),
     (
+      title: 'À deux joueurs',
+      body:
+          'Un troisième paquet est distribué au fantôme de Barbe Grise. Il '
+          'ne parie pas et ne marque pas, mais il prend des plis.\n\n'
+          'Les deux joueurs entament les manches à tour de rôle. Barbe Grise '
+          'joue toujours en deuxième : la carte du dessus de son paquet, '
+          'sans avoir à suivre la couleur. S\'il remporte un pli, il entame '
+          'le suivant, et le joueur qui a commencé la manche joue après '
+          'lui.\n\n'
+          'Sa Tigresse vaut une fuite. Le Butin n\'est pas utilisé.',
+    ),
+    (
       title: 'Extension : Kraken, Baleine blanche, Butin',
       body:
           'Ces cartes s\'ajoutent au choix à la création de la partie. '

@@ -44,8 +44,7 @@ class GameController extends ChangeNotifier {
     this.humanSeat = 0,
     List<Answer> savedAnswers = const [],
     this.onProgress,
-  }) : _game = Game.replay(config, savedAnswers),
-       players = config.players;
+  }) : _game = Game.replay(config, savedAnswers);
 
   /// What the game is played with.
   GameConfig get config => _game.config;
@@ -56,7 +55,15 @@ class GameController extends ChangeNotifier {
   final Bot bot;
   final TableSpeed speed;
   final int humanSeat;
-  final int players;
+
+  /// Seats at the table, the ghost's included when two play.
+  int get players => _game.seats;
+
+  /// The seat of Greybeard's ghost in a two-player game.
+  int? get ghostSeat => _game.ghostSeat;
+
+  /// The seats that bid and score: every one but the ghost's.
+  int get scoringSeats => _game.config.players;
 
   final Game _game;
   final Queue<Event> _events = Queue();
@@ -79,6 +86,7 @@ class GameController extends ChangeNotifier {
   int cardsDealt = 0;
   int dealer = 0;
   int _leader = 0;
+  int _roundStarter = 0;
 
   /// The human's cards, sorted for reading.
   List<Card> hand = const [];
@@ -140,7 +148,12 @@ class GameController extends ChangeNotifier {
     if (!bids.every((bid) => bid != null) || trickWinner != null) return null;
     if (_revealingBids) return null;
     if (roundSummary != null || result != null) return null;
-    return (_leader + trick.length) % players;
+    return playOrder(
+      leader: _leader,
+      seats: players,
+      ghost: ghostSeat,
+      roundStarter: _roundStarter,
+    )[trick.length];
   }
 
   /// The suit to follow in the trick on the table, if any.
@@ -285,6 +298,7 @@ class GameController extends ChangeNotifier {
         cardsDealt = event.cardsDealt;
         dealer = event.dealer;
         _leader = event.leader;
+        _roundStarter = event.leader;
         handSizes = List.filled(players, event.cardsDealt);
         bids = List.filled(players, null);
         tricksWon = List.filled(players, 0);
@@ -295,7 +309,8 @@ class GameController extends ChangeNotifier {
       case HandDealt():
         hand = sortedHand(event.cards);
       case BidsRevealed():
-        bids = List.of(event.bids);
+        // The ghost bids nothing.
+        bids = List<int?>.of(event.bids)..length = players;
         _revealingBids = true;
         _notify();
         await _wait(speed.bidReveal);
@@ -372,7 +387,10 @@ class GameController extends ChangeNotifier {
         }
       case RoundScored():
         scoredRounds.add(event);
-        scores = [for (final result in event.results) result.totalScore];
+        scores = [
+          for (final result in event.results) result.totalScore,
+          if (ghostSeat != null) 0,
+        ];
         roundSummary = event;
         _notify();
         await _holdFor(null);

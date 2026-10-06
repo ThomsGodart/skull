@@ -57,13 +57,13 @@ void main() {
     expect(store.values['playerColor'], '0');
   });
 
-  test('the number of opponents stays between two and seven', () async {
+  test('the number of opponents stays between one and seven', () async {
     final settings = await AppSettings.load(MemorySettingsStore());
 
     await settings.setOpponents(12);
     expect(settings.opponents, 7);
     await settings.setOpponents(0);
-    expect(settings.opponents, 2);
+    expect(settings.opponents, 1);
   });
 
   test('values that make no sense are ignored when loading', () async {

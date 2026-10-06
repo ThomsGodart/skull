@@ -237,6 +237,46 @@ void main() {
     );
   });
 
+  testWidgets('with two players the ghost sits at the table, and only the '
+      'two players are on the score sheet', (tester) async {
+    final controller = await openTable(tester, players: 2, seed: 4);
+
+    expect(find.text(Strings.ghostName), findsOneWidget);
+    expect(find.text(Strings.ghostTricks(0)), findsOneWidget);
+
+    for (var step = 0; step < 4000; step++) {
+      await tester.pump();
+      if (controller.result != null && controller.roundSummary == null) break;
+      if (controller.roundSummary != null) {
+        expect(controller.roundSummary!.results, hasLength(2));
+        await tester.tap(find.byKey(const Key('continue')));
+      } else if (controller.bidQuestion != null) {
+        await tester.tap(find.byKey(const Key('bid-0')));
+        await tester.pump();
+        await tester.tap(find.byKey(const Key('place-bid')));
+      } else if (controller.playQuestion case final question?) {
+        final card = question.legalCards.first;
+        await tapCard(tester, card);
+        await tapCard(tester, card);
+        if (card.kind == CardKind.tigress) {
+          await tester.tap(find.byKey(const Key('tigress-escape')));
+        }
+      }
+    }
+    await tester.pump();
+
+    expect(controller.result!.scores, hasLength(2));
+    expect(find.text(Strings.gameOver), findsOneWidget);
+    // The ghost is not in the final standings.
+    expect(
+      find.descendant(
+        of: find.byType(Standings),
+        matching: find.text(Strings.ghostName),
+      ),
+      findsNothing,
+    );
+  });
+
   for (final players in [3, 8]) {
     testWidgets('a whole game with $players players runs to the final '
         'standings without a layout error', (tester) async {

@@ -190,10 +190,15 @@ class SeatChip extends StatelessWidget {
               ],
             ),
           ),
-          line(Strings.bidAndTricks(bid, tricksWon), color: Tokens.text),
+          line(
+            identity.isGhost
+                ? Strings.ghostTricks(tricksWon)
+                : Strings.bidAndTricks(bid, tricksWon),
+            color: Tokens.text,
+          ),
           line(
             [
-              Strings.points(score),
+              if (!identity.isGhost) Strings.points(score),
               if (cardsLeft != null) Strings.cardsLeft(cardsLeft!),
             ].join(' · '),
           ),

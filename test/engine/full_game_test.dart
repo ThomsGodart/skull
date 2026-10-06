@@ -400,9 +400,9 @@ void main() {
     });
   });
 
-  test('a game needs three to eight players', () {
+  test('a game needs two to eight players', () {
     expect(
-      () => Game(const GameConfig(players: 2, seed: 1)),
+      () => Game(const GameConfig(players: 1, seed: 1)),
       throwsArgumentError,
     );
     expect(

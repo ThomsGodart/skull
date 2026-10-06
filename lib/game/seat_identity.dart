@@ -5,18 +5,30 @@ import '../ui/strings.dart';
 
 /// Who sits at a seat, as far as the screen is concerned.
 final class SeatIdentity {
-  const SeatIdentity(this.name, this.color);
+  const SeatIdentity(this.name, this.color, {this.isGhost = false});
 
   final String name;
   final Color color;
 
+  /// Greybeard's ghost: it neither bids nor scores.
+  final bool isGhost;
+
   String get initials => name.substring(0, name.length < 2 ? 1 : 2);
 
-  /// [human] at seat 0, bots at the others.
-  static List<SeatIdentity> table(int players, {required SeatIdentity human}) =>
-      [
-        human,
-        for (var bot = 0; bot < players - 1; bot++)
-          SeatIdentity(Strings.botNames[bot], Tokens.botColors[bot]),
-      ];
+  /// [human] at seat 0 and bots at the others, for a table of [seats]. With
+  /// a [ghostSeat], that seat is the ghost's.
+  static List<SeatIdentity> table(
+    int seats, {
+    required SeatIdentity human,
+    int? ghostSeat,
+  }) => [
+    human,
+    for (var seat = 1; seat < seats; seat++)
+      seat == ghostSeat
+          ? const SeatIdentity(Strings.ghostName, Tokens.ghost, isGhost: true)
+          : SeatIdentity(
+              Strings.botNames[seat - 1],
+              Tokens.botColors[seat - 1],
+            ),
+  ];
 }

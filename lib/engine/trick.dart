@@ -27,6 +27,24 @@ final class Play {
   bool get isLoot => card.kind == CardKind.loot;
 }
 
+/// The seats in the order they play a trick led by [leader].
+///
+/// Clockwise from the leader — except with a [ghost], who always plays second;
+/// when it leads itself, [roundStarter] (the player who led the round's first
+/// trick) follows it.
+List<int> playOrder({
+  required int leader,
+  required int seats,
+  int? ghost,
+  int roundStarter = 0,
+}) {
+  if (ghost == null) {
+    return [for (var i = 0; i < seats; i++) (leader + i) % seats];
+  }
+  if (leader == ghost) return [ghost, roundStarter, 1 - roundStarter];
+  return [leader, ghost, 1 - leader];
+}
+
 /// The suit that must be followed in [trick], if any.
 ///
 /// The first number card sets it, unless a character was played before: then

@@ -95,7 +95,21 @@ final class Game {
   PowerQuestion? _power;
   late final List<int> _scores = List.filled(config.players, 0);
 
+  /// The players who bid and score.
   int get _players => config.players;
+
+  /// Hands at the table: one per player, plus the ghost's when two play.
+  int get seats => tableHands(config.players);
+
+  /// The seat of Greybeard's ghost, who sits in when only two play: it bids
+  /// nothing, scores nothing, and plays the top card of its packet.
+  int? get ghostSeat => seats > _players ? seats - 1 : null;
+
+  /// The seats in the order they play the trick on the table.
+  List<int> _order = const [];
+
+  /// The player who led the first trick of the round.
+  int _roundStarter = 0;
 
   bool get isFinished => _finished;
 
@@ -113,7 +127,7 @@ final class Game {
           if (_bids[seat] == null) BidQuestion(seat: seat, maxBid: _cardsDealt),
       ];
     }
-    final seat = (_leader + _trick.length) % _players;
+    final seat = _order[_trick.length];
     return [
       PlayQuestion(seat: seat, legalCards: legalCards(_hands[seat], _trick)),
     ];
@@ -134,7 +148,7 @@ final class Game {
     hand: List.unmodifiable(_hands[seat]),
     handSizes: [for (final hand in _hands) hand.length],
     bids: [
-      for (var other = 0; other < _players; other++)
+      for (var other = 0; other < seats; other++)
         _bidsRevealed || other == seat ? _bids[other] : null,
     ],
     tricksWon: List.unmodifiable(_tricksWon),
@@ -161,6 +175,7 @@ final class Game {
           throw IllegalAnswer('seat ${answer.leader} cannot lead');
         }
         _leader = answer.leader;
+        _startTrick();
         _events.add(LeaderChosen(seat: answer.seat, leader: answer.leader));
         _powerDone();
       case (final DiscardQuestion question, final DiscardAnswer answer):
@@ -193,9 +208,11 @@ final class Game {
       throw IllegalAnswer('bid ${answer.bid} is not in 0..${question.maxBid}');
     }
     _bids[answer.seat] = answer.bid;
-    if (_bids.contains(null)) return;
+    final bids = _bids.take(_players);
+    if (bids.contains(null)) return;
     _bidsRevealed = true;
-    _events.add(BidsRevealed([for (final bid in _bids) bid!]));
+    _events.add(BidsRevealed([for (final bid in bids) bid!]));
+    _ghostPlays();
   }
 
   void _play(PlayQuestion question, PlayAnswer answer) {
@@ -206,16 +223,45 @@ final class Game {
     if ((card.kind == CardKind.tigress) != (answer.tigressAs != null)) {
       throw const IllegalAnswer('a tigress mode goes with the tigress only');
     }
-    _hands[answer.seat].remove(card);
-    final play = Play(
-      seat: answer.seat,
-      card: card,
-      tigressAs: answer.tigressAs,
-    );
+    _put(Play(seat: answer.seat, card: card, tigressAs: answer.tigressAs));
+    _ghostPlays();
+  }
+
+  void _put(Play play) {
+    _hands[play.seat].remove(play.card);
     _trick.add(play);
     _events.add(CardPlayed(play));
-    if (_trick.length == _players) _finishTrick();
+    if (_trick.length == seats) _finishTrick();
   }
+
+  /// Plays for the ghost for as long as it is its turn: the top card of its
+  /// packet, whatever was led, and its tigress as an escape.
+  void _ghostPlays() {
+    final ghost = ghostSeat;
+    while (ghost != null &&
+        !_finished &&
+        _bidsRevealed &&
+        _power == null &&
+        !_roundOver &&
+        _order[_trick.length] == ghost) {
+      final card = _hands[ghost].first;
+      _put(
+        Play(
+          seat: ghost,
+          card: card,
+          tigressAs: card.kind == CardKind.tigress ? TigressMode.escape : null,
+        ),
+      );
+    }
+  }
+
+  /// Sets who plays in which order, now that [_leader] is known.
+  void _startTrick() => _order = playOrder(
+    leader: _leader,
+    seats: seats,
+    ghost: ghostSeat,
+    roundStarter: _roundStarter,
+  );
 
   void _discard(DiscardQuestion question, DiscardAnswer answer) {
     final hand = _hands[answer.seat];
@@ -251,7 +297,11 @@ final class Game {
     );
     _leader = result.winner;
     _trick = [];
-    if (config.piratePowers && !result.destroyed) {
+    _startTrick();
+    // The ghost decides nothing: a pirate it wins with has no power.
+    if (config.piratePowers &&
+        !result.destroyed &&
+        result.winner != ghostSeat) {
       final card = plays.firstWhere((p) => p.seat == result.winner).card;
       if (Pirate.of(card) case final pirate?) _usePower(pirate, result.winner);
     }
@@ -269,6 +319,7 @@ final class Game {
       case Pirate.rosie:
         _power = ChooseLeaderQuestion(
           seat: seat,
+          // The ghost cannot be handed the lead.
           seats: [for (var other = 0; other < _players; other++) other],
         );
       case Pirate.will:
@@ -313,7 +364,11 @@ final class Game {
   }
 
   void _afterTrick() {
-    if (_roundOver) _finishRound();
+    if (_roundOver) {
+      _finishRound();
+    } else {
+      _ghostPlays();
+    }
   }
 
   void _finishRound() {
@@ -371,20 +426,22 @@ final class Game {
     _round++;
     _cardsDealt = cardsDealt(round: _round, players: _players);
     _leader = (_dealer + 1) % _players;
+    _roundStarter = _leader;
     _bidsRevealed = false;
-    _bids = List.filled(_players, null);
-    _tricksWon = List.filled(_players, 0);
-    _bonuses = List.generate(_players, (_) => []);
-    _wagers = List.filled(_players, 0);
+    _bids = List.filled(seats, null);
+    _tricksWon = List.filled(seats, 0);
+    _bonuses = List.generate(seats, (_) => []);
+    _wagers = List.filled(seats, 0);
     _alliances.clear();
     _trick = [];
     final deck = deckFor(config);
     _random.shuffle(deck);
     _hands = [
-      for (var seat = 0; seat < _players; seat++)
+      for (var seat = 0; seat < seats; seat++)
         deck.sublist(seat * _cardsDealt, (seat + 1) * _cardsDealt),
     ];
-    _stock = deck.sublist(_players * _cardsDealt);
+    _stock = deck.sublist(seats * _cardsDealt);
+    _startTrick();
     _events.add(
       RoundStarted(
         round: _round,
