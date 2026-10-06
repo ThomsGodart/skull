@@ -118,7 +118,7 @@ void main() {
   });
 
   testWidgets('the level of the opponents is chosen when setting up a game, '
-      'and remembered', (tester) async {
+      'and only kept once the game is launched', (tester) async {
     await openApp(tester);
     await tester.tap(find.text(Strings.newGame));
     await tester.pumpAndSettle();
@@ -127,7 +127,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(Strings.levelHardHelp), findsOneWidget);
+    expect(
+      settingsStore.values['botLevel'],
+      isNull,
+      reason: 'looking at a level does not change the game in progress',
+    );
+
+    await tester.tap(find.byKey(const Key('launch')));
+    await tester.pumpAndSettle();
+
     expect(settingsStore.values['botLevel'], 'hard');
+    expect(settingsStore.values['activeGameBotLevel'], 'hard');
   });
 
   testWidgets('one opponent can be chosen: the ghost then joins the table', (

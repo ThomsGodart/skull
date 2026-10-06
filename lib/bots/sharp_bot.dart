@@ -42,7 +42,7 @@ bool _survives(Play mine, Card other) => _ways(other, _someone).every((theirs) {
 int _countedBid(GameView view) {
   final hand = view.hand.toSet();
   final unseen = [
-    for (final card in deckFor(view.config!))
+    for (final card in view.deck)
       if (!hand.contains(card)) card,
   ];
   final othersCards =

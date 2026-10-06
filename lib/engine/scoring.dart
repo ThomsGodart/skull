@@ -1,6 +1,26 @@
 import 'protocol.dart';
 import 'trick.dart';
 
+/// What Rascal the gambler lets his player stake.
+const wagerAmounts = [0, 10, 20];
+
+/// What Harry the giant may do to a bid of [bid] in a round of [cardsDealt]
+/// cards: move it by one, as long as it stays a possible bid.
+List<int> bidChangesFor(int bid, int cardsDealt) => [
+  for (final change in const [-1, 0, 1])
+    if (bid + change >= 0 && bid + change <= cardsDealt) change,
+];
+
+/// The seat alone at the top of [scores], or null while first place is tied.
+int? soleLeader(List<int> scores) {
+  final best = scores.reduce((a, b) => a > b ? a : b);
+  final leaders = [
+    for (var seat = 0; seat < scores.length; seat++)
+      if (scores[seat] == best) seat,
+  ];
+  return leaders.length == 1 ? leaders.single : null;
+}
+
 /// What one player scores in one round.
 final class RoundScore {
   const RoundScore({

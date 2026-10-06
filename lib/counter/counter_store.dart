@@ -1,4 +1,4 @@
-import '../counter/counter_game.dart';
+import 'counter_game.dart';
 
 /// A counted game as it is kept.
 final class SavedCounterGame {

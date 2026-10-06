@@ -50,7 +50,7 @@ class TableScreen extends StatefulWidget {
 
 class _TableScreenState extends State<TableScreen> {
   late final List<SeatIdentity> _seats = SeatIdentity.table(
-    widget.controller.players,
+    widget.controller.seats,
     human: widget.human,
     ghostSeat: widget.controller.ghostSeat,
   );
@@ -461,7 +461,7 @@ class _TableScreenState extends State<TableScreen> {
         spacing: gap,
         runSpacing: gap,
         children: [
-          for (var seat = 0; seat < _game.players; seat++)
+          for (var seat = 0; seat < _game.seats; seat++)
             if (seat != _game.humanSeat)
               SizedBox(
                 width: width,

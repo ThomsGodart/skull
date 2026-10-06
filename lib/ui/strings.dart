@@ -272,6 +272,8 @@ abstract final class Strings {
   static const counterFirstLeader = 'Premier à entamer';
   static const counterStart = 'Commencer';
   static const counterNeedNames = 'Donne un nom à chaque joueur.';
+  static const counterDistinctNames =
+      'Deux joueurs portent le même nom : change-en un.';
   static String counterRoundTitle(int round, int cards) =>
       roundTitle(round, cards);
   static String counterLeads(String name) => '$name entame';
@@ -304,13 +306,14 @@ abstract final class Strings {
       'Égalité en tête : jouez une manche de départage.';
   static const ok = 'OK';
 
-  static String bonusLabel(Bonus bonus) => switch (bonus) {
-    Bonus.standardFourteen => '14 vert, jaune ou violet (+10)',
-    Bonus.blackFourteen => '14 noir (+20)',
-    Bonus.mermaidCaptured => 'Sirène capturée par un pirate (+20)',
-    Bonus.pirateCaptured => 'Pirate capturé par le Skull King (+30)',
-    Bonus.skullKingCaptured => 'Skull King capturé par une sirène (+40)',
-  };
+  static String bonusLabel(Bonus bonus) =>
+      '${switch (bonus) {
+        Bonus.standardFourteen => '14 vert, jaune ou violet',
+        Bonus.blackFourteen => '14 noir',
+        Bonus.mermaidCaptured => 'Sirène capturée par un pirate',
+        Bonus.pirateCaptured => 'Pirate capturé par le Skull King',
+        Bonus.skullKingCaptured => 'Skull King capturé par une sirène',
+      }} (+${bonus.points})';
 
   static const profileTitle = 'Ton profil';
   static const playerNameLabel = 'Nom';

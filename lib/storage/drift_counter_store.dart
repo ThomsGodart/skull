@@ -4,7 +4,7 @@ import 'package:drift/drift.dart';
 
 import '../counter/counter_game.dart';
 import 'app_database.dart';
-import 'counter_store.dart';
+import '../counter/counter_store.dart';
 
 /// Counted games kept in the app's SQLite database.
 final class DriftCounterStore implements CounterStore {
@@ -27,6 +27,8 @@ final class DriftCounterStore implements CounterStore {
         finishedAt: row.finishedAt,
       );
     } on Object {
+      // Unreadable, or describing a round that cannot be: either way it is
+      // not a game to show.
       return null;
     }
   }

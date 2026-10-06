@@ -8,8 +8,8 @@ import '../ui/strings.dart';
 
 enum _Preset { classic, full, custom }
 
-/// Where a new game is set up. Calls [onLaunch] with what to play; the seed
-/// it carries means nothing.
+/// Where a new game is set up. Calls [onLaunch] with what to play and how
+/// good the bots are; the seed the setup carries means nothing.
 class SetupScreen extends StatefulWidget {
   const SetupScreen({
     super.key,
@@ -18,7 +18,7 @@ class SetupScreen extends StatefulWidget {
   });
 
   final AppSettings settings;
-  final ValueChanged<GameConfig> onLaunch;
+  final void Function(GameConfig setup, BotLevel level) onLaunch;
 
   @override
   State<SetupScreen> createState() => _SetupScreenState();
@@ -131,10 +131,8 @@ class _SetupScreenState extends State<SetupScreen> {
                       ),
                     ],
                     selected: {_level},
-                    onSelectionChanged: (choice) {
-                      setState(() => _level = choice.single);
-                      widget.settings.setBotLevel(choice.single);
-                    },
+                    onSelectionChanged: (choice) =>
+                        setState(() => _level = choice.single),
                   ),
                   if (_level != BotLevel.normal)
                     Padding(
@@ -180,12 +178,13 @@ class _SetupScreenState extends State<SetupScreen> {
                       _setup.whiteWhale,
                       (on) => _setup.copyWith(whiteWhale: on),
                     ),
-                    _option(
-                      Strings.optionLoot,
-                      Strings.optionLootHelp,
-                      _setup.loot,
-                      (on) => _setup.copyWith(loot: on),
-                    ),
+                    if (players > minPlayers)
+                      _option(
+                        Strings.optionLoot,
+                        Strings.optionLootHelp,
+                        _setup.loot,
+                        (on) => _setup.copyWith(loot: on),
+                      ),
                     _option(
                       Strings.optionPowers,
                       Strings.optionPowersHelp,
@@ -250,7 +249,7 @@ class _SetupScreenState extends State<SetupScreen> {
                 width: double.infinity,
                 child: FilledButton(
                   key: const Key('launch'),
-                  onPressed: () => widget.onLaunch(_setup),
+                  onPressed: () => widget.onLaunch(_setup, _level),
                   child: const Text(Strings.launch),
                 ),
               ),

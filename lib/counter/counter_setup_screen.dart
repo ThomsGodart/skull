@@ -43,12 +43,33 @@ class _CounterSetupScreenState extends State<CounterSetupScreen> {
 
   List<String> get _entered => [for (final name in _names) name.text.trim()];
 
+  /// Names used in earlier games and not yet at this table.
+  List<String> get _suggestions => [
+    for (final name in widget.settings.knownPlayers)
+      if (!_entered.contains(name)) name,
+  ];
+
+  /// Seats a known player: in the first empty field, or in a new one.
+  void _suggest(String name) => setState(() {
+    final empty = _names.where((field) => field.text.trim().isEmpty);
+    if (empty.isNotEmpty) {
+      empty.first.text = name;
+    } else if (_names.length < maxPlayers) {
+      _names.add(TextEditingController(text: name));
+    }
+  });
+
   void _start() {
     final names = _entered;
-    if (names.any((name) => name.isEmpty)) {
+    final problem = names.any((name) => name.isEmpty)
+        ? Strings.counterNeedNames
+        : names.toSet().length != names.length
+        ? Strings.counterDistinctNames
+        : null;
+    if (problem != null) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text(Strings.counterNeedNames)));
+        ..showSnackBar(SnackBar(content: Text(problem)));
       return;
     }
     widget.onStart(
@@ -97,8 +118,12 @@ class _CounterSetupScreenState extends State<CounterSetupScreen> {
                             tooltip: Strings.counterRemovePlayer,
                             onPressed: () => setState(() {
                               _names.removeAt(index).dispose();
-                              if (_firstLeader >= _names.length) {
+                              // The first leader stays the same person, or
+                              // goes back to the first player if they left.
+                              if (index == _firstLeader) {
                                 _firstLeader = 0;
+                              } else if (index < _firstLeader) {
+                                _firstLeader--;
                               }
                             }),
                             icon: const Icon(Icons.close),
@@ -115,6 +140,17 @@ class _CounterSetupScreenState extends State<CounterSetupScreen> {
                         icon: const Icon(Icons.add),
                         label: const Text(Strings.counterAddPlayer),
                       ),
+                    ),
+                  if (_suggestions.isNotEmpty)
+                    Wrap(
+                      spacing: Tokens.space2,
+                      children: [
+                        for (final name in _suggestions)
+                          ActionChip(
+                            label: Text(name),
+                            onPressed: () => _suggest(name),
+                          ),
+                      ],
                     ),
                   const SizedBox(height: Tokens.space3),
                   const Text(

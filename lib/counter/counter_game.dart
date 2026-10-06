@@ -35,11 +35,6 @@ final class CounterEntry {
   /// What Harry the giant did to the bid: -1, 0 or +1.
   final int bidChange;
 
-  /// The bid the round is scored on.
-  int get scoredBid => bid + bidChange;
-
-  bool get bidMade => scoredBid == tricksWon;
-
   CounterEntry copyWith({
     int? bid,
     int? tricksWon,
@@ -113,7 +108,7 @@ final class CounterGame {
     List<CounterRound> rounds = const [],
     this.draftBids,
   }) : players = List.unmodifiable(players),
-       _rounds = List.of(rounds) {
+       _rounds = [] {
     if (players.length < minPlayers || players.length > maxPlayers) {
       throw ArgumentError.value(
         players.length,
@@ -121,6 +116,13 @@ final class CounterGame {
         'must be $minPlayers to $maxPlayers',
       );
     }
+    // Stored rounds go through the same checks as entered ones, which would
+    // also forget the bids being entered: those are put back afterwards.
+    final draft = draftBids;
+    for (final round in rounds) {
+      saveRound(nextRound, round);
+    }
+    if (!isOver) draftBids = draft;
   }
 
   factory CounterGame.fromJson(Map<String, Object?> json) => CounterGame(
@@ -177,12 +179,27 @@ final class CounterGame {
     if (entered.entries.length != players.length) {
       throw ArgumentError.value(entered, 'entered', 'one entry per player');
     }
+    for (final (first, second) in entered.alliances) {
+      final atTable = [
+        first,
+        second,
+      ].every((player) => player >= 0 && player < players.length);
+      if (!atTable || first == second) {
+        throw ArgumentError.value(
+          entered.alliances,
+          'alliances',
+          'an alliance joins two different players of the game',
+        );
+      }
+    }
     if (round == nextRound) {
       _rounds.add(entered);
       draftBids = null;
     } else {
       _rounds[round - 1] = entered;
     }
+    // No further round will be played: bids entered for one are void.
+    if (isOver) draftBids = null;
   }
 
   /// Every round entered so far, scored, with running totals.
@@ -191,30 +208,32 @@ final class CounterGame {
     final scored = <RoundScored>[];
     for (final (index, round) in _rounds.indexed) {
       final entries = round.entries;
+      final cards = cardsIn(index + 1);
       scored.add(
         RoundScored(
           round: index + 1,
           results: [
             for (final (player, entry) in entries.indexed)
               () {
+                final bid = _scoredBid(entry, cards);
+                bool made(int other) =>
+                    _scoredBid(entries[other], cards) ==
+                    entries[other].tricksWon;
                 final score = scoreRound(
-                  bid: entry.scoredBid,
+                  bid: bid,
                   tricksWon: entry.tricksWon,
-                  cardsDealt: cardsIn(index + 1),
+                  cardsDealt: cards,
                   bonuses: _bonusList(entry),
                   scoring: scoring,
-                  alliancesMade: round.alliances
-                      .where(
-                        (pair) =>
-                            (pair.$1 == player && entries[pair.$2].bidMade) ||
-                            (pair.$2 == player && entries[pair.$1].bidMade),
-                      )
-                      .length,
+                  alliancesMade: alliancesMadeBy(player, [
+                    for (final (first, second) in round.alliances)
+                      Alliance(lootSeat: first, winnerSeat: second),
+                  ], made),
                   wager: entry.wager,
                 );
                 totals[player] += score.total;
                 return SeatResult(
-                  bid: entry.scoredBid,
+                  bid: bid,
                   tricksWon: entry.tricksWon,
                   bonuses: _bonusList(entry),
                   score: score,
@@ -228,6 +247,11 @@ final class CounterGame {
     return scored;
   }
 
+  /// The bid [entry] is scored on: Harry may move it, but never out of what
+  /// a round of [cards] cards allows.
+  static int _scoredBid(CounterEntry entry, int cards) =>
+      (entry.bid + entry.bidChange).clamp(0, cards);
+
   static List<Bonus> _bonusList(CounterEntry entry) => [
     for (final MapEntry(key: bonus, value: count) in entry.bonuses.entries)
       for (var i = 0; i < count; i++) bonus,
@@ -238,20 +262,12 @@ final class CounterGame {
       ? List.filled(players.length, 0)
       : [for (final result in scoredRounds.last.results) result.totalScore];
 
-  /// The players with the best score.
-  List<int> get _leaders {
-    final best = totals.reduce((a, b) => a > b ? a : b);
-    return [
-      for (var player = 0; player < players.length; player++)
-        if (totals[player] == best) player,
-    ];
-  }
-
   /// Ten rounds were entered and one player is ahead alone.
-  bool get isOver => _rounds.length >= standardRounds && _leaders.length == 1;
+  bool get isOver => winner != null;
 
-  /// The winner, once the game [isOver].
-  int? get winner => isOver ? _leaders.single : null;
+  /// The winner, once ten rounds give a single leader.
+  int? get winner =>
+      _rounds.length >= standardRounds ? soleLeader(totals) : null;
 
   Map<String, Object?> toJson() => {
     'players': players,

@@ -5,7 +5,7 @@ import 'package:skull_kings/counter/counter_home_screen.dart';
 import 'package:skull_kings/engine/engine.dart';
 import 'package:skull_kings/game/score_views.dart';
 import 'package:skull_kings/settings/app_settings.dart';
-import 'package:skull_kings/storage/counter_store.dart';
+import 'package:skull_kings/counter/counter_store.dart';
 import 'package:skull_kings/theme/tokens.dart';
 import 'package:skull_kings/ui/strings.dart';
 
@@ -241,5 +241,59 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(store.active!.game.scoring, Scoring.rascal);
+  });
+
+  testWidgets('two players cannot bear the same name', (tester) async {
+    await openCounter(tester);
+    await tap(tester, 'counter-new');
+    await tester.pumpAndSettle();
+    for (final (index, name) in ['Anne', 'Anne', 'Bob'].indexed) {
+      await tester.enterText(find.byKey(Key('counter-name-$index')), name);
+    }
+
+    await tap(tester, 'counter-start');
+    await tester.pump();
+
+    expect(find.text(Strings.counterDistinctNames), findsOneWidget);
+    expect(store.active, isNull);
+  });
+
+  testWidgets('removing a player does not hand the first lead to someone '
+      'else', (tester) async {
+    await openCounter(tester);
+    await tap(tester, 'counter-new');
+    await tester.pumpAndSettle();
+    for (final (index, name) in ['Anne', 'Bob', 'Chloé'].indexed) {
+      await tester.enterText(find.byKey(Key('counter-name-$index')), name);
+    }
+    await tester.pump();
+    await tester.tap(find.byType(DropdownButton<int>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bob').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip(Strings.counterRemovePlayer).first);
+    await tester.pumpAndSettle();
+    await tap(tester, 'counter-start');
+    await tester.pumpAndSettle();
+
+    final game = store.active!.game;
+    expect(game.players, ['Bob', 'Chloé']);
+    expect(game.players[game.firstLeader], 'Bob');
+  });
+
+  testWidgets('players of earlier games are offered again', (tester) async {
+    settingsStore.values['counterPlayers'] = '["Anne","Bob","Chloé","Dan"]';
+    await openCounter(tester);
+    await tap(tester, 'counter-new');
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(ActionChip, 'Dan'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ActionChip, 'Dan'));
+    await tester.pumpAndSettle();
+    await tap(tester, 'counter-start');
+    await tester.pumpAndSettle();
+
+    expect(store.active!.game.players, ['Anne', 'Bob', 'Chloé', 'Dan']);
   });
 }

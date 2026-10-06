@@ -27,6 +27,7 @@ class AppSettings extends ChangeNotifier {
   static const _knownPlayersKey = 'counterPlayers';
   static const _botSpeedKey = 'botSpeed';
   static const _botLevelKey = 'botLevel';
+  static const _activeLevelKey = 'activeGameBotLevel';
   static const _singleTapKey = 'singleTapPlay';
   static const _hapticsKey = 'haptics';
   static const _reduceMotionKey = 'reduceMotion';
@@ -63,6 +64,9 @@ class AppSettings extends ChangeNotifier {
         BotSpeed.values.asNameMap()[values[_botSpeedKey]] ?? BotSpeed.normal;
     settings._botLevel =
         BotLevel.values.asNameMap()[values[_botLevelKey]] ?? BotLevel.normal;
+    settings._activeGameBotLevel =
+        BotLevel.values.asNameMap()[values[_activeLevelKey]] ??
+        settings._botLevel;
     settings._singleTapPlay = values[_singleTapKey] == 'true';
     settings._haptics = values[_hapticsKey] != 'false';
     settings._reduceMotion = values[_reduceMotionKey] == 'true';
@@ -77,6 +81,7 @@ class AppSettings extends ChangeNotifier {
   List<String> _knownPlayers = const [];
   BotSpeed _botSpeed = BotSpeed.normal;
   BotLevel _botLevel = BotLevel.normal;
+  BotLevel _activeGameBotLevel = BotLevel.normal;
   bool _singleTapPlay = false;
   bool _haptics = true;
   bool _reduceMotion = false;
@@ -115,12 +120,19 @@ class AppSettings extends ChangeNotifier {
 
   BotSpeed get botSpeed => _botSpeed;
 
-  /// How well the bots play in the next game.
+  /// The level offered for the next game: the one last launched.
   BotLevel get botLevel => _botLevel;
 
-  Future<void> setBotLevel(BotLevel level) {
+  /// The level of the bots in the game in progress. It is fixed when the
+  /// game is launched, and stays whatever is chosen for a later one.
+  BotLevel get activeGameBotLevel => _activeGameBotLevel;
+
+  /// Records that a game was launched against bots of [level].
+  Future<void> setLaunchedBotLevel(BotLevel level) async {
     _botLevel = level;
-    return _changed(_botLevelKey, level.name);
+    _activeGameBotLevel = level;
+    await _changed(_botLevelKey, level.name);
+    await _store.write(_activeLevelKey, level.name);
   }
 
   /// A card is played by one tap instead of two.

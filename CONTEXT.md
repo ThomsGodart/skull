@@ -8,7 +8,8 @@ Le code, les identifiants et les tests sont en anglais ; tout ce que voit le jou
 | `Round` | manche | Une distribution, les paris, puis autant de plis que de cartes distribuées. |
 | `Trick` | pli | Une carte jouée par joueur ; une carte le remporte. |
 | `Bid` | pari | Nombre de plis qu'un joueur annonce pour la manche. |
-| `Seat` | joueur / siège | Position à la table, de 0 à n − 1, dans le sens horaire. |
+| `Seat` | joueur / siège | Position à la table, de 0 à n − 1, dans le sens horaire. À 2 joueurs il y a 3 sièges : le dernier est celui du fantôme, qui ne parie ni ne marque. |
+| `Round starter` | — | Le joueur qui a entamé le premier pli de la manche. |
 | `Dealer` | donneur | Distribue ; le siège à sa gauche entame. |
 | `Lead` | entame | Première carte d'un pli ; `leader` = joueur qui entame. |
 | `Play` | carte jouée | Une carte posée dans un pli par un siège, avec le mode choisi si c'est la Tigresse. |
@@ -38,6 +39,8 @@ Le code, les identifiants et les tests sont en anglais ; tout ce que voit le jou
 | `Wager` | mise | Les 0, 10 ou 20 points que Rascal le Flambeur fait miser. |
 | `Ghost` | fantôme, Barbe Grise | Le troisième paquet d'une partie à 2 : ni pari ni score (`Game.ghostSeat`). |
 | `Counter` | compteur de points | La feuille de score d'une partie jouée avec le vrai paquet (`CounterGame`). |
+| `CounterEntry` | saisie | Ce qu'un joueur a fait dans une manche comptée : pari, plis, bonus, mise, changement de Harry. |
+| `Draft bids` | — | Les paris d'une manche comptée, saisis avant que ses plis soient connus. |
 | `Bot level` | niveau des adversaires | `easy`, `normal`, `hard`. |
 | `Scoring` | calcul des points | `classic` (livret) ou `rascal` (score Rascal). |
 | `Question` / `Answer` / `Event` | — | Contrat entre le moteur et ce qui le pilote (voir `docs/REFERENCE_RTAROT.md`). |

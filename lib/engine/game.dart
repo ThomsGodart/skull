@@ -18,7 +18,7 @@ final class GameView {
     required this.tricksWon,
     required this.trick,
     required this.scores,
-    this.config,
+    this.deck = const [],
   });
 
   final int seat;
@@ -43,8 +43,9 @@ final class GameView {
   /// Total score per seat, up to the last scored round.
   final List<int> scores;
 
-  /// What the game is played with: everyone at the table knows it.
-  final GameConfig? config;
+  /// Every card the game is played with, in no telling order: everyone at
+  /// the table knows what the deck holds.
+  final List<Card> deck;
 }
 
 /// A whole game of Skull King, with no user interface attached.
@@ -158,7 +159,7 @@ final class Game {
     tricksWon: List.unmodifiable(_tricksWon),
     trick: List.unmodifiable(_trick),
     scores: List.unmodifiable(_scores),
-    config: config,
+    deck: List.unmodifiable(deckFor(config)),
   );
 
   /// Applies [answer] and runs the game on to its next question.
@@ -342,7 +343,7 @@ final class Game {
         );
         return;
       case Pirate.rascal:
-        _power = WagerQuestion(seat: seat, amounts: const [0, 10, 20]);
+        _power = WagerQuestion(seat: seat, amounts: wagerAmounts);
       case Pirate.juanita:
         if (_stock.isEmpty) return;
         _events.add(PowerUsed(seat: seat, pirate: pirate));
@@ -354,10 +355,7 @@ final class Game {
         final bid = _bids[seat]!;
         _power = AdjustBidQuestion(
           seat: seat,
-          changes: [
-            for (final change in const [-1, 0, 1])
-              if (bid + change >= 0 && bid + change <= _cardsDealt) change,
-          ],
+          changes: bidChangesFor(bid, _cardsDealt),
         );
     }
     _events.add(PowerUsed(seat: seat, pirate: pirate));
@@ -387,13 +385,7 @@ final class Game {
         bonuses: _bonuses[seat],
         scoring: config.scoring,
         // An alliance counts once its other member made their bid too.
-        alliancesMade: _alliances
-            .where(
-              (alliance) =>
-                  (alliance.lootSeat == seat && made(alliance.winnerSeat)) ||
-                  (alliance.winnerSeat == seat && made(alliance.lootSeat)),
-            )
-            .length,
+        alliancesMade: alliancesMadeBy(seat, _alliances, made),
         wager: _wagers[seat],
       );
       _scores[seat] += score.total;
@@ -409,17 +401,11 @@ final class Game {
     }
     _events.add(RoundScored(round: _round, results: results));
 
-    final best = _scores.reduce((a, b) => a > b ? a : b);
-    final topSeats = [
-      for (var seat = 0; seat < _players; seat++)
-        if (_scores[seat] == best) seat,
-    ];
+    final winner = soleLeader(_scores);
     // A tie for first place after round ten is played off, one round at a time.
-    if (_round >= standardRounds && topSeats.length == 1) {
+    if (_round >= standardRounds && winner != null) {
       _finished = true;
-      _events.add(
-        GameFinished(winner: topSeats.single, scores: List.of(_scores)),
-      );
+      _events.add(GameFinished(winner: winner, scores: List.of(_scores)));
       return;
     }
     // Whoever led this round deals the next one.

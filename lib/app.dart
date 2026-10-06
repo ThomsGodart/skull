@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'home/home_screen.dart';
 import 'settings/app_settings.dart';
-import 'storage/counter_store.dart';
+import 'counter/counter_store.dart';
 import 'storage/game_store.dart';
 import 'theme/tokens.dart';
 import 'ui/strings.dart';

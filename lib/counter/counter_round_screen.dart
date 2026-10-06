@@ -56,8 +56,12 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
         ];
   }
 
-  CounterRound get _round =>
-      CounterRound(entries: _entries, alliances: _alliances);
+  /// What is entered so far, as a round of its own: later edits on screen
+  /// do not reach it.
+  CounterRound get _round => CounterRound(
+    entries: List.unmodifiable(_entries),
+    alliances: List.unmodifiable(_alliances),
+  );
 
   /// What [player] would score if the round were saved as it stands.
   int _preview(int player) {
@@ -123,10 +127,9 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
                     Strings.counterWager,
                     SegmentedButton<int>(
                       showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(value: 0, label: Text('0')),
-                        ButtonSegment(value: 10, label: Text('10')),
-                        ButtonSegment(value: 20, label: Text('20')),
+                      segments: [
+                        for (final amount in wagerAmounts)
+                          ButtonSegment(value: amount, label: Text('$amount')),
                       ],
                       selected: {entry.wager},
                       onSelectionChanged: (choice) =>
@@ -137,12 +140,22 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
                     Strings.counterBidChange,
                     SegmentedButton<int>(
                       showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(value: -1, label: Text('−1')),
-                        ButtonSegment(value: 0, label: Text('0')),
-                        ButtonSegment(value: 1, label: Text('+1')),
+                      segments: [
+                        // Only the changes that leave a possible bid.
+                        for (final change in bidChangesFor(entry.bid, _cards))
+                          ButtonSegment(
+                            value: change,
+                            label: Text(Strings.signedOrZero(change)),
+                          ),
                       ],
-                      selected: {entry.bidChange},
+                      selected: {
+                        bidChangesFor(
+                              entry.bid,
+                              _cards,
+                            ).contains(entry.bidChange)
+                            ? entry.bidChange
+                            : 0,
+                      },
                       onSelectionChanged: (choice) =>
                           change(entry.copyWith(bidChange: choice.single)),
                     ),
@@ -222,7 +235,12 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
         },
       ),
     );
-    if (pair != null) setState(() => _alliances.add(pair));
+    // The same two players allied twice is entered once.
+    if (pair == null) return;
+    final known = _alliances.any(
+      (other) => {other.$1, other.$2}.containsAll([pair.$1, pair.$2]),
+    );
+    if (!known) setState(() => _alliances.add(pair));
   }
 
   @override

@@ -99,6 +99,20 @@ final class Alliance {
 /// Points each ally earns when both make their bid.
 const allianceBonus = 20;
 
+/// How many of [alliances] count for [seat]: those it belongs to and whose
+/// other member made their bid. Its own bid is checked when scoring.
+int alliancesMadeBy(
+  int seat,
+  Iterable<Alliance> alliances,
+  bool Function(int seat) bidMade,
+) => alliances
+    .where(
+      (alliance) =>
+          (alliance.lootSeat == seat && bidMade(alliance.winnerSeat)) ||
+          (alliance.winnerSeat == seat && bidMade(alliance.lootSeat)),
+    )
+    .length;
+
 /// The outcome of a complete trick.
 final class TrickResult {
   const TrickResult({

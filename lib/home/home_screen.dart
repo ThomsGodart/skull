@@ -16,7 +16,7 @@ import '../settings/app_settings.dart';
 import '../settings/settings_screen.dart';
 import '../setup/setup_screen.dart';
 import '../stats/stats_screen.dart';
-import '../storage/counter_store.dart';
+import '../counter/counter_store.dart';
 import '../storage/game_store.dart';
 import '../theme/tokens.dart';
 import '../ui/pictogram.dart';
@@ -97,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
         settings: _settings,
         controller: GameController(
           config: game.config,
-          bot: botFor(_settings.botLevel, Random()),
+          bot: botFor(_settings.activeGameBotLevel, Random()),
           speed: _settings.botSpeed.table,
           savedAnswers: game.answers,
           onProgress: (progress) {
@@ -105,7 +105,8 @@ class _HomeScreenState extends State<HomeScreen> {
             _saving = saver.done;
           },
         ),
-        onPlayAgain: () => _start(game.config, replace: true),
+        onPlayAgain: () =>
+            _start(game.config, _settings.activeGameBotLevel, replace: true),
       ),
     );
     final navigator = Navigator.of(context);
@@ -130,7 +131,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Creates a game played as [setup] and opens the table on it.
-  Future<void> _start(GameConfig setup, {bool replace = false}) async {
+  Future<void> _start(
+    GameConfig setup,
+    BotLevel level, {
+    bool replace = false,
+  }) async {
     if (_starting) return;
     _starting = true;
     // Creating a game drops the one in progress: the game just finished must
@@ -153,6 +158,8 @@ class _HomeScreenState extends State<HomeScreen> {
     } finally {
       _starting = false;
     }
+    // From here on these bots are the ones of the game in progress.
+    await _settings.setLaunchedBotLevel(level).catchError((Object _) {});
     if (!mounted) return;
     await _play(
       SavedGame(
@@ -170,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
     MaterialPageRoute<void>(
       builder: (context) => SetupScreen(
         settings: _settings,
-        onLaunch: (setup) => _launchFromSetup(context, setup),
+        onLaunch: (setup, level) => _launchFromSetup(context, setup, level),
       ),
     ),
   );
@@ -178,11 +185,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _launchFromSetup(
     BuildContext setupContext,
     GameConfig setup,
+    BotLevel level,
   ) async {
     if (_launching) return;
     _launching = true;
     try {
-      await _confirmAndStart(setupContext, setup);
+      await _confirmAndStart(setupContext, setup, level);
     } finally {
       _launching = false;
     }
@@ -193,6 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _confirmAndStart(
     BuildContext setupContext,
     GameConfig setup,
+    BotLevel level,
   ) async {
     await _saving;
     if (await _games.loadActive() != null) {
@@ -219,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Remembering the choice must never stand in the way of the game.
     unawaited(_settings.setLastSetup(setup).catchError((Object _) {}));
     // The table takes the place of the setup screen.
-    await _start(setup, replace: true);
+    await _start(setup, level, replace: true);
   }
 
   /// A secondary screen reached from the home.

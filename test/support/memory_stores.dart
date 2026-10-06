@@ -1,6 +1,6 @@
 import 'package:skull_kings/counter/counter_game.dart';
 import 'package:skull_kings/engine/engine.dart';
-import 'package:skull_kings/storage/counter_store.dart';
+import 'package:skull_kings/counter/counter_store.dart';
 import 'package:skull_kings/storage/finished_game.dart';
 import 'package:skull_kings/storage/game_store.dart';
 import 'package:skull_kings/storage/settings_store.dart';

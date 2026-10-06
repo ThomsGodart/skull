@@ -387,6 +387,30 @@ void main() {
     });
   });
 
+  test('in a two-player game the table still shows whose turn it is', () async {
+    final controller = GameController(
+      config: const GameConfig(players: 2, seed: 3),
+      bot: randomBot(Random(3)),
+      speed: TableSpeed.instant,
+    )..start();
+    var shown = 0;
+    await playUntil(
+      controller,
+      () => controller.round == 3,
+      onStep: () {
+        if (controller.playQuestion != null) {
+          expect(controller.currentSeat, 0);
+          shown++;
+        }
+      },
+    );
+
+    expect(shown, greaterThan(0));
+    expect(controller.bids, hasLength(3));
+    expect(controller.bids.last, isNull, reason: 'the ghost bids nothing');
+    controller.dispose();
+  });
+
   test('notifies its listeners as the table changes', () async {
     final controller = controllerFor();
     var notified = 0;

@@ -111,7 +111,7 @@ class SeatChip extends StatelessWidget {
               Text(
                 [
                   Strings.bidAndTricks(bid, tricksWon),
-                  if (cardsLeft != null) '🂠 $cardsLeft',
+                  if (cardsLeft != null) Strings.cardsLeft(cardsLeft!),
                 ].join(' · '),
                 style: const TextStyle(color: Tokens.mutedText, fontSize: 11),
               ),

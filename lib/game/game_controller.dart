@@ -57,7 +57,7 @@ class GameController extends ChangeNotifier {
   final int humanSeat;
 
   /// Seats at the table, the ghost's included when two play.
-  int get players => _game.seats;
+  int get seats => _game.seats;
 
   /// The seat of Greybeard's ghost in a two-player game.
   int? get ghostSeat => _game.ghostSeat;
@@ -97,7 +97,7 @@ class GameController extends ChangeNotifier {
   /// One per seat; all null until the bids are revealed.
   List<int?> bids = const [];
   List<int> tricksWon = const [];
-  late List<int> scores = List.filled(players, 0);
+  late List<int> scores = List.filled(seats, 0);
 
   /// The cards on the table, in play order.
   List<Play> trick = const [];
@@ -145,12 +145,14 @@ class GameController extends ChangeNotifier {
 
   /// Whose turn it is to play a card, when a trick is open.
   int? get currentSeat {
-    if (!bids.every((bid) => bid != null) || trickWinner != null) return null;
+    // The ghost bids nothing: only the scoring seats' bids are awaited.
+    final bidsAreIn = bids.take(scoringSeats).every((bid) => bid != null);
+    if (bids.isEmpty || !bidsAreIn || trickWinner != null) return null;
     if (_revealingBids) return null;
     if (roundSummary != null || result != null) return null;
     return playOrder(
       leader: _leader,
-      seats: players,
+      seats: seats,
       ghost: ghostSeat,
       roundStarter: _roundStarter,
     )[trick.length];
@@ -299,9 +301,9 @@ class GameController extends ChangeNotifier {
         dealer = event.dealer;
         _leader = event.leader;
         _roundStarter = event.leader;
-        handSizes = List.filled(players, event.cardsDealt);
-        bids = List.filled(players, null);
-        tricksWon = List.filled(players, 0);
+        handSizes = List.filled(seats, event.cardsDealt);
+        bids = List.filled(seats, null);
+        tricksWon = List.filled(seats, 0);
         trick = const [];
         powerNotice = null;
         lastTrick = null;
@@ -310,7 +312,7 @@ class GameController extends ChangeNotifier {
         hand = sortedHand(event.cards);
       case BidsRevealed():
         // The ghost bids nothing.
-        bids = List<int?>.of(event.bids)..length = players;
+        bids = List<int?>.of(event.bids)..length = seats;
         _revealingBids = true;
         _notify();
         await _wait(speed.bidReveal);
@@ -319,7 +321,7 @@ class GameController extends ChangeNotifier {
         powerNotice = null;
         trick = [...trick, play];
         handSizes = [
-          for (var seat = 0; seat < players; seat++)
+          for (var seat = 0; seat < seats; seat++)
             handSizes[seat] - (seat == play.seat ? 1 : 0),
         ];
         if (play.seat == humanSeat) {
@@ -335,7 +337,7 @@ class GameController extends ChangeNotifier {
         trickAlliances = event.alliances;
         if (!event.destroyed) {
           tricksWon = [
-            for (var seat = 0; seat < players; seat++)
+            for (var seat = 0; seat < seats; seat++)
               tricksWon[seat] + (seat == event.winner ? 1 : 0),
           ];
         }
@@ -373,7 +375,7 @@ class GameController extends ChangeNotifier {
         await _announce(event);
       case BidChanged():
         bids = [
-          for (var seat = 0; seat < players; seat++)
+          for (var seat = 0; seat < seats; seat++)
             seat == event.seat ? event.bid : bids[seat],
         ];
         await _announce(event);

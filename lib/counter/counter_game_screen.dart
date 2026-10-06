@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../engine/engine.dart';
 import '../game/score_views.dart';
 import '../game/seat_identity.dart';
-import '../storage/counter_store.dart';
+import 'counter_store.dart';
 import '../theme/tokens.dart';
 import '../ui/strings.dart';
 import 'counter_game.dart';
@@ -56,7 +56,11 @@ class _CounterGameScreenState extends State<CounterGameScreen> {
     if (mounted) setState(() {});
   }
 
+  bool _finishing = false;
+
   Future<void> _finish() async {
+    if (_finishing) return;
+    _finishing = true;
     final navigator = Navigator.of(context);
     await widget.store.finish(_id, _game);
     navigator.pop();

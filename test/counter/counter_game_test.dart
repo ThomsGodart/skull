@@ -279,4 +279,79 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  group('what cannot be', () {
+    test('an alliance of a player with themselves is refused', () {
+      expect(
+        () => newGame().saveRound(
+          1,
+          CounterRound(
+            entries: round([(0, 0), (0, 0), (1, 1)]).entries,
+            alliances: const [(1, 1)],
+          ),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('an alliance with a player who is not at the table is refused', () {
+      expect(
+        () => newGame().saveRound(
+          1,
+          CounterRound(
+            entries: round([(0, 0), (0, 0), (1, 1)]).entries,
+            alliances: const [(0, 7)],
+          ),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('stored data that describes such a round is not read as a game', () {
+      final json = newGame().toJson()
+        ..['rounds'] = [
+          {
+            'entries': [
+              {'bid': 0, 'tricksWon': 0},
+            ],
+          },
+        ];
+
+      expect(() => CounterGame.fromJson(json), throwsA(anything));
+    });
+
+    test('Harry cannot push a bid below zero or above the cards dealt', () {
+      final game = newGame()
+        ..saveRound(
+          1,
+          CounterRound(
+            entries: [
+              const CounterEntry(bid: 0, tricksWon: 0, bidChange: -1),
+              const CounterEntry(bid: 1, tricksWon: 1, bidChange: 1),
+              const CounterEntry(bid: 0, tricksWon: 0),
+            ],
+          ),
+        );
+
+      final results = game.scoredRounds.single.results;
+      expect(results[0].bid, 0);
+      expect(results[0].score.bidPoints, 10);
+      expect(results[1].bid, 1);
+      expect(results[1].score.bidPoints, 20);
+    });
+  });
+
+  test('once a correction ends the game, the bids of a round that will '
+      'not be played are forgotten', () {
+    final game = newGame();
+    for (var r = 1; r <= 10; r++) {
+      game.saveRound(r, round([(0, 0), (0, 0), (0, 0)]));
+    }
+    game.draftBids = [1, 2, 3];
+
+    game.saveRound(10, round([(0, 0), (0, 1), (0, 1)]));
+
+    expect(game.isOver, isTrue);
+    expect(game.draftBids, isNull);
+  });
 }
