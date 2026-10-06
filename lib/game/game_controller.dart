@@ -1,18 +1,11 @@
 import 'dart:async';
 import 'dart:collection';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import '../bots/bot.dart';
 import '../engine/engine.dart';
 import '../engine/engine.dart' as engine show leadSuit;
-
-/// Decides for a seat nobody is playing. It only gets what that seat may see.
-typedef Bot = Answer Function(Question question, GameView view);
-
-/// The weakest bot: any legal answer.
-Bot randomBot(Random random) =>
-    (question, view) => randomAnswer(question, random);
 
 /// How long the table lingers so a human can follow it.
 final class TableSpeed {

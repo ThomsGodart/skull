@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../bots/sensible_bot.dart';
 import '../engine/engine.dart';
 import '../game/game_controller.dart';
 import '../game/table_screen.dart';
@@ -31,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
             players: _opponents + 1,
             seed: random.nextInt(1 << 32),
           ),
-          bot: randomBot(random),
+          bot: sensibleBot(),
         ),
         onPlayAgain: () => _startGame(replace: true),
       ),
