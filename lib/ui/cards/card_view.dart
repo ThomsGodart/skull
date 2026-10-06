@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Card;
 
 import '../../engine/engine.dart';
 import '../../theme/tokens.dart';
+import '../pictogram.dart';
 import '../strings.dart';
 import 'card_look.dart';
 
@@ -87,7 +88,11 @@ class CardView extends StatelessWidget {
           Align(alignment: Alignment.topLeft, child: value),
           Align(alignment: Alignment.bottomRight, child: value),
           Center(
-            child: Text(look.emblem, style: TextStyle(fontSize: width * 0.4)),
+            child: Pictogram(
+              look.emblem,
+              size: width * 0.42,
+              color: look.color,
+            ),
           ),
           if (card.suit == Suit.black)
             Align(
@@ -109,26 +114,34 @@ class CardView extends StatelessWidget {
 
   Widget _special(CardLook look) => Padding(
     padding: EdgeInsets.all(width * 0.06),
-    // Emoji sizes vary from one font to the next: scale down, never overflow.
-    child: Center(
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(look.emblem, style: TextStyle(fontSize: width * 0.46)),
-            SizedBox(height: width * 0.04),
-            Text(
-              Strings.cardName(card, namedPirates: namedPirates),
-              style: TextStyle(
-                color: look.color,
-                fontSize: width * 0.2,
-                fontWeight: FontWeight.w800,
-              ),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Each part shrinks on its own: a long name must not shrink the
+        // emblem, and nothing may overflow whatever the font.
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Pictogram(
+              look.emblem,
+              size: width * 0.46,
+              color: look.color,
             ),
-          ],
+          ),
         ),
-      ),
+        SizedBox(height: width * 0.04),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            Strings.cardName(card, namedPirates: namedPirates),
+            style: TextStyle(
+              color: look.color,
+              fontSize: width * 0.2,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
     ),
   );
 }

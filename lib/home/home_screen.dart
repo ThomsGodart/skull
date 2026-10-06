@@ -19,6 +19,7 @@ import '../stats/stats_screen.dart';
 import '../storage/counter_store.dart';
 import '../storage/game_store.dart';
 import '../theme/tokens.dart';
+import '../ui/pictogram.dart';
 import '../ui/strings.dart';
 import '../settings/profile_dialog.dart';
 
@@ -240,10 +241,12 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  Strings.homeEmblem,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 64),
+                const Center(
+                  child: Pictogram(
+                    Strings.homeEmblem,
+                    size: 72,
+                    color: Tokens.gold,
+                  ),
                 ),
                 const Text(
                   Strings.appTitle,

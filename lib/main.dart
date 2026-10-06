@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -11,6 +12,13 @@ import 'storage/drift_settings_store.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  // The pictogram font is under the SIL Open Font License, which asks for
+  // its text to travel with it: it joins the app's licences page.
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(const [
+      'Noto Emoji',
+    ], await rootBundle.loadString('assets/fonts/NotoEmoji-OFL.txt'));
+  });
   final database = AppDatabase.onDevice();
   runApp(
     SkullKingsApp(

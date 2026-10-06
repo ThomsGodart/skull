@@ -102,7 +102,7 @@ Numéros entre parenthèses = lignes de `GAME_RULES.md` §12. Une fois validées
 
 | # | Question | Décision | Pourquoi |
 |---|---|---|---|
-| **B1** | Niveaux en v1 | Un bot aléatoire (pour les tests) et un bot « raisonnable » à base de règles simples. Un seul niveau proposé au joueur. | Rendre le jeu jouable d'abord ; les niveaux viennent après. |
+| **B1** | Niveaux | Trois niveaux, choisis à la création de la partie : Facile (se trompe un pari sur deux et une carte sur trois), Normal (le bot « raisonnable »), Difficile (parie en comptant le paquet à partir de 5 joueurs ; en dessous, il joue comme Normal, faute d'avoir trouvé mieux). | Mesuré sur des centaines de parties : le pari compté gagne nettement à 5 joueurs et plus, pas en dessous. |
 | **B2** | Comment il parie | Estimation carte par carte de la chance de prendre un pli (personnages, atouts hauts, 14), arrondie. | Simple, lisible, ajustable. |
 | **B3** | Comment il joue | S'il lui manque des plis : gagner au moindre coût. S'il a son compte : perdre, en gardant les fuites pour les plis dangereux. | Le cœur de la stratégie de Skull King. |
 | **B4** | Ce qu'il voit | Uniquement la vue de son siège (A5). | Pas de triche. |
@@ -152,7 +152,7 @@ Ajouté le 2026-10-05 à ta demande. Supabase est déjà initialisé dans `darts
 | **U12** | Fin de partie | Gagnant en grand, classement final, puis « Rejouer à l'identique », « Accueil », « Feuille de score ». Animation sobre. | Modèle de hareeg-table. | Confettis. |
 | **U13** | Identité visuelle | Fond bleu nuit, cartes couleur parchemin, accent or ; les quatre couleurs du jeu pour les cartes. Jetons de style centralisés (espacements, rayons, tailles tactiles de 44 px minimum). | Ambiance pirate sans surcharge ; lisible. | Tapis vert de casino. |
 | **U14** | Dessin des cartes | Un seul widget carte, dont toute la géométrie dérive de la largeur. Numérotée : valeur dans deux coins, emblème au centre, bandeau « atout » pour le noir. Spéciale : grand emblème et nom. Thème décrit par des données. | Remplaçable sans toucher au reste. | Un widget par type de carte. |
-| **U15** | Emblèmes en v1 | Émojis provisoires (🦜 💰 🗺️ ☠️ ⚔️ 🧜‍♀️ 👑 🏳️…), derrière le thème. De vrais pictogrammes avant toute diffusion. | Zéro travail graphique pour démarrer ; leur rendu varie selon l'appareil, d'où le caractère provisoire. | Attendre des illustrations pour commencer. |
+| **U15** | Emblèmes | Pictogrammes monochromes tirés d'une police libre embarquée (Noto Emoji, licence SIL OFL), dessinés dans la couleur de la carte : identiques sur tous les téléphones. Ils ont remplacé les émojis provisoires du début. | Aucun travail graphique, rendu maîtrisé, licence compatible avec une diffusion. | Émojis du système (rendu variable) ; illustrations sur mesure. |
 | **U16** | États d'une carte | Normale, sélectionnée, injouable, gagnante, face cachée. | Le minimum utile. | — |
 | **U17** | Accessibilité | Jamais la couleur seule : chaque couleur a son emblème. Libellé lu par les lecteurs d'écran sur chaque carte. Respect du réglage système « réduire les animations ». | Peu coûteux si prévu dès le départ. | — |
 | **U18** | Son et vibrations | Vibrations légères en v1 (carte jouée, pli gagné). Pas de son. | Le son demande des ressources libres de droits. | — |

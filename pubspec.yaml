@@ -62,6 +62,16 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # The pictograms on the cards: a monochrome emoji font, drawn in the colour
+  # of the card and identical on every phone. SIL Open Font License; its text
+  # is shown from the app's licences page.
+  fonts:
+    - family: NotoEmoji
+      fonts:
+        - asset: assets/fonts/NotoEmoji.ttf
+  assets:
+    - assets/fonts/NotoEmoji-OFL.txt
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

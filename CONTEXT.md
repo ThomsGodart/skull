@@ -36,6 +36,9 @@ Le code, les identifiants et les tests sont en anglais ; tout ce que voit le jou
 | `Stock` | pioche | Les cartes non distribuées d'une manche. |
 | `Discard` | défausse | Cartes mises hors jeu par Will le Bandit. |
 | `Wager` | mise | Les 0, 10 ou 20 points que Rascal le Flambeur fait miser. |
+| `Ghost` | fantôme, Barbe Grise | Le troisième paquet d'une partie à 2 : ni pari ni score (`Game.ghostSeat`). |
+| `Counter` | compteur de points | La feuille de score d'une partie jouée avec le vrai paquet (`CounterGame`). |
+| `Bot level` | niveau des adversaires | `easy`, `normal`, `hard`. |
 | `Scoring` | calcul des points | `classic` (livret) ou `rascal` (score Rascal). |
 | `Question` / `Answer` / `Event` | — | Contrat entre le moteur et ce qui le pilote (voir `docs/REFERENCE_RTAROT.md`). |
 | `View` | — | Ce qu'un siège a le droit de voir de la partie. |

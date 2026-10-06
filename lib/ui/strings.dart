@@ -3,7 +3,9 @@ import '../engine/engine.dart';
 /// Every text the player reads. Kept in one place so it can be translated.
 abstract final class Strings {
   static const appTitle = 'Skull Kings';
-  static const homeEmblem = '☠️';
+
+  /// Pictograms, as characters of the bundled font.
+  static const homeEmblem = '\u{2620}';
   static const tagline = 'Parie tes plis, tiens ta parole.';
   static const newGame = 'Nouvelle partie';
   static const opponents = 'Adversaires';
@@ -332,7 +334,7 @@ abstract final class Strings {
       '$name : ${details.join(', ')}';
 
   static const gameOver = 'Partie terminée';
-  static const winnerMark = '🏆';
+  static const winnerMark = '\u{1F3C6}';
   static const youWin = 'Tu gagnes !';
   static String wins(String name) => '$name gagne';
   static const playAgain = 'Rejouer';

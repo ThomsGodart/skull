@@ -8,6 +8,7 @@ import '../theme/tokens.dart';
 import '../ui/cards/card_look.dart';
 import '../ui/cards/card_view.dart';
 import '../ui/cards/hand_fan.dart';
+import '../ui/pictogram.dart';
 import '../ui/strings.dart';
 import 'bid_panel.dart';
 import 'game_controller.dart';
@@ -191,19 +192,29 @@ class _TableScreenState extends State<TableScreen> {
         SimpleDialogOption(
           key: const Key('tigress-pirate'),
           onPressed: () => Navigator.pop(context, TigressMode.pirate),
-          child: Text('${_emblem(CardKind.pirate)}  ${Strings.asPirate}'),
+          child: _tigressChoice(CardKind.pirate, Strings.asPirate),
         ),
         SimpleDialogOption(
           key: const Key('tigress-escape'),
           onPressed: () => Navigator.pop(context, TigressMode.escape),
-          child: Text('${_emblem(CardKind.escape)}  ${Strings.asEscape}'),
+          child: _tigressChoice(CardKind.escape, Strings.asEscape),
         ),
       ],
     ),
   );
 
-  static String _emblem(CardKind kind) =>
-      CardLook.of(Card.special(kind)).emblem;
+  /// One of the two ways to play the tigress, under the emblem of the card
+  /// she then stands for.
+  static Widget _tigressChoice(CardKind kind, String label) {
+    final look = CardLook.of(Card.special(kind));
+    return Row(
+      children: [
+        Pictogram(look.emblem, size: 24, color: look.color),
+        const SizedBox(width: Tokens.space3),
+        Text(label),
+      ],
+    );
+  }
 
   /// The game is saved as it goes, so leaving loses nothing.
   Future<void> _pause() async {

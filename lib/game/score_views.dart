@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../engine/engine.dart';
 import '../theme/tokens.dart';
+import '../ui/pictogram.dart';
 import '../ui/strings.dart';
 import 'seat_identity.dart';
 
@@ -228,10 +229,19 @@ class Standings extends StatelessWidget {
               children: [
                 SizedBox(
                   width: 28,
-                  child: Text(
-                    _rank(seat) == 1 ? Strings.winnerMark : '${_rank(seat)}.',
-                    style: _cell.copyWith(color: Tokens.mutedText),
-                  ),
+                  child: _rank(seat) == 1
+                      ? const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Pictogram(
+                            Strings.winnerMark,
+                            size: 18,
+                            color: Tokens.gold,
+                          ),
+                        )
+                      : Text(
+                          '${_rank(seat)}.',
+                          style: _cell.copyWith(color: Tokens.mutedText),
+                        ),
                 ),
                 Expanded(
                   child: Text(
