@@ -1,30 +1,28 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:skull_kings/main.dart';
+import 'package:skull_kings/app.dart';
+import 'package:skull_kings/ui/strings.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('the home screen starts a game with the chosen number of '
+      'opponents', (tester) async {
+    tester.view.physicalSize = const Size(360, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(const SkullKingsApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    await tester.tap(find.byIcon(Icons.add_circle_outline));
     await tester.pump();
+    expect(find.byKey(const Key('opponents')), findsOneWidget);
+    expect(find.text('4'), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.tap(find.text(Strings.newGame));
+    await tester.pumpAndSettle();
+
+    expect(find.text(Strings.roundTitle(1, 1)), findsOneWidget);
+    // The human and four opponents sit at the table.
+    for (final name in [Strings.you, 'Mako', 'Corail', 'Bosco', 'Sloop']) {
+      expect(find.text(name), findsOneWidget);
+    }
   });
 }

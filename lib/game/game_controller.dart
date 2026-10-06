@@ -1,0 +1,278 @@
+import 'dart:async';
+import 'dart:collection';
+import 'dart:math';
+
+import 'package:flutter/foundation.dart';
+
+import '../engine/engine.dart';
+import '../engine/engine.dart' as engine show leadSuit;
+
+/// Decides for a seat nobody is playing. It only gets what that seat may see.
+typedef Bot = Answer Function(Question question, GameView view);
+
+/// The weakest bot: any legal answer.
+Bot randomBot(Random random) =>
+    (question, view) => randomAnswer(question, random);
+
+/// How long the table lingers so a human can follow it.
+final class TableSpeed {
+  const TableSpeed({
+    required this.botPlay,
+    required this.trickHold,
+    required this.bidReveal,
+  });
+
+  static const normal = TableSpeed(
+    botPlay: Duration(milliseconds: 700),
+    trickHold: Duration(milliseconds: 1400),
+    bidReveal: Duration(milliseconds: 900),
+  );
+
+  /// No waiting at all, for tests.
+  static const instant = TableSpeed(
+    botPlay: Duration.zero,
+    trickHold: Duration.zero,
+    bidReveal: Duration.zero,
+  );
+
+  /// Before a bot puts its card down.
+  final Duration botPlay;
+
+  /// A finished trick stays on the table this long, unless skipped.
+  final Duration trickHold;
+
+  /// After the bids are turned over.
+  final Duration bidReveal;
+}
+
+/// Runs a game for one human against bots, and holds what the table shows.
+///
+/// The engine resolves everything at once; this replays its events one at a
+/// time, so the screen shows each card, each trick and each round in turn.
+class GameController extends ChangeNotifier {
+  GameController({
+    required GameConfig config,
+    required this.bot,
+    this.speed = TableSpeed.normal,
+    this.humanSeat = 0,
+  }) : _game = Game(config),
+       players = config.players;
+
+  final Bot bot;
+  final TableSpeed speed;
+  final int humanSeat;
+  final int players;
+
+  final Game _game;
+  final Queue<Event> _events = Queue();
+  bool _running = false;
+  bool _disposed = false;
+  Completer<void>? _hold;
+
+  int round = 0;
+  int cardsDealt = 0;
+  int dealer = 0;
+  int _leader = 0;
+
+  /// The human's cards, sorted for reading.
+  List<Card> hand = const [];
+
+  /// Cards left in each seat's hand.
+  List<int> handSizes = const [];
+
+  /// One per seat; all null until the bids are revealed.
+  List<int?> bids = const [];
+  List<int> tricksWon = const [];
+  late List<int> scores = List.filled(players, 0);
+
+  /// The cards on the table, in play order.
+  List<Play> trick = const [];
+
+  /// Set while a finished trick is still on the table.
+  int? trickWinner;
+  List<Bonus> trickBonuses = const [];
+
+  /// The previous trick, once cleared from the table.
+  List<Play>? lastTrick;
+  int? lastTrickWinner;
+
+  /// Set when the human must bid.
+  BidQuestion? bidQuestion;
+
+  /// Set when the human must play a card.
+  PlayQuestion? playQuestion;
+
+  /// Set when a round has just been scored and awaits [continueAfterRound].
+  RoundScored? roundSummary;
+
+  /// Every round scored so far, for the score sheet.
+  final List<RoundScored> scoredRounds = [];
+
+  /// Set once the game is over.
+  GameFinished? result;
+
+  /// Whose turn it is to play a card, when a trick is open.
+  int? get currentSeat {
+    if (!bids.every((bid) => bid != null) || trickWinner != null) return null;
+    if (roundSummary != null || result != null) return null;
+    return (_leader + trick.length) % players;
+  }
+
+  /// The suit to follow in the trick on the table, if any.
+  Suit? get leadSuit => engine.leadSuit(trick);
+
+  void start() => unawaited(_run());
+
+  void bid(int bid) {
+    _game.answer(BidAnswer(seat: humanSeat, bid: bid));
+    bidQuestion = null;
+    unawaited(_run());
+  }
+
+  void play(Card card, {TigressMode? tigressAs}) {
+    _game.answer(PlayAnswer(seat: humanSeat, card: card, tigressAs: tigressAs));
+    playQuestion = null;
+    unawaited(_run());
+  }
+
+  /// Moves on from the round summary to the next deal.
+  void continueAfterRound() => _releaseHold();
+
+  /// Cuts short the pause on a finished trick.
+  void skipHold() {
+    if (roundSummary == null) _releaseHold();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _releaseHold();
+    super.dispose();
+  }
+
+  void _releaseHold() {
+    final hold = _hold;
+    _hold = null;
+    if (hold != null && !hold.isCompleted) hold.complete();
+  }
+
+  Future<void> _run() async {
+    if (_running) return;
+    _running = true;
+    while (!_disposed) {
+      _events.addAll(
+        _game.takeEvents().where(
+          (event) => event.audience == null || event.audience == humanSeat,
+        ),
+      );
+      if (_events.isNotEmpty) {
+        await _show(_events.removeFirst());
+        continue;
+      }
+      final questions = _game.pending;
+      if (questions.isEmpty) break;
+      final forBots = questions.where((q) => q.seat != humanSeat);
+      if (forBots.isEmpty) {
+        _ask(questions.single);
+        break;
+      }
+      final question = forBots.first;
+      if (question is PlayQuestion) await _wait(speed.botPlay);
+      if (_disposed) break;
+      _game.answer(bot(question, _game.viewFor(question.seat)));
+    }
+    _running = false;
+  }
+
+  void _ask(Question question) {
+    switch (question) {
+      case BidQuestion():
+        bidQuestion = question;
+      case PlayQuestion():
+        playQuestion = question;
+    }
+    _notify();
+  }
+
+  Future<void> _show(Event event) async {
+    switch (event) {
+      case RoundStarted():
+        round = event.round;
+        cardsDealt = event.cardsDealt;
+        dealer = event.dealer;
+        _leader = event.leader;
+        handSizes = List.filled(players, event.cardsDealt);
+        bids = List.filled(players, null);
+        tricksWon = List.filled(players, 0);
+        trick = const [];
+      case HandDealt():
+        hand = sortedHand(event.cards);
+      case BidsRevealed():
+        bids = List.of(event.bids);
+        _notify();
+        await _wait(speed.bidReveal);
+      case CardPlayed(:final play):
+        trick = [...trick, play];
+        handSizes = [
+          for (var seat = 0; seat < players; seat++)
+            handSizes[seat] - (seat == play.seat ? 1 : 0),
+        ];
+        if (play.seat == humanSeat) {
+          hand = [
+            for (final card in hand)
+              if (card != play.card) card,
+          ];
+        }
+      case TrickWon():
+        trickWinner = event.winner;
+        trickBonuses = event.bonuses;
+        tricksWon = [
+          for (var seat = 0; seat < players; seat++)
+            tricksWon[seat] + (seat == event.winner ? 1 : 0),
+        ];
+        _notify();
+        await _holdFor(speed.trickHold);
+        lastTrick = event.plays;
+        lastTrickWinner = event.winner;
+        trick = const [];
+        trickWinner = null;
+        trickBonuses = const [];
+        _leader = event.winner;
+      case RoundScored():
+        scoredRounds.add(event);
+        scores = [for (final result in event.results) result.totalScore];
+        roundSummary = event;
+        _notify();
+        await _holdFor(null);
+        roundSummary = null;
+      case GameFinished():
+        result = event;
+    }
+    _notify();
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> _wait(Duration duration) =>
+      duration == Duration.zero ? Future.value() : Future.delayed(duration);
+
+  /// Waits until released, or for [duration] at most when one is given.
+  Future<void> _holdFor(Duration? duration) async {
+    if (duration == Duration.zero || _disposed) return;
+    final hold = _hold = Completer<void>();
+    final timer = duration == null ? null : Timer(duration, _releaseHold);
+    await hold.future;
+    timer?.cancel();
+  }
+}
+
+/// [cards] in reading order: green, yellow, purple, black by rising value,
+/// then the special cards.
+List<Card> sortedHand(List<Card> cards) {
+  int rank(Card card) => card.isNumber
+      ? card.suit!.index * 100 + card.value!
+      : 1000 + card.kind.index * 10 + card.copy;
+  return List.of(cards)..sort((a, b) => rank(a).compareTo(rank(b)));
+}
