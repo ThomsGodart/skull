@@ -16,25 +16,29 @@ final class DriftGameStore implements GameStore {
 
   @override
   Future<SavedGame?> loadActive() async {
-    final row = await (_database.select(
-      _games,
-    )..where((game) => game.finishedAt.isNull())).getSingleOrNull();
+    final row =
+        await (_database.select(_games)
+              ..where((game) => game.finishedAt.isNull())
+              ..orderBy([(game) => OrderingTerm.desc(game.id)])
+              ..limit(1))
+            .getSingleOrNull();
     if (row == null) return null;
     try {
+      final config = GameConfig.fromJson(
+        jsonDecode(row.config) as Map<String, Object?>,
+      );
+      final answers = decodeAnswers(row.answers);
+      // Replaying is the only real proof that the save can be resumed.
+      Game.replay(config, answers);
       return SavedGame(
         id: row.id,
-        config: GameConfig.fromJson(
-          jsonDecode(row.config) as Map<String, Object?>,
-        ),
-        answers: [
-          for (final answer in jsonDecode(row.answers) as List)
-            answerFromJson(answer as Map<String, Object?>),
-        ],
+        config: config,
+        answers: answers,
         round: row.round,
         humanScore: row.humanScore,
       );
     } on Object {
-      // A save nobody can read would otherwise come back at every launch.
+      // A save nobody can resume would otherwise come back at every launch.
       await discardActive();
       return null;
     }
@@ -82,3 +86,9 @@ final class DriftGameStore implements GameStore {
     _games,
   )..where((game) => game.id.equals(id))).write(changes);
 }
+
+/// The answers of a game as stored in [Games.answers].
+List<Answer> decodeAnswers(String json) => [
+  for (final answer in jsonDecode(json) as List)
+    answerFromJson(answer as Map<String, Object?>),
+];

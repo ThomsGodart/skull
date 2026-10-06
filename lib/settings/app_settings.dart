@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../engine/engine.dart';
 import '../storage/settings_store.dart';
 import '../theme/tokens.dart';
 import '../ui/strings.dart';
@@ -10,18 +11,20 @@ class AppSettings extends ChangeNotifier {
 
   static const defaultPlayerName = Strings.you;
   static const maxNameLength = 12;
-  static const minOpponents = 2;
-  static const maxOpponents = 7;
+  static const minOpponents = minPlayers - 1;
+  static const maxOpponents = maxPlayers - 1;
+
+  static const _nameKey = 'playerName';
+  static const _colorKey = 'playerColor';
+  static const _opponentsKey = 'opponents';
 
   static Future<AppSettings> load(SettingsStore store) async {
     final values = await store.readAll();
     final settings = AppSettings._(store);
-    settings._playerName = _cleanName(values['playerName'] ?? '');
-    final color = int.tryParse(values['playerColor'] ?? '');
-    if (color != null && color >= 0 && color < Tokens.playerColors.length) {
-      settings._playerColor = color;
-    }
-    final opponents = int.tryParse(values['opponents'] ?? '');
+    settings._playerName = _cleanName(values[_nameKey] ?? '');
+    final color = int.tryParse(values[_colorKey] ?? '');
+    if (color != null && _isColor(color)) settings._playerColor = color;
+    final opponents = int.tryParse(values[_opponentsKey] ?? '');
     if (opponents != null) settings._opponents = _clampOpponents(opponents);
     return settings;
   }
@@ -42,17 +45,20 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> setPlayer({required String name, required int color}) async {
     _playerName = _cleanName(name);
-    _playerColor = color;
+    if (_isColor(color)) _playerColor = color;
     notifyListeners();
-    await _store.write('playerName', _playerName);
-    await _store.write('playerColor', '$color');
+    await _store.write(_nameKey, _playerName);
+    await _store.write(_colorKey, '$_playerColor');
   }
 
   Future<void> setOpponents(int opponents) async {
     _opponents = _clampOpponents(opponents);
     notifyListeners();
-    await _store.write('opponents', '$_opponents');
+    await _store.write(_opponentsKey, '$_opponents');
   }
+
+  static bool _isColor(int color) =>
+      color >= 0 && color < Tokens.playerColors.length;
 
   static int _clampOpponents(int opponents) =>
       opponents.clamp(minOpponents, maxOpponents);

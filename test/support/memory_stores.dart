@@ -21,6 +21,9 @@ class MemoryGameStore implements GameStore {
   final List<GameFinished> finished = [];
   int _nextId = 1;
 
+  /// How many games were created.
+  int get created => _nextId - 1;
+
   @override
   Future<SavedGame?> loadActive() async => active;
 

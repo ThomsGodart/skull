@@ -49,8 +49,12 @@ final class GameView {
 /// [takeEvents] returns. A bot and a human are driven the same way.
 final class Game {
   Game(this.config) : _random = SeededRandom(config.seed) {
-    if (config.players < 3 || config.players > 8) {
-      throw ArgumentError.value(config.players, 'players', 'must be 3 to 8');
+    if (config.players < minPlayers || config.players > maxPlayers) {
+      throw ArgumentError.value(
+        config.players,
+        'players',
+        'must be $minPlayers to $maxPlayers',
+      );
     }
     _dealer = _random.nextInt(config.players);
     _startRound();

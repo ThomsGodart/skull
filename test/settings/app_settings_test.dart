@@ -45,6 +45,16 @@ void main() {
     expect(settings.playerName.length, AppSettings.maxNameLength);
   });
 
+  test('a colour that does not exist is not kept', () async {
+    final store = MemorySettingsStore();
+    final settings = await AppSettings.load(store);
+
+    await settings.setPlayer(name: 'Anne', color: 42);
+
+    expect(settings.playerColor, 0);
+    expect(store.values['playerColor'], '0');
+  });
+
   test('the number of opponents stays between two and seven', () async {
     final settings = await AppSettings.load(MemorySettingsStore());
 

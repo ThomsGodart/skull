@@ -90,6 +90,21 @@ void main() {
     expect(settingsStore.values['opponents'], '4');
   });
 
+  testWidgets('tapping Launch twice in a row still starts a single game', (
+    tester,
+  ) async {
+    await openApp(tester);
+    await tester.tap(find.text(Strings.newGame));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('launch')));
+    await tester.tap(find.byKey(const Key('launch')), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    expect(games.created, 1);
+    expect(find.text(Strings.roundTitle(1, 1)), findsOneWidget);
+  });
+
   testWidgets('a game in progress is offered on the home, with where it '
       'stands, and resumes at the same round', (tester) async {
     final saved = await tester.runAsync(() => gameLeftInRound(4));

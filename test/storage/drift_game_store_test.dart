@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,14 +18,16 @@ void main() {
   tearDown(() => database.close());
 
   const config = GameConfig(players: 4, seed: 9);
-  const answers = <Answer>[
-    BidAnswer(seat: 1, bid: 0),
-    PlayAnswer(
-      seat: 2,
-      card: Card.special(CardKind.tigress),
-      tigressAs: TigressMode.pirate,
-    ),
-  ];
+
+  /// The first answers of a real game, so that they are legal for [config].
+  final answers = () {
+    final game = Game(config);
+    final random = Random(1);
+    for (var i = 0; i < 9; i++) {
+      game.answer(randomAnswer(game.pending.first, random));
+    }
+    return game.answers;
+  }();
 
   test('there is no game in progress to begin with', () async {
     expect(await store.loadActive(), isNull);
@@ -52,10 +56,7 @@ void main() {
     final saved = (await store.loadActive())!;
     expect(saved.round, 3);
     expect(saved.humanScore, -20);
-    expect(saved.answers, hasLength(2));
-    final play = saved.answers[1] as PlayAnswer;
-    expect(play.card, const Card.special(CardKind.tigress));
-    expect(play.tigressAs, TigressMode.pirate);
+    expect(saved.answers.map(answerToJson), answers.map(answerToJson));
   });
 
   test('creating a game drops the one that was in progress', () async {
@@ -115,4 +116,40 @@ void main() {
     expect(await store.loadActive(), isNull);
     expect(await database.select(database.games).get(), isEmpty);
   });
+
+  test(
+    'a save whose answers are not legal for its game is dropped too',
+    () async {
+      final id = await store.create(config);
+      await store.saveProgress(
+        id,
+        answers: const [BidAnswer(seat: 0, bid: 5)],
+        round: 1,
+        humanScore: 0,
+      );
+
+      expect(await store.loadActive(), isNull);
+      expect(await database.select(database.games).get(), isEmpty);
+    },
+  );
+
+  test('a save for an impossible number of players is dropped too', () async {
+    await store.create(const GameConfig(players: 99, seed: 1));
+
+    expect(await store.loadActive(), isNull);
+  });
+
+  test(
+    'should two games ever be left in progress, the latest one wins',
+    () async {
+      await database
+          .into(database.games)
+          .insert(GamesCompanion.insert(config: '{"players":4,"seed":1}'));
+      await database
+          .into(database.games)
+          .insert(GamesCompanion.insert(config: '{"players":6,"seed":2}'));
+
+      expect((await store.loadActive())!.config.players, 6);
+    },
+  );
 }

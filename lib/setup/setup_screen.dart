@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../engine/engine.dart';
 import '../settings/app_settings.dart';
 import '../theme/tokens.dart';
 import '../ui/strings.dart';
@@ -21,6 +22,9 @@ class SetupScreen extends StatefulWidget {
 
 class _SetupScreenState extends State<SetupScreen> {
   late int _opponents = widget.settings.opponents;
+
+  static int _lastRoundCards(int players) =>
+      cardsDealt(round: standardRounds, players: players);
 
   @override
   Widget build(BuildContext context) {
@@ -74,12 +78,12 @@ class _SetupScreenState extends State<SetupScreen> {
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Tokens.mutedText),
               ),
-              if (players == 8) ...[
+              if (_lastRoundCards(players) < standardRounds) ...[
                 const SizedBox(height: Tokens.space2),
-                const Text(
-                  Strings.eightPlayersNote,
+                Text(
+                  Strings.fewerCardsNote(players, _lastRoundCards(players)),
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Tokens.mutedText),
+                  style: const TextStyle(color: Tokens.mutedText),
                 ),
               ],
               const Spacer(),

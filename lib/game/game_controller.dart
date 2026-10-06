@@ -52,7 +52,7 @@ final class GameProgress {
   final int round;
   final int humanScore;
 
-  /// Set once, by the answer that ends the game.
+  /// Set once, when the final standings are shown.
   final GameFinished? result;
 }
 
@@ -93,8 +93,8 @@ class GameController extends ChangeNotifier {
   void Function(Object error)? onError;
   bool _disposed = false;
   Completer<void>? _hold;
-  Timer? _pause;
-  Completer<void>? _pauseDone;
+  Timer? _waitTimer;
+  Completer<void>? _waitDone;
 
   int round = 0;
   int cardsDealt = 0;
@@ -152,12 +152,6 @@ class GameController extends ChangeNotifier {
   /// Starts the game, or picks a resumed one up where it was left.
   void start() {
     _catchingUp = true;
-    _collectEvents();
-    // A game resumed after its last answer: whoever keeps it must still learn
-    // that it is over.
-    if (_events.whereType<GameFinished>().firstOrNull case final result?) {
-      _report(result);
-    }
     unawaited(_run());
   }
 
@@ -189,8 +183,8 @@ class GameController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _releaseHold();
-    _pause?.cancel();
-    if (_pauseDone case final done? when !done.isCompleted) done.complete();
+    _waitTimer?.cancel();
+    if (_waitDone case final done? when !done.isCompleted) done.complete();
     super.dispose();
   }
 
@@ -247,7 +241,7 @@ class GameController extends ChangeNotifier {
   void _answer(Answer answer) {
     _game.answer(answer);
     _collectEvents();
-    _report(_events.whereType<GameFinished>().firstOrNull);
+    _report(null);
   }
 
   void _report(GameFinished? result) {
@@ -329,6 +323,9 @@ class GameController extends ChangeNotifier {
         roundSummary = null;
       case GameFinished():
         result = event;
+        // Only now: a game left before its standings were seen stays
+        // resumable, and is reported as over when it is opened again.
+        _report(event);
     }
     _notify();
   }
@@ -344,8 +341,8 @@ class GameController extends ChangeNotifier {
       return Future.value();
     }
     final done = Completer<void>();
-    _pause = Timer(duration, done.complete);
-    _pauseDone = done;
+    _waitTimer = Timer(duration, done.complete);
+    _waitDone = done;
     return done.future;
   }
 

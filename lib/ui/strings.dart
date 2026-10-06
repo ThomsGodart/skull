@@ -79,9 +79,12 @@ abstract final class Strings {
   static const setupTitle = 'Nouvelle partie';
   static const launch = 'Lancer la partie';
   static String setupSummary(int players) =>
-      '$players joueurs · jeu de base · score classique · 10 manches';
-  static const eightPlayersNote =
-      'À 8 joueurs, les manches 9 et 10 se jouent avec 8 cartes.';
+      '$players joueurs · jeu de base · score classique · '
+      '$standardRounds manches';
+  static String fewerCardsNote(int players, int cards) =>
+      'À $players joueurs, les dernières manches se jouent avec $cards cartes.';
+  static const saveFailed = 'La sauvegarde a échoué.';
+  static const cannotStart = 'Impossible de lancer la partie.';
 
   static const profileTitle = 'Ton profil';
   static const playerNameLabel = 'Nom';

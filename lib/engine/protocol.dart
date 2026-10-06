@@ -2,11 +2,15 @@ import 'card.dart';
 import 'scoring.dart';
 import 'trick.dart';
 
+/// Fewest and most seats a game can have.
+const minPlayers = 3;
+const maxPlayers = 8;
+
 /// What defines a game before anything is answered.
 final class GameConfig {
   const GameConfig({required this.players, required this.seed});
 
-  /// Seats at the table, 3 to 8.
+  /// Seats at the table, [minPlayers] to [maxPlayers].
   final int players;
 
   /// Seeds every shuffle and the choice of the first dealer: the same seed and

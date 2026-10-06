@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -33,6 +34,9 @@ class _HomeScreenState extends State<HomeScreen> {
   /// What is still being written about the game last played.
   Future<void> _saving = Future.value();
 
+  /// True while a game is being created, so a second tap starts nothing.
+  bool _starting = false;
+
   GameStore get _games => widget.games;
   AppSettings get _settings => widget.settings;
 
@@ -64,7 +68,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Opens the table on [game] and comes back here when it is left.
   Future<void> _play(SavedGame game, {bool replace = false}) async {
-    final saver = GameSaver(_games, game.id);
+    final messenger = ScaffoldMessenger.of(context);
+    final saver = GameSaver(
+      _games,
+      game.id,
+      onError: (_) => messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text(Strings.saveFailed))),
+    );
     _saving = saver.done;
     final route = MaterialPageRoute<void>(
       builder: (context) => TableScreen(
@@ -90,13 +101,38 @@ class _HomeScreenState extends State<HomeScreen> {
     await _refresh();
   }
 
+  /// Opens the table on the game in progress, as it is kept right now.
+  Future<void> _continue() async {
+    await _saving;
+    final saved = await _games.loadActive();
+    if (!mounted) return;
+    if (saved == null) {
+      setState(() => _saved = null);
+      return;
+    }
+    await _play(saved);
+  }
+
   /// Creates a game for [players] and opens the table on it.
   Future<void> _start(int players, {bool replace = false}) async {
+    if (_starting) return;
+    _starting = true;
     final config = GameConfig(
       players: players,
       seed: Random().nextInt(1 << 32),
     );
-    final id = await _games.create(config);
+    final messenger = ScaffoldMessenger.of(context);
+    final int id;
+    try {
+      id = await _games.create(config);
+    } on Object {
+      messenger.showSnackBar(
+        const SnackBar(content: Text(Strings.cannotStart)),
+      );
+      return;
+    } finally {
+      _starting = false;
+    }
     if (!mounted) return;
     await _play(
       SavedGame(
@@ -120,6 +156,18 @@ class _HomeScreenState extends State<HomeScreen> {
   );
 
   Future<void> _launchFromSetup(BuildContext setupContext, int players) async {
+    if (_launching) return;
+    _launching = true;
+    try {
+      await _confirmAndStart(setupContext, players);
+    } finally {
+      _launching = false;
+    }
+  }
+
+  bool _launching = false;
+
+  Future<void> _confirmAndStart(BuildContext setupContext, int players) async {
     await _saving;
     if (await _games.loadActive() != null) {
       if (!setupContext.mounted) return;
@@ -142,7 +190,8 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       if (!(replace ?? false)) return;
     }
-    await _settings.setOpponents(players - 1);
+    // Remembering the choice must never stand in the way of the game.
+    unawaited(_settings.setOpponents(players - 1).catchError((Object _) {}));
     // The table takes the place of the setup screen.
     await _start(players, replace: true);
   }
@@ -181,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: Tokens.space6 * 2),
                 if (saved != null) ...[
                   FilledButton(
-                    onPressed: () => _play(saved),
+                    onPressed: _continue,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
