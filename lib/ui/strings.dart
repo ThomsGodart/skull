@@ -35,7 +35,6 @@ abstract final class Strings {
   static const chooseBid = 'Combien de plis vas-tu prendre ?';
   static String placeBid(int bid) => 'Parier $bid';
   static const pickBidFirst = 'Choisis un nombre';
-  static const bidsHidden = 'Les autres ont déjà parié en secret.';
   static const yourLead = 'À toi — joue la carte de ton choix';
   static const playAnything =
       'À toi — pas de couleur à suivre : joue ce que tu veux';
@@ -64,6 +63,56 @@ abstract final class Strings {
   static const dealerMark = 'D';
   static const leadMark = '1er';
   static const leadsNext = 'Entame le prochain pli';
+  static String bidsTotal(int bids, int cards) =>
+      'Paris : $bids pour $cards pli${cards > 1 ? 's' : ''}';
+
+  /// What a card does, in a sentence, for the player who looks at it closely.
+  /// Null for a plain number card. With [powers], a pirate tells its power.
+  static String? cardHint(Card card, {required bool powers}) =>
+      switch (card.kind) {
+        CardKind.number =>
+          card.suit == Suit.black
+              ? 'Atout : bat les trois autres couleurs.'
+              : null,
+        CardKind.escape => 'Perd toujours.',
+        CardKind.pirate => switch (Pirate.of(card)) {
+          final pirate? when powers =>
+            '${pirateName(pirate)}. ${piratePower(pirate)}',
+          _ =>
+            'Bat toutes les cartes Couleur et les sirènes. Perd contre le '
+                'Skull King.',
+        },
+        CardKind.tigress =>
+          'Pirate ou fuite : tu choisis en la jouant. Elle n\'a pas de '
+              'pouvoir.',
+        CardKind.skullKing =>
+          'Bat les pirates et toutes les couleurs. Perd contre une sirène.',
+        CardKind.mermaid =>
+          'Bat toutes les couleurs et le Skull King. Perd contre les pirates.',
+        CardKind.loot =>
+          'Perd comme une fuite. T\'allie au gagnant du pli : +20 chacun si '
+              'vos deux paris sont réussis.',
+        CardKind.kraken =>
+          'Détruit le pli : personne ne le remporte, celui qui l\'aurait '
+              'gagné entame.',
+        CardKind.whiteWhale =>
+          'Détruit les cartes spéciales : la plus haute valeur gagne, '
+              'quelle que soit sa couleur.',
+      };
+
+  /// What winning a trick with [pirate] lets its player do.
+  static String piratePower(Pirate pirate) => switch (pirate) {
+    Pirate.rosie => 'Si elle gagne le pli : tu choisis qui entame le suivant.',
+    Pirate.will =>
+      'S\'il gagne le pli : tu pioches 2 cartes, puis tu en défausses 2.',
+    Pirate.rascal =>
+      'S\'il gagne le pli : tu mises 0, 10 ou 20 points sur ton pari.',
+    Pirate.juanita =>
+      'Si elle gagne le pli : tu regardes les cartes non distribuées.',
+    Pirate.harry =>
+      'S\'il gagne le pli : à la fin de la manche, tu peux modifier ton '
+          'pari de 1.',
+  };
   static const ghostLabel = 'fantôme';
   static String leadsRound(String name) => '$name entame la manche';
   static const youLeadRound = 'Tu entames la manche';

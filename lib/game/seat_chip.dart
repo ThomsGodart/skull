@@ -17,6 +17,7 @@ class SeatChip extends StatelessWidget {
     this.isCurrent = false,
     this.isDealer = false,
     this.leadsNext = false,
+    this.emphasizeBid = false,
   });
 
   final SeatIdentity identity;
@@ -35,6 +36,9 @@ class SeatChip extends StatelessWidget {
 
   /// This seat leads the trick about to be played.
   final bool leadsNext;
+
+  /// The bids were just turned over: this one is shown off.
+  final bool emphasizeBid;
 
   /// Gold on target, red once over the bid: a glance tells how a seat stands.
   Color get _tricksColor {
@@ -102,6 +106,7 @@ class SeatChip extends StatelessWidget {
                     Strings.counterBid,
                     bid?.toString() ?? '?',
                     Tokens.text,
+                    boxed: emphasizeBid,
                   ),
                   const SizedBox(width: Tokens.space3),
                 ],
@@ -127,23 +132,35 @@ class SeatChip extends StatelessWidget {
       FittedBox(fit: BoxFit.scaleDown, child: child);
 
   /// A label and the figure that goes with it, the figure large.
-  static Widget _stat(String label, String value, Color color) => Row(
+  static Widget _stat(
+    String label,
+    String value,
+    Color color, {
+    bool boxed = false,
+  }) => Row(
     mainAxisSize: MainAxisSize.min,
-    crossAxisAlignment: CrossAxisAlignment.baseline,
-    textBaseline: TextBaseline.alphabetic,
+    crossAxisAlignment: CrossAxisAlignment.center,
     children: [
       Text(
         label,
-        style: const TextStyle(color: Tokens.mutedText, fontSize: 12),
+        style: const TextStyle(color: Tokens.mutedText, fontSize: 13),
       ),
       const SizedBox(width: Tokens.space1),
-      Text(
-        value,
-        style: TextStyle(
-          color: color,
-          fontSize: 20,
-          fontWeight: FontWeight.w900,
-          height: 1.1,
+      AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        decoration: BoxDecoration(
+          color: boxed ? Tokens.gold : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          value,
+          style: TextStyle(
+            color: boxed ? Tokens.sea : color,
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+            height: 1.15,
+          ),
         ),
       ),
     ],

@@ -17,9 +17,10 @@ void main() {
     WidgetTester tester, {
     int players = 4,
     int seed = 3,
-  }) async {
     // A small phone, portrait.
-    tester.view.physicalSize = const Size(360, 720);
+    Size size = const Size(360, 720),
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final controller = GameController(
@@ -331,10 +332,69 @@ void main() {
     expect(find.text(Strings.bonusHeading), findsNWidgets(2));
   });
 
-  for (final players in [3, 8]) {
-    testWidgets('a whole game with $players players runs to the final '
-        'standings without a layout error', (tester) async {
-      final controller = await openTable(tester, players: players, seed: 11);
+  testWidgets('a card tapped while bidding is shown large, with what it '
+      'does, and put away by a second tap', (tester) async {
+    final controller = await openTable(tester);
+    final card = controller.hand.single;
+
+    await tapCard(tester, card);
+
+    expect(find.byKey(const Key('card-preview')), findsOneWidget);
+    expect(controller.bidQuestion, isNotNull, reason: 'still bidding');
+    final hint = Strings.cardHint(card, powers: false);
+    if (hint != null) expect(find.text(hint), findsOneWidget);
+
+    await tapCard(tester, card);
+
+    expect(find.byKey(const Key('card-preview')), findsNothing);
+  });
+
+  test('a pirate with its power on tells that power, a plain one how it '
+      'ranks', () {
+    final harry = baseDeck().firstWhere(
+      (card) => Pirate.of(card) == Pirate.harry,
+    );
+
+    expect(
+      Strings.cardHint(harry, powers: true),
+      contains('à la fin de la manche'),
+    );
+    expect(
+      Strings.cardHint(harry, powers: false),
+      contains('Perd contre le Skull King'),
+    );
+  });
+
+  testWidgets('once the bids are turned over, the header gives their total '
+      'against the tricks to take', (tester) async {
+    final controller = await openTable(tester);
+    expect(find.byKey(const Key('bids-total')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('bid-1')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('place-bid')));
+    await tester.pump();
+
+    final total = controller.bids.fold<int>(0, (sum, bid) => sum + bid!);
+    expect(find.text(Strings.bidsTotal(total, 1)), findsOneWidget);
+  });
+
+  for (final (players, size) in [
+    (3, const Size(360, 720)),
+    (8, const Size(360, 720)),
+    // The phone on its side.
+    (3, const Size(720, 360)),
+    (8, const Size(720, 360)),
+  ]) {
+    testWidgets('a whole game with $players players on a ${size.width.round()}'
+        'x${size.height.round()} screen runs to the final standings without '
+        'a layout error', (tester) async {
+      final controller = await openTable(
+        tester,
+        players: players,
+        seed: 11,
+        size: size,
+      );
 
       for (var step = 0; step < 4000; step++) {
         await tester.pump();
@@ -342,8 +402,10 @@ void main() {
         if (controller.roundSummary != null) {
           await tester.tap(find.byKey(const Key('continue')));
         } else if (controller.bidQuestion != null) {
+          await tester.ensureVisible(find.byKey(const Key('bid-0')));
           await tester.tap(find.byKey(const Key('bid-0')));
           await tester.pump();
+          await tester.ensureVisible(find.byKey(const Key('place-bid')));
           await tester.tap(find.byKey(const Key('place-bid')));
         } else if (controller.playQuestion case final question?) {
           final card = question.legalCards.first;

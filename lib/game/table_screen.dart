@@ -80,6 +80,9 @@ class _TableScreenState extends State<TableScreen> {
   /// The card lifted by a first tap, waiting for the second.
   Card? _selected;
 
+  /// A card the player tapped only to look at it, when it cannot be played.
+  Card? _inspected;
+
   GameController get _game => widget.controller;
 
   @override
@@ -112,6 +115,7 @@ class _TableScreenState extends State<TableScreen> {
 
   void _onGameChanged() {
     if (_game.playQuestion == null) _selected = null;
+    if (!_game.hand.contains(_inspected)) _inspected = null;
     setState(() {});
     final power = _game.powerQuestion;
     if (power != null && !identical(power, _powerShown)) {
@@ -197,7 +201,10 @@ class _TableScreenState extends State<TableScreen> {
   Future<void> _onCardTap(Card card) async {
     if (card != _selected && !_singleTap) {
       _vibrate(HapticFeedback.selectionClick);
-      setState(() => _selected = card);
+      setState(() {
+        _selected = card;
+        _inspected = null;
+      });
       return;
     }
     TigressMode? mode;
@@ -354,7 +361,7 @@ class _TableScreenState extends State<TableScreen> {
       final lead = game.leader == game.humanSeat
           ? Strings.youLeadRound
           : Strings.leadsRound(_seats[game.leader].name);
-      return '$lead\n${Strings.bidsHidden}';
+      return lead;
     }
     if (game.playQuestion case final question?) {
       if (_selected != null) return Strings.tapAgain;
@@ -381,6 +388,141 @@ class _TableScreenState extends State<TableScreen> {
     <= 8 => 80,
     _ => 74,
   };
+
+  Widget _trickZone(GameController game, {double maxCard = 104}) => Expanded(
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        if (_inspected != null || _selected != null) {
+          setState(() {
+            _inspected = null;
+            _selected = null;
+          });
+        } else {
+          game.skipHold();
+        }
+      },
+      child: Center(
+        child: SingleChildScrollView(child: _center(maxCard: maxCard)),
+      ),
+    ),
+  );
+
+  Widget _statusLine() => Text(
+    _status(),
+    textAlign: TextAlign.center,
+    style: const TextStyle(color: Tokens.text, fontWeight: FontWeight.w700),
+  );
+
+  Widget _hand(GameController game, {double? cardWidth}) => HandFan(
+    cards: game.hand,
+    legal: game.playQuestion?.legalCards,
+    selected: _selected ?? _inspected,
+    onTap: _onCardTap,
+    onInspect: (card) =>
+        setState(() => _inspected = card == _inspected ? null : card),
+    cardWidth: cardWidth ?? _handCardWidth(game.hand.length),
+    namedPirates: _namedPirates,
+  );
+
+  /// Phone held upright: opponents on top, the trick, then the hand.
+  Widget _portraitBody(GameController game) => Column(
+    children: [
+      _opponents(),
+      _trickZone(game),
+      _statusLine(),
+      const SizedBox(height: Tokens.space2),
+      SizedBox(width: 220, child: _seatChip(game.humanSeat, showCards: false)),
+      const SizedBox(height: Tokens.space2),
+      _hand(game),
+    ],
+  );
+
+  /// Phone on its side: everyone on the left, the trick and the hand on the
+  /// right, with cards sized to the little height there is.
+  Widget _landscapeBody(GameController game) => Row(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Expanded(
+        flex: 5,
+        child: Column(
+          children: [
+            Expanded(child: SingleChildScrollView(child: _opponents())),
+            const SizedBox(height: Tokens.space1),
+            _statusLine(),
+            const SizedBox(height: Tokens.space1),
+            _seatChip(game.humanSeat, showCards: false),
+          ],
+        ),
+      ),
+      const SizedBox(width: Tokens.space2),
+      Expanded(
+        flex: 6,
+        child: Column(
+          children: [_trickZone(game, maxCard: 64), _hand(game, cardWidth: 60)],
+        ),
+      ),
+    ],
+  );
+
+  static bool _isLandscape(BoxConstraints constraints) =>
+      constraints.maxWidth > constraints.maxHeight * 1.15;
+
+  /// The card being looked at, large, with what it does. A tap puts it away.
+  Widget _cardPreview(Card card) {
+    final hint = Strings.cardHint(card, powers: _namedPirates);
+    return Positioned.fill(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // As large as the room above the hand allows.
+          final width = (constraints.maxHeight * 0.34).clamp(90.0, 170.0);
+          // On its side, the phone has the hand on the right: the card is
+          // shown on the left, clear of it.
+          return Align(
+            alignment: _isLandscape(constraints)
+                ? const Alignment(-0.85, 0)
+                : const Alignment(0, -0.35),
+            child: GestureDetector(
+              onTap: () => setState(() {
+                _inspected = null;
+                _selected = null;
+              }),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CardView(
+                    card,
+                    key: const Key('card-preview'),
+                    width: width,
+                    namedPirates: _namedPirates,
+                  ),
+                  if (hint != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: Tokens.space2),
+                      padding: const EdgeInsets.all(Tokens.space2),
+                      constraints: const BoxConstraints(maxWidth: 280),
+                      decoration: BoxDecoration(
+                        color: Tokens.panelRaised,
+                        borderRadius: BorderRadius.circular(
+                          Tokens.radiusButton,
+                        ),
+                        border: Border.all(color: Tokens.gold),
+                      ),
+                      child: Text(
+                        hint,
+                        key: const Key('card-hint'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Tokens.text),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   /// What a pirate's power just did, in words.
   String? _powerNotice() {
@@ -460,43 +602,15 @@ class _TableScreenState extends State<TableScreen> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.all(Tokens.space2),
-                      child: Column(
-                        children: [
-                          _opponents(),
-                          Expanded(
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: game.skipHold,
-                              child: Center(
-                                child: SingleChildScrollView(child: _center()),
-                              ),
-                            ),
-                          ),
-                          Text(
-                            _status(),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Tokens.text,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: Tokens.space2),
-                          SizedBox(
-                            width: 220,
-                            child: _seatChip(game.humanSeat, showCards: false),
-                          ),
-                          const SizedBox(height: Tokens.space2),
-                          HandFan(
-                            cards: game.hand,
-                            legal: game.playQuestion?.legalCards,
-                            selected: _selected,
-                            onTap: _onCardTap,
-                            cardWidth: _handCardWidth(game.hand.length),
-                            namedPirates: _namedPirates,
-                          ),
-                        ],
+                      child: LayoutBuilder(
+                        builder: (context, constraints) =>
+                            _isLandscape(constraints)
+                            ? _landscapeBody(game)
+                            : _portraitBody(game),
                       ),
                     ),
+                    if (_selected ?? _inspected case final card?)
+                      _cardPreview(card),
                     if (game.roundSummary case final summary?)
                       _roundOver(summary),
                     if (over) _gameOver(game.result!),
@@ -522,14 +636,36 @@ class _TableScreenState extends State<TableScreen> {
           icon: const Icon(Icons.pause),
         ),
         Expanded(
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Tokens.text,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: Tokens.text,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              // Once the bids are known: are there more tricks announced
+              // than there are to take, or fewer?
+              if (_game.totalBids case final total?)
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    Strings.bidsTotal(total, _game.cardsDealt),
+                    key: const Key('bids-total'),
+                    style: const TextStyle(
+                      color: Tokens.gold,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         IconButton(
@@ -580,6 +716,7 @@ class _TableScreenState extends State<TableScreen> {
     cardsLeft: showCards ? _game.handSizes.elementAtOrNull(seat) : null,
     isCurrent: _game.currentSeat == seat,
     isDealer: _game.dealer == seat,
+    emphasizeBid: _game.revealingBids,
     // Between two tricks, and while bids are open: who plays first.
     leadsNext:
         _game.leader == seat &&
@@ -588,7 +725,7 @@ class _TableScreenState extends State<TableScreen> {
         _game.result == null,
   );
 
-  Widget _center() {
+  Widget _center({double maxCard = 104}) {
     // Nothing is on the table while bids are open: the bid goes there.
     if (_game.bidQuestion case final question?) {
       return BidPanel(
@@ -607,7 +744,7 @@ class _TableScreenState extends State<TableScreen> {
             final perRow = _game.trick.length.clamp(3, 4);
             const gap = Tokens.space2;
             final width = ((constraints.maxWidth - gap * (perRow - 1)) / perRow)
-                .clamp(56.0, 104.0);
+                .clamp(44.0, maxCard);
             return TrickArea(
               plays: _game.trick,
               seats: _seats,
@@ -650,32 +787,52 @@ class _TableScreenState extends State<TableScreen> {
   }) => Positioned.fill(
     child: ColoredBox(
       color: Tokens.scrim,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(Tokens.space2),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 560),
-            padding: const EdgeInsets.symmetric(
-              horizontal: Tokens.space3,
-              vertical: Tokens.space6,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // With little height, as on a phone on its side, the buttons sit
+          // in a row and leave the room to the scores.
+          final short = constraints.maxHeight < 420;
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(Tokens.space2),
+              child: Container(
+                constraints: BoxConstraints(maxWidth: short ? 680 : 560),
+                padding: EdgeInsets.symmetric(
+                  horizontal: Tokens.space3,
+                  vertical: short ? Tokens.space2 : Tokens.space6,
+                ),
+                decoration: BoxDecoration(
+                  color: Tokens.panel,
+                  borderRadius: BorderRadius.circular(Tokens.radiusPanel),
+                  border: Border.all(color: Tokens.outline),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ...header,
+                    Flexible(child: SingleChildScrollView(child: body)),
+                    const SizedBox(height: Tokens.space3),
+                    if (short)
+                      Row(
+                        children: [
+                          for (final (index, action) in actions.indexed) ...[
+                            if (index > 0) const SizedBox(width: Tokens.space2),
+                            Expanded(child: action),
+                          ],
+                        ],
+                      )
+                    else
+                      for (final (index, action) in actions.indexed) ...[
+                        if (index > 0) const SizedBox(height: Tokens.space2),
+                        action,
+                      ],
+                  ],
+                ),
+              ),
             ),
-            decoration: BoxDecoration(
-              color: Tokens.panel,
-              borderRadius: BorderRadius.circular(Tokens.radiusPanel),
-              border: Border.all(color: Tokens.outline),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ...header,
-                Flexible(child: SingleChildScrollView(child: body)),
-                const SizedBox(height: Tokens.space3),
-                ...actions,
-              ],
-            ),
-          ),
-        ),
+          );
+        },
       ),
     ),
   );
@@ -733,13 +890,11 @@ class _TableScreenState extends State<TableScreen> {
     ],
     body: Standings(scores: result.scores, seats: _scoringSeats),
     actions: [
-      if (widget.onPlayAgain case final playAgain?) ...[
+      if (widget.onPlayAgain case final playAgain?)
         FilledButton(
           onPressed: playAgain,
           child: const Text(Strings.playAgain),
         ),
-        const SizedBox(height: Tokens.space2),
-      ],
       OutlinedButton(
         onPressed: () => Navigator.of(context).pop(),
         child: const Text(Strings.home),

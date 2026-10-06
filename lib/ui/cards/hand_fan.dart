@@ -14,6 +14,7 @@ class HandFan extends StatelessWidget {
     this.legal,
     this.selected,
     this.onTap,
+    this.onInspect,
     this.cardWidth = 64,
     this.namedPirates = false,
   });
@@ -22,6 +23,9 @@ class HandFan extends StatelessWidget {
   final List<Card>? legal;
   final Card? selected;
   final ValueChanged<Card>? onTap;
+
+  /// Called when a card that cannot be played now is tapped: to look at it.
+  final ValueChanged<Card>? onInspect;
   final double cardWidth;
   final bool namedPirates;
 
@@ -68,7 +72,9 @@ class HandFan extends StatelessWidget {
     final playable = legal?.contains(card) ?? false;
     return GestureDetector(
       key: Key('hand-${card.id}'),
-      onTap: playable && onTap != null ? () => onTap!(card) : null,
+      onTap: playable && onTap != null
+          ? () => onTap!(card)
+          : (onInspect == null ? null : () => onInspect!(card)),
       child: CardView(
         card,
         width: cardWidth,

@@ -255,7 +255,7 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
           children: [
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.all(Tokens.space4),
+                padding: const EdgeInsets.all(Tokens.space3),
                 children: [
                   Text(
                     _results
@@ -267,6 +267,7 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+                  _columnHeadings(),
                   for (final (player, name) in _game.players.indexed)
                     _playerCard(player, name),
                   if (_results && _game.loot) _allianceEditor(),
@@ -310,44 +311,74 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
     );
   }
 
+  static const _stepperWidth = 96.0;
+  static const _bonusWidth = 40.0;
+  static const _scoreWidth = 46.0;
+
+  static const _heading = TextStyle(
+    color: Tokens.mutedText,
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+  );
+
+  /// Names the columns of the player lines.
+  Widget _columnHeadings() => Padding(
+    padding: const EdgeInsets.fromLTRB(Tokens.space2, Tokens.space2, 0, 0),
+    child: Row(
+      children: [
+        const Spacer(),
+        const SizedBox(
+          width: _stepperWidth,
+          child: Text(
+            Strings.counterBid,
+            textAlign: TextAlign.center,
+            style: _heading,
+          ),
+        ),
+        if (_results) ...[
+          const SizedBox(
+            width: _stepperWidth,
+            child: Text(
+              Strings.counterTricks,
+              textAlign: TextAlign.center,
+              style: _heading,
+            ),
+          ),
+          const SizedBox(width: _bonusWidth + _scoreWidth),
+        ],
+      ],
+    ),
+  );
+
+  /// One line a player, so that the whole table is in view at once.
   Widget _playerCard(int player, String name) {
     final entry = _entries[player];
+    final hasExtras =
+        entry.bonuses.isNotEmpty || entry.wager != 0 || entry.bidChange != 0;
     return Container(
-      margin: const EdgeInsets.only(top: Tokens.space3),
-      padding: const EdgeInsets.all(Tokens.space3),
+      margin: const EdgeInsets.only(top: Tokens.space1),
+      padding: const EdgeInsets.only(left: Tokens.space2),
       decoration: BoxDecoration(
         color: Tokens.panel,
         borderRadius: BorderRadius.circular(Tokens.radiusButton),
         border: Border.all(color: Tokens.outline),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  name,
-                  style: const TextStyle(
-                    color: Tokens.text,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+          Expanded(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Tokens.text,
+                fontWeight: FontWeight.w800,
               ),
-              if (_results)
-                Text(
-                  Strings.signed(_preview(player)),
-                  key: Key('counter-preview-$player'),
-                  style: const TextStyle(
-                    color: Tokens.gold,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-            ],
+            ),
           ),
-          _line(
-            Strings.counterBid,
-            _Stepper(
+          SizedBox(
+            width: _stepperWidth,
+            child: _Stepper(
               name: 'bid-$player',
               value: entry.bid,
               max: _cards,
@@ -355,9 +386,9 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
             ),
           ),
           if (_results) ...[
-            _line(
-              Strings.counterTricks,
-              _Stepper(
+            SizedBox(
+              width: _stepperWidth,
+              child: _Stepper(
                 name: 'tricks-$player',
                 value: entry.tricksWon,
                 max: _cards,
@@ -365,12 +396,36 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
                     _edit(player, entry.copyWith(tricksWon: won)),
               ),
             ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
+            SizedBox(
+              width: _bonusWidth,
+              child: IconButton(
                 key: Key('counter-bonus-$player'),
+                tooltip: Strings.counterBonus,
+                padding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
                 onPressed: () => _editBonuses(player),
-                child: const Text(Strings.counterBonus),
+                icon: Icon(
+                  hasExtras ? Icons.star : Icons.star_border,
+                  color: Tokens.gold,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: _scoreWidth,
+              child: Padding(
+                padding: const EdgeInsets.only(right: Tokens.space2),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    Strings.signed(_preview(player)),
+                    key: Key('counter-preview-$player'),
+                    style: const TextStyle(
+                      color: Tokens.gold,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
@@ -431,16 +486,28 @@ class _Stepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Widget button(String side, IconData icon, int? next) => IconButton(
+      key: Key('$name-$side'),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints(minWidth: 34, minHeight: 40),
+      style: IconButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: next == null ? null : () => onChanged(next),
+      icon: Icon(icon),
+    );
     return Row(
       mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        IconButton(
-          key: Key('$name-minus'),
-          onPressed: value > 0 ? () => onChanged(value - 1) : null,
-          icon: const Icon(Icons.remove_circle_outline),
+        button(
+          'minus',
+          Icons.remove_circle_outline,
+          value > 0 ? value - 1 : null,
         ),
         SizedBox(
-          width: 28,
+          width: 26,
           child: Text(
             '$value',
             key: Key('$name-value'),
@@ -452,10 +519,10 @@ class _Stepper extends StatelessWidget {
             ),
           ),
         ),
-        IconButton(
-          key: Key('$name-plus'),
-          onPressed: value < max ? () => onChanged(value + 1) : null,
-          icon: const Icon(Icons.add_circle_outline),
+        button(
+          'plus',
+          Icons.add_circle_outline,
+          value < max ? value + 1 : null,
         ),
       ],
     );

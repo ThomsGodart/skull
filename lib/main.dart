@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 import 'app.dart';
 import 'online/online_backend.dart';
@@ -13,7 +13,6 @@ import 'storage/drift_settings_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   // The pictogram font is under the SIL Open Font License, which asks for
   // its text to travel with it: it joins the app's licences page.
   LicenseRegistry.addLicense(() async* {

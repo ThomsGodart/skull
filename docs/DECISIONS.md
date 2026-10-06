@@ -21,7 +21,7 @@ Ces dix décisions orientent tout le reste ou coûtent cher à changer plus tard
 | **R7** | Baleine blanche en cours de pli : on suit le livret français, pas la FAQ anglaise | Les deux sources officielles se contredisent |
 | **A1** | Moteur en Dart pur, piloté par Questions / Réponses / Événements | Structure de toute l'application |
 | **A7** | Une partie sauvegardée = graine + configuration + liste des réponses | Conditionne reprise, historique et rejeu |
-| **U1** | Table en portrait, adversaires en vignettes en haut, pli en ligne au centre | Toute la mise en page de l'écran principal |
+| **U1** | Table pensée pour le portrait (adversaires en vignettes en haut, pli en ligne au centre), avec une disposition paysage quand on tourne le téléphone | Toute la mise en page de l'écran principal |
 
 ---
 
@@ -138,7 +138,7 @@ Ajouté le 2026-10-05 à ta demande. Supabase est déjà initialisé dans `darts
 
 | # | Question | Décision | Pourquoi | Écarté |
 |---|---|---|---|---|
-| **U1** | Orientation et disposition de la table | Portrait partout. Adversaires en vignettes sur une ou deux rangées en haut ; pli au centre, cartes posées en ligne dans l'ordre de jeu ; main en bas. | Jusqu'à 7 adversaires : une disposition « autour de la table » ne tient pas sur un téléphone. Le portrait se tient d'une main. | Paysage ; cartes en croix autour du centre. |
+| **U1** | Orientation et disposition de la table | Portrait d'abord : adversaires en vignettes sur une ou deux rangées en haut ; pli au centre, cartes posées en ligne dans l'ordre de jeu ; main en bas. L'orientation n'est plus verrouillée (modifié le 2026-10-06 après essais) : en paysage, les joueurs sont à gauche, le pli et la main à droite, et les autres écrans défilent. | Jusqu'à 7 adversaires : une disposition « autour de la table » ne tient pas sur un téléphone. Le portrait se tient d'une main. | Paysage ; cartes en croix autour du centre. |
 | **U2** | Vignette d'un adversaire | Initiales sur une couleur, nom, pari, plis pris, nombre de cartes en main. Anneau doré sur celui dont c'est le tour, marque pour le donneur. | Tout ce qu'il faut pour décider, sans afficher de dos de cartes. | Mains adverses dessinées. |
 | **U3** | Jouer une carte | Un premier appui soulève la carte, un second la joue. Réglage pour jouer en un seul appui. | Une carte jouée par erreur ruine un pari. | Glisser-déposer ; un seul appui par défaut. |
 | **U4** | Cartes injouables | Estompées et non cliquables ; une phrase d'état dit quoi faire (« À toi — fournis du vert »). | Les coups légaux doivent se voir, pas se deviner. | Les masquer. |

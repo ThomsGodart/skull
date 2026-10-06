@@ -114,9 +114,9 @@ class GameController extends ChangeNotifier {
   /// Set when the human must decide how to use a pirate's power.
   PowerQuestion? powerQuestion;
 
-  /// The latest thing a pirate's power did, for the table to announce. One of
-  /// [PowerUsed], [LeaderChosen], [CardsDiscarded], [WagerPlaced] and
-  /// [BidChanged]. Cleared when the next card is played.
+  /// What a pirate's power is doing right now, for the table to announce: one
+  /// of [PowerUsed], [LeaderChosen], [CardsDiscarded], [WagerPlaced] and
+  /// [BidChanged]. It only stays long enough to be read.
   Event? powerNotice;
 
   /// Juanita's power, used by the human: the cards nobody was dealt, shown
@@ -137,6 +137,16 @@ class GameController extends ChangeNotifier {
 
   /// Set once the game is over.
   GameFinished? result;
+
+  /// True while the bids, just turned over, are left on show.
+  bool get revealingBids => _revealingBids;
+
+  /// How many tricks the players announced in all, once the bids are known.
+  int? get totalBids {
+    final known = bids.take(scoringSeats);
+    if (bids.isEmpty || known.any((bid) => bid == null)) return null;
+    return known.fold<int>(0, (sum, bid) => sum + bid!);
+  }
 
   /// The seat that leads the trick on the table, or the one about to be
   /// played.
@@ -342,12 +352,11 @@ class GameController extends ChangeNotifier {
         trickAlliances = const [];
         _leader = event.winner;
       case PowerUsed():
-        powerNotice = event;
-        // A bot's power is announced long enough to be read; the human's own
-        // is followed by a question or a result of its own.
-        if (event.seat != humanSeat) {
-          _notify();
-          await _wait(speed.bidReveal);
+        // The human's own power needs no announcement: its question, or its
+        // result, follows at once. Harry's is the exception, since nothing
+        // happens until the round is over.
+        if (event.seat != humanSeat || event.pirate == Pirate.harry) {
+          await _announce(event);
         }
       case LeaderChosen():
         _leader = event.leader;
@@ -396,11 +405,14 @@ class GameController extends ChangeNotifier {
     _notify();
   }
 
-  /// Shows what a power just did, long enough to be read.
+  /// Shows what a power just did, long enough to be read, then takes the
+  /// sentence away.
   Future<void> _announce(Event outcome) async {
+    if (_catchingUp) return;
     powerNotice = outcome;
     _notify();
     await _wait(speed.bidReveal);
+    powerNotice = null;
   }
 
   void _notify() {

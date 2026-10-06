@@ -57,8 +57,11 @@ void main() {
     settingsStore = MemorySettingsStore();
   });
 
-  Future<void> openApp(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(360, 720);
+  Future<void> openApp(
+    WidgetTester tester, {
+    Size size = const Size(360, 720),
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     settings = await AppSettings.load(settingsStore);
@@ -78,6 +81,26 @@ void main() {
     await tester.tap(find.text(entry));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('with the phone on its side, every screen reached from the '
+      'home screen lays out without an error', (tester) async {
+    await tester.runAsync(() => playWholeGame(games));
+    await openApp(tester, size: const Size(720, 360));
+
+    for (final entry in [
+      Strings.newGame,
+      Strings.online,
+      Strings.counter,
+      Strings.history,
+      Strings.statistics,
+      Strings.rules,
+      Strings.settings,
+    ]) {
+      await open(tester, entry);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+    }
+  });
 
   group('history', () {
     testWidgets('says so when no game has been finished yet', (tester) async {
@@ -210,7 +233,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.byKey(const Key('place-bid')));
       // Let the bids be revealed and the bots before the human play.
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 700));
       await tester.pump();
 
       final hand = find.byWidgetPredicate(

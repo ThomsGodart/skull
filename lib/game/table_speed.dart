@@ -11,7 +11,7 @@ final class TableSpeed {
   static const normal = TableSpeed(
     botPlay: Duration(milliseconds: 700),
     trickHold: Duration(milliseconds: 2200),
-    bidReveal: Duration(milliseconds: 900),
+    bidReveal: Duration(milliseconds: 1800),
   );
 
   /// No waiting at all: for tests, not for play.
@@ -38,14 +38,14 @@ extension BotSpeedPace on BotSpeed {
     BotSpeed.fast => const TableSpeed(
       botPlay: Duration(milliseconds: 250),
       trickHold: Duration(milliseconds: 1400),
-      bidReveal: Duration(milliseconds: 500),
+      bidReveal: Duration(milliseconds: 1100),
     ),
     // The bots answer at once, yet a finished trick still stays a moment:
     // unlike [TableSpeed.instant], this one is meant for a human.
     BotSpeed.instant => const TableSpeed(
       botPlay: Duration.zero,
       trickHold: Duration(milliseconds: 1000),
-      bidReveal: Duration(milliseconds: 300),
+      bidReveal: Duration(milliseconds: 600),
     ),
   };
 }
