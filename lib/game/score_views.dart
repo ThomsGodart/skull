@@ -79,7 +79,7 @@ class RoundSummaryTable extends StatelessWidget {
             row([
               const Text(Strings.colPlayer, style: _head),
               for (final title in [
-                Strings.colBidTricks,
+                Strings.colTricksBid,
                 Strings.colBidPoints,
                 Strings.colBonus,
                 Strings.colRound,
@@ -98,7 +98,7 @@ class RoundSummaryTable extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: _cell.copyWith(fontWeight: FontWeight.w700),
                 ),
-                number('${result.bid}/${result.tricksWon}'),
+                number(Strings.tricksOverBid(result.tricksWon, result.bid)),
                 number(Strings.signed(result.score.bidPoints)),
                 number(
                   _extrasLabel(result),
@@ -115,6 +115,18 @@ class RoundSummaryTable extends StatelessWidget {
               ]),
           ],
         ),
+        if (round.results.any((result) => _details(result).isNotEmpty))
+          const Padding(
+            padding: EdgeInsets.only(top: Tokens.space3),
+            child: Text(
+              Strings.bonusHeading,
+              style: TextStyle(
+                color: Tokens.gold,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
         for (final (seat, result) in round.results.indexed)
           if (_details(result).isNotEmpty)
             Padding(
@@ -136,6 +148,7 @@ class ScoreSheet extends StatelessWidget {
     required this.rounds,
     required this.seats,
     this.onRoundTap,
+    this.large = false,
   });
 
   final List<RoundScored> rounds;
@@ -144,19 +157,27 @@ class ScoreSheet extends StatelessWidget {
   /// Called with a round's number when it is tapped, to correct it.
   final ValueChanged<int>? onRoundTap;
 
+  /// Bigger figures, for when the sheet has the screen to itself.
+  final bool large;
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
-        columnSpacing: Tokens.space4,
-        headingRowHeight: 36,
-        dataRowMinHeight: 40,
-        dataRowMaxHeight: 44,
+        columnSpacing: large ? Tokens.space6 : Tokens.space4,
+        headingRowHeight: large ? 44 : 36,
+        dataRowMinHeight: large ? 52 : 40,
+        dataRowMaxHeight: large ? 58 : 44,
         columns: [
           const DataColumn(label: Text(Strings.colRound, style: _head)),
           for (final seat in seats)
-            DataColumn(label: Text(seat.name, style: _head)),
+            DataColumn(
+              label: Text(
+                seat.name,
+                style: _head.copyWith(fontSize: large ? 14 : null),
+              ),
+            ),
         ],
         rows: [
           for (final round in rounds)
@@ -167,6 +188,7 @@ class ScoreSheet extends StatelessWidget {
                     '${round.round}',
                     key: Key('sheet-round-${round.round}'),
                     style: _cell.copyWith(
+                      fontSize: large ? 16 : null,
                       color: onRoundTap == null ? null : Tokens.gold,
                       fontWeight: onRoundTap == null ? null : FontWeight.w800,
                     ),
@@ -183,14 +205,17 @@ class ScoreSheet extends StatelessWidget {
                       children: [
                         Text(
                           '${result.totalScore}',
-                          style: _cell.copyWith(fontWeight: FontWeight.w800),
+                          style: _cell.copyWith(
+                            fontWeight: FontWeight.w800,
+                            fontSize: large ? 18 : null,
+                          ),
                         ),
                         Text(
-                          '${result.bid}/${result.tricksWon} · '
+                          '${Strings.tricksOverBid(result.tricksWon, result.bid)} · '
                           '${Strings.signed(result.score.total)}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Tokens.mutedText,
-                            fontSize: 10,
+                            fontSize: large ? 13 : 10,
                           ),
                         ),
                       ],

@@ -50,7 +50,7 @@ class TrickArea extends StatelessWidget {
                 ].join(' · '),
                 style: TextStyle(
                   color: play.seat == winner ? Tokens.gold : Tokens.mutedText,
-                  fontSize: 11,
+                  fontSize: 13,
                   fontWeight: play.seat == winner
                       ? FontWeight.w800
                       : FontWeight.w500,

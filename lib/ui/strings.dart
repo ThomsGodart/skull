@@ -11,7 +11,6 @@ abstract final class Strings {
   static const opponents = 'Adversaires';
   static const you = 'Toi';
   static const ghostName = 'Barbe Grise';
-  static String ghostTricks(int tricks) => 'fantôme · plis $tricks';
   static const twoPlayersNote =
       'À 2 joueurs, le fantôme de Barbe Grise joue un troisième paquet : il '
       'ne parie pas, ne marque pas, mais prend des plis. Le Butin n\'est '
@@ -61,10 +60,13 @@ abstract final class Strings {
     TigressMode.escape => 'fuite',
   };
 
-  static String bidAndTricks(int? bid, int tricks) =>
-      'pari ${bid ?? '?'} · plis $tricks';
   static const dealer = 'Donneur';
   static const dealerMark = 'D';
+  static const leadMark = '1er';
+  static const leadsNext = 'Entame le prochain pli';
+  static const ghostLabel = 'fantôme';
+  static String leadsRound(String name) => '$name entame la manche';
+  static const youLeadRound = 'Tu entames la manche';
   static String points(int score) => '$score pts';
   static String cardsLeft(int cards) => '$cards c.';
 
@@ -157,6 +159,9 @@ abstract final class Strings {
   static const hapticsLabel = 'Vibrations';
   static const reduceMotionLabel = 'Réduire les animations';
   static const licenses = 'Licences';
+  static const licensesHelp =
+      'Les mentions légales des composants libres que l\'appli embarque : '
+      'Flutter, la base de données, la police des pictogrammes…';
 
   static const rules = 'Règles';
   static const rulesTitle = 'Règles du jeu';
@@ -223,6 +228,11 @@ abstract final class Strings {
 
   static String usesPower(String name, Pirate pirate) =>
       '$name utilise ${pirateName(pirate)}';
+  static String harryLater(String name) =>
+      '${pirateName(Pirate.harry)} : $name pourra modifier son pari à la '
+      'fin de la manche';
+  static const harryLaterYou =
+      'Harry le Géant : tu pourras modifier ton pari à la fin de la manche';
   static String leaderChosen(String leader) =>
       '${pirateName(Pirate.rosie)} : $leader entame le prochain pli';
   static String cardsDiscarded(String name, int count) =>
@@ -241,7 +251,9 @@ abstract final class Strings {
       'Mise sur ton pari : gagnée s\'il est réussi, perdue sinon.';
   static String wagerOption(int amount) =>
       amount == 0 ? 'Ne rien miser' : 'Miser $amount';
-  static const adjustBidBody = 'Tu peux modifier ton pari d\'un pli.';
+  static String adjustBidBody(int tricks) =>
+      'La manche est finie : tu as pris $tricks pli${tricks > 1 ? 's' : ''}. '
+      'Tu peux modifier ton pari d\'un pli.';
   static String adjustBidOption(int change, int bid) => switch (change) {
     0 => 'Garder $bid',
     > 0 => 'Monter à $bid',
@@ -326,7 +338,9 @@ abstract final class Strings {
   static const colPlayer = 'Joueur';
   static const colBid = 'Pari';
   static const colTricks = 'Plis';
-  static const colBidTricks = 'Pari/Plis';
+  static const colTricksBid = 'Plis/Pari';
+  static String tricksOverBid(int tricks, int bid) => '$tricks/$bid';
+  static const bonusHeading = 'Bonus';
   static const colBidPoints = 'Points';
   static const colBonus = 'Bonus';
   static const colRound = 'Manche';

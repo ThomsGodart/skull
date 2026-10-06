@@ -143,6 +143,10 @@ class GameController extends ChangeNotifier {
   /// Set once the game is over.
   GameFinished? result;
 
+  /// The seat that leads the trick on the table, or the one about to be
+  /// played.
+  int get leader => _leader;
+
   /// Whose turn it is to play a card, when a trick is open.
   int? get currentSeat {
     // The ghost bids nothing: only the scoring seats' bids are awaited.

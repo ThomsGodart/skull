@@ -96,6 +96,10 @@ final class Game {
   late List<int> _wagers;
   final List<Alliance> _alliances = [];
 
+  /// The seat that won a trick with Harry this round, and so may change its
+  /// bid once the round is played out.
+  int? _harrySeat;
+
   /// A pirate power waiting for its player's decision.
   PowerQuestion? _power;
   late final List<int> _scores = List.filled(config.players, 0);
@@ -318,7 +322,8 @@ final class Game {
 
   /// Lets [seat] use the power of [pirate], which just won it a trick.
   ///
-  /// After the last trick of a round only Harry still serves a purpose.
+  /// After the last trick of a round only Harry still serves a purpose; his
+  /// question is in fact always asked then (see [_afterTrick]).
   void _usePower(Pirate pirate, int seat) {
     if (_roundOver && pirate != Pirate.harry) return;
     switch (pirate) {
@@ -352,11 +357,9 @@ final class Game {
         );
         return;
       case Pirate.harry:
-        final bid = _bids[seat]!;
-        _power = AdjustBidQuestion(
-          seat: seat,
-          changes: bidChangesFor(bid, _cardsDealt),
-        );
+        // His power is kept for the end of the round, when its player knows
+        // how many tricks they took.
+        _harrySeat = seat;
     }
     _events.add(PowerUsed(seat: seat, pirate: pirate));
   }
@@ -367,10 +370,18 @@ final class Game {
   }
 
   void _afterTrick() {
-    if (_roundOver) {
-      _finishRound();
-    } else {
+    if (!_roundOver) {
       _ghostPlays();
+    } else if (_harrySeat case final seat?) {
+      // The round is played out: whoever won a trick with Harry may now move
+      // their bid, before it is scored.
+      _harrySeat = null;
+      _power = AdjustBidQuestion(
+        seat: seat,
+        changes: bidChangesFor(_bids[seat]!, _cardsDealt),
+      );
+    } else {
+      _finishRound();
     }
   }
 
@@ -424,6 +435,7 @@ final class Game {
     _bonuses = List.generate(seats, (_) => []);
     _wagers = List.filled(seats, 0);
     _alliances.clear();
+    _harrySeat = null;
     _trick = [];
     final deck = deckFor(config);
     _random.shuffle(deck);

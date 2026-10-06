@@ -114,6 +114,12 @@ class _TableScreenState extends State<TableScreen> {
 
   bool get _namedPirates => _game.config.piratePowers;
 
+  /// Dialogs that show cards take nearly the whole width of the screen.
+  static const _dialogInset = EdgeInsets.symmetric(
+    horizontal: Tokens.space3,
+    vertical: Tokens.space6,
+  );
+
   /// A pirate just won the human a trick: a dialog asks how to use its power.
   /// It cannot be dismissed, since the game waits for the answer.
   Future<void> _askPower(PowerQuestion question) async {
@@ -126,6 +132,7 @@ class _TableScreenState extends State<TableScreen> {
           question: question,
           seats: _seats,
           bid: _game.bids[_game.humanSeat] ?? 0,
+          tricksWon: _game.tricksWon[_game.humanSeat],
           namedPirates: _namedPirates,
         ),
       ),
@@ -139,6 +146,7 @@ class _TableScreenState extends State<TableScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Tokens.panel,
+        insetPadding: _dialogInset,
         title: Text(Strings.pirateName(Pirate.juanita)),
         content: SingleChildScrollView(
           child: Column(
@@ -151,7 +159,7 @@ class _TableScreenState extends State<TableScreen> {
                 runSpacing: Tokens.space1,
                 children: [
                   for (final card in sortedHand(stock))
-                    CardView(card, width: 40, namedPirates: _namedPirates),
+                    CardView(card, width: 62, namedPirates: _namedPirates),
                 ],
               ),
             ],
@@ -246,14 +254,40 @@ class _TableScreenState extends State<TableScreen> {
     if (quit ?? false) navigator.pop();
   }
 
+  /// The whole score sheet, on nearly the full screen.
   void _showScoreSheet() => showModalBottomSheet<void>(
     context: context,
     backgroundColor: Tokens.panel,
     showDragHandle: true,
-    builder: (context) => SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(Tokens.space3),
-        child: ScoreSheet(rounds: _game.scoredRounds, seats: _scoringSeats),
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (context) => FractionallySizedBox(
+      heightFactor: 0.92,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: Tokens.space4),
+            child: Text(
+              Strings.scoreSheet,
+              style: TextStyle(
+                color: Tokens.text,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(Tokens.space3),
+              child: ScoreSheet(
+                rounds: _game.scoredRounds,
+                seats: _scoringSeats,
+                large: true,
+              ),
+            ),
+          ),
+        ],
       ),
     ),
   );
@@ -262,15 +296,21 @@ class _TableScreenState extends State<TableScreen> {
     context: context,
     builder: (context) => AlertDialog(
       backgroundColor: Tokens.panel,
+      insetPadding: _dialogInset,
       title: const Text(Strings.lastTrick),
       content: _game.lastTrick == null
           ? const Text(Strings.noLastTrick)
-          : TrickArea(
-              plays: _game.lastTrick!,
-              seats: _seats,
-              winner: _game.lastTrickWinner,
-              cardWidth: 46,
-              namedPirates: _namedPirates,
+          : SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: TrickArea(
+                  plays: _game.lastTrick!,
+                  seats: _seats,
+                  winner: _game.lastTrickWinner,
+                  cardWidth: 78,
+                  namedPirates: _namedPirates,
+                ),
+              ),
             ),
       actions: [
         TextButton(
@@ -294,7 +334,12 @@ class _TableScreenState extends State<TableScreen> {
           : Strings.trickFor(_seats[winner].name);
     }
     if (_powerNotice() case final notice?) return notice;
-    if (game.bidQuestion != null) return Strings.bidsHidden;
+    if (game.bidQuestion != null) {
+      final lead = game.leader == game.humanSeat
+          ? Strings.youLeadRound
+          : Strings.leadsRound(_seats[game.leader].name);
+      return '$lead\n${Strings.bidsHidden}';
+    }
     if (game.playQuestion case final question?) {
       if (_selected != null) return Strings.tapAgain;
       final suit = game.leadSuit;
@@ -313,10 +358,23 @@ class _TableScreenState extends State<TableScreen> {
     return '';
   }
 
+  /// Cards in hand are as large as their number allows: few cards, big cards.
+  static double _handCardWidth(int cards) => switch (cards) {
+    <= 4 => 96,
+    <= 6 => 88,
+    <= 8 => 80,
+    _ => 74,
+  };
+
   /// What a pirate's power just did, in words.
   String? _powerNotice() {
     String name(int seat) => _seats[seat].name;
     return switch (_game.powerNotice) {
+      // Harry only acts once the round is played out: say so.
+      PowerUsed(:final seat, pirate: Pirate.harry) =>
+        seat == _game.humanSeat
+            ? Strings.harryLaterYou
+            : Strings.harryLater(name(seat)),
       PowerUsed(:final seat, :final pirate) => Strings.usesPower(
         name(seat),
         pirate,
@@ -388,14 +446,17 @@ class _TableScreenState extends State<TableScreen> {
                             ),
                           ),
                           const SizedBox(height: Tokens.space2),
-                          _seatChip(game.humanSeat, showCards: false),
+                          SizedBox(
+                            width: 220,
+                            child: _seatChip(game.humanSeat, showCards: false),
+                          ),
                           const SizedBox(height: Tokens.space2),
                           HandFan(
                             cards: game.hand,
                             legal: game.playQuestion?.legalCards,
                             selected: _selected,
                             onTap: _onCardTap,
-                            cardWidth: 64,
+                            cardWidth: _handCardWidth(game.hand.length),
                             namedPirates: _namedPirates,
                           ),
                         ],
@@ -450,11 +511,18 @@ class _TableScreenState extends State<TableScreen> {
     );
   }
 
-  /// Up to seven opponents, four to a row.
+  /// The opponents, in rows of two to four so that each tile stays wide
+  /// enough to read at a glance.
   Widget _opponents() => LayoutBuilder(
     builder: (context, constraints) {
-      const perRow = 4;
-      const gap = Tokens.space1;
+      final opponents = _game.seats - 1;
+      final perRow = switch (opponents) {
+        <= 3 => opponents,
+        4 => 2,
+        <= 6 => 3,
+        _ => 4,
+      };
+      const gap = Tokens.space2;
       final width = (constraints.maxWidth - gap * (perRow - 1)) / perRow;
       return Wrap(
         alignment: WrapAlignment.center,
@@ -463,26 +531,27 @@ class _TableScreenState extends State<TableScreen> {
         children: [
           for (var seat = 0; seat < _game.seats; seat++)
             if (seat != _game.humanSeat)
-              SizedBox(
-                width: width,
-                child: _seatChip(seat, showCards: true, dense: true),
-              ),
+              SizedBox(width: width, child: _seatChip(seat, showCards: true)),
         ],
       );
     },
   );
 
-  Widget _seatChip(int seat, {required bool showCards, bool dense = false}) =>
-      SeatChip(
-        dense: dense,
-        identity: _seats[seat],
-        bid: _game.bids.elementAtOrNull(seat),
-        tricksWon: _game.tricksWon.elementAtOrNull(seat) ?? 0,
-        score: _game.scores[seat],
-        cardsLeft: showCards ? _game.handSizes.elementAtOrNull(seat) : null,
-        isCurrent: _game.currentSeat == seat,
-        isDealer: _game.dealer == seat,
-      );
+  Widget _seatChip(int seat, {required bool showCards}) => SeatChip(
+    identity: _seats[seat],
+    bid: _game.bids.elementAtOrNull(seat),
+    tricksWon: _game.tricksWon.elementAtOrNull(seat) ?? 0,
+    score: _game.scores[seat],
+    cardsLeft: showCards ? _game.handSizes.elementAtOrNull(seat) : null,
+    isCurrent: _game.currentSeat == seat,
+    isDealer: _game.dealer == seat,
+    // Between two tricks, and while bids are open: who plays first.
+    leadsNext:
+        _game.leader == seat &&
+        _game.trick.isEmpty &&
+        _game.roundSummary == null &&
+        _game.result == null,
+  );
 
   Widget _center() {
     // Nothing is on the table while bids are open: the bid goes there.
@@ -497,11 +566,21 @@ class _TableScreenState extends State<TableScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        TrickArea(
-          plays: _game.trick,
-          seats: _seats,
-          winner: _game.trickDestroyed ? null : _game.trickWinner,
-          namedPirates: _namedPirates,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Three or four cards to a row, as wide as the table allows.
+            final perRow = _game.trick.length.clamp(3, 4);
+            const gap = Tokens.space2;
+            final width = ((constraints.maxWidth - gap * (perRow - 1)) / perRow)
+                .clamp(56.0, 104.0);
+            return TrickArea(
+              plays: _game.trick,
+              seats: _seats,
+              winner: _game.trickDestroyed ? null : _game.trickWinner,
+              cardWidth: width,
+              namedPirates: _namedPirates,
+            );
+          },
         ),
         for (final alliance in _game.trickAlliances)
           Padding(

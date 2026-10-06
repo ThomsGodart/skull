@@ -84,6 +84,7 @@ class SettingsScreen extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.description_outlined),
                 title: const Text(Strings.licenses),
+                subtitle: const Text(Strings.licensesHelp),
                 onTap: () => showLicensePage(
                   context: context,
                   applicationName: Strings.appTitle,

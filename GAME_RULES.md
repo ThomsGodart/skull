@@ -316,7 +316,7 @@ Mode optionnel. Un pouvoir se déclenche **chaque fois qu'on remporte un pli gr�
 | **Will le Bandit** | Ajouter 2 cartes de la pioche à sa main, puis défausser 2 cartes. |
 | **Rascal le Flambeur** | Miser 0, 10 ou 20 points. Gagnés si le pari de début de manche est réussi, perdus sinon. |
 | **Juanita Jade** | Regarder secrètement les cartes non distribuées pour savoir ce qui n'est pas en jeu. |
-| **Harry le Géant** | Modifier son pari de +1 ou −1, ou le laisser tel quel. |
+| **Harry le Géant** | Modifier son pari de +1 ou −1, ou le laisser tel quel. **Dans ce projet, il s'utilise à la fin de la manche**, une fois tous les plis joués (décision de Thomas, 2026-10-06 ; `docs/DECISIONS.md` R16). |
 
 ## 11. Récapitulatif des constantes
 

@@ -187,7 +187,7 @@ void main() {
               ChooseLeaderQuestion() => Pirate.rosie,
               DiscardQuestion() => Pirate.will,
               WagerQuestion() => Pirate.rascal,
-              AdjustBidQuestion() => Pirate.harry,
+              // Harry waits for the end of the round: see his own test.
               _ => null,
             };
             if (pirate != null) {
@@ -201,8 +201,45 @@ void main() {
       }
       expect(
         asked.keys,
-        containsAll([Pirate.rosie, Pirate.will, Pirate.rascal, Pirate.harry]),
+        containsAll([Pirate.rosie, Pirate.will, Pirate.rascal]),
       );
+    });
+
+    test('Harry: whoever won a trick with him is asked once the round is '
+        'over, not when the trick is won', () {
+      var asked = 0;
+      var wonEarly = 0;
+      for (var seed = 0; seed < seeds; seed++) {
+        final game = Game(withSeed(powers, seed));
+        int? harrySeat;
+        play(
+          game,
+          botSeed: seed,
+          onEvent: (event) {
+            if (event is RoundStarted) harrySeat = null;
+            if (event is TrickWon && !event.destroyed) {
+              final card = event.plays
+                  .firstWhere((play) => play.seat == event.winner)
+                  .card;
+              if (Pirate.of(card) == Pirate.harry) {
+                harrySeat = event.winner;
+                final handsLeft = game.viewFor(0).handSizes.first;
+                if (handsLeft > 0) wonEarly++;
+              }
+            }
+          },
+          onQuestion: (question) {
+            if (question is! AdjustBidQuestion) return null;
+            final sizes = game.viewFor(0).handSizes;
+            expect(sizes, everyElement(0), reason: 'the round is played out');
+            expect(question.seat, harrySeat);
+            asked++;
+            return null;
+          },
+        );
+      }
+      expect(asked, greaterThan(5));
+      expect(wonEarly, greaterThan(0), reason: 'he also wins before the end');
     });
 
     test('Rosie: the seat she names leads the next trick', () {

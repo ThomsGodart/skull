@@ -137,8 +137,10 @@ abstract final class RulesContent {
           'pari est réussi, perdus sinon.\n'
           '• Juanita Jade : regarde les cartes qui n\'ont pas été '
           'distribuées.\n'
-          '• Harry le Géant : modifie ton pari de plus ou moins 1.\n\n'
-          'Après le dernier pli d\'une manche, seul Harry sert encore.',
+          '• Harry le Géant : à la fin de la manche, une fois tous les plis '
+          'joués, modifie ton pari de plus ou moins 1.\n\n'
+          'Les autres pouvoirs s\'utilisent tout de suite, et ne servent '
+          'plus à rien après le dernier pli.',
     ),
     (
       title: 'Score Rascal',

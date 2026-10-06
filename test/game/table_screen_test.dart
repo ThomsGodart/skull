@@ -242,7 +242,7 @@ void main() {
     final controller = await openTable(tester, players: 2, seed: 4);
 
     expect(find.text(Strings.ghostName), findsOneWidget);
-    expect(find.text(Strings.ghostTricks(0)), findsOneWidget);
+    expect(find.textContaining(Strings.ghostLabel), findsOneWidget);
 
     for (var step = 0; step < 4000; step++) {
       await tester.pump();
@@ -275,6 +275,60 @@ void main() {
       ),
       findsNothing,
     );
+  });
+
+  testWidgets('before the first trick, the seat that will lead is marked, '
+      'and the table says who it is', (tester) async {
+    final controller = await openTable(tester);
+
+    expect(find.text(Strings.leadMark), findsOneWidget);
+    final leader = controller.leader;
+    final expected = leader == 0
+        ? Strings.youLeadRound
+        : Strings.leadsRound(Strings.botNames[leader - 1]);
+    expect(find.textContaining(expected), findsOneWidget);
+  });
+
+  testWidgets('the round summary gives tricks before bid, under a Bonus '
+      'heading when there is one', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: Tokens.theme(),
+        home: Scaffold(
+          body: RoundSummaryTable(
+            round: RoundScored(
+              round: 3,
+              results: [
+                SeatResult(
+                  bid: 2,
+                  tricksWon: 1,
+                  bonuses: const [Bonus.standardFourteen],
+                  score: scoreRound(bid: 2, tricksWon: 1, cardsDealt: 3),
+                  totalScore: -10,
+                ),
+                SeatResult(
+                  bid: 0,
+                  tricksWon: 0,
+                  bonuses: const [],
+                  score: scoreRound(bid: 0, tricksWon: 0, cardsDealt: 3),
+                  totalScore: 30,
+                ),
+              ],
+            ),
+            seats: SeatIdentity.table(
+              2,
+              human: const SeatIdentity('Anne', Tokens.gold),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text(Strings.colTricksBid), findsOneWidget);
+    expect(find.text('1/2'), findsOneWidget);
+    expect(find.text('0/0'), findsOneWidget);
+    // The column of the table, and the heading above the details.
+    expect(find.text(Strings.bonusHeading), findsNWidgets(2));
   });
 
   for (final players in [3, 8]) {

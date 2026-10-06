@@ -15,6 +15,7 @@ class PowerDialog extends StatefulWidget {
     required this.question,
     required this.seats,
     required this.bid,
+    this.tricksWon = 0,
     this.namedPirates = true,
   });
 
@@ -23,6 +24,9 @@ class PowerDialog extends StatefulWidget {
 
   /// The human's current bid, to show what Harry would make of it.
   final int bid;
+
+  /// The tricks the human took this round, shown with Harry's question.
+  final int tricksWon;
   final bool namedPirates;
 
   @override
@@ -80,7 +84,7 @@ class _PowerDialogState extends State<PowerDialog> {
       ),
       AdjustBidQuestion(:final changes) => (
         Pirate.harry,
-        Strings.adjustBidBody,
+        Strings.adjustBidBody(widget.tricksWon),
         [
           for (final change in changes)
             _choice(
@@ -109,7 +113,7 @@ class _PowerDialogState extends State<PowerDialog> {
                   }),
                   child: CardView(
                     card,
-                    width: 46,
+                    width: 64,
                     selected: _discards.contains(card),
                     namedPirates: widget.namedPirates,
                   ),
@@ -132,6 +136,10 @@ class _PowerDialogState extends State<PowerDialog> {
     };
     return AlertDialog(
       backgroundColor: Tokens.panel,
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: Tokens.space3,
+        vertical: Tokens.space6,
+      ),
       title: Text(Strings.pirateName(pirate)),
       content: SingleChildScrollView(
         child: Column(
