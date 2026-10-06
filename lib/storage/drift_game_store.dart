@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../engine/engine.dart';
+import '../history/game_summary.dart';
 import 'app_database.dart';
 import 'game_store.dart';
 
@@ -68,14 +69,90 @@ final class DriftGameStore implements GameStore {
   );
 
   @override
-  Future<void> finish(int id, GameFinished result) => _update(
+  Future<void> finish(
+    int id,
+    GameFinished result, {
+    required GameSummary summary,
+    required String playerName,
+  }) => _update(
     id,
     GamesCompanion(
       finishedAt: Value(DateTime.now()),
       finalScores: Value(jsonEncode(result.scores)),
       winner: Value(result.winner),
+      playerName: Value(playerName),
+      roundsPlayed: Value(summary.rounds),
+      bidsMade: Value(summary.bidsMade),
+      zeroBids: Value(summary.zeroBids),
+      zeroBidsMade: Value(summary.zeroBidsMade),
     ),
   );
+
+  @override
+  Future<List<FinishedGame>> loadFinished() async {
+    final rows =
+        await (_database.select(_games)
+              ..where((game) => game.finishedAt.isNotNull())
+              ..orderBy([
+                (game) => OrderingTerm.desc(game.finishedAt),
+                (game) => OrderingTerm.desc(game.id),
+              ]))
+            .get();
+    return [for (final row in rows) ?_finished(row)];
+  }
+
+  /// [row] as a finished game, or null when it cannot be read.
+  FinishedGame? _finished(StoredGame row) {
+    try {
+      final scores = (jsonDecode(row.finalScores!) as List).cast<int>();
+      final winner = row.winner!;
+      if (winner < 0 || winner >= scores.length) return null;
+      final rounds = row.roundsPlayed;
+      return FinishedGame(
+        id: row.id,
+        finishedAt: row.finishedAt!,
+        scores: List.unmodifiable(scores),
+        winner: winner,
+        playerName: row.playerName,
+        summary: rounds == null
+            ? null
+            : GameSummary(
+                rounds: rounds,
+                bidsMade: row.bidsMade ?? 0,
+                zeroBids: row.zeroBids ?? 0,
+                zeroBidsMade: row.zeroBidsMade ?? 0,
+              ),
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  @override
+  Future<SavedGame?> loadGame(int id) async {
+    final row = await (_database.select(
+      _games,
+    )..where((game) => game.id.equals(id))).getSingleOrNull();
+    if (row == null) return null;
+    try {
+      return SavedGame(
+        id: row.id,
+        config: GameConfig.fromJson(
+          jsonDecode(row.config) as Map<String, Object?>,
+        ),
+        answers: decodeAnswers(row.answers),
+        round: row.round,
+        humanScore: row.humanScore,
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> deleteFinished(int id) => (_database.delete(
+    _games,
+  )..where((game) => game.id.equals(id) & game.finishedAt.isNotNull())).go();
 
   @override
   Future<void> discardActive() => (_database.delete(

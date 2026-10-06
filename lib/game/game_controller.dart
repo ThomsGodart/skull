@@ -44,6 +44,7 @@ final class GameProgress {
     required this.answers,
     required this.round,
     required this.humanScore,
+    this.rounds = const [],
     this.result,
   });
 
@@ -51,6 +52,9 @@ final class GameProgress {
   final List<Answer> answers;
   final int round;
   final int humanScore;
+
+  /// Every round scored and shown so far.
+  final List<RoundScored> rounds;
 
   /// Set once, when the final standings are shown.
   final GameFinished? result;
@@ -251,6 +255,7 @@ class GameController extends ChangeNotifier {
         answers: _game.answers,
         round: view.round,
         humanScore: view.scores[humanSeat],
+        rounds: List.unmodifiable(scoredRounds),
         result: result,
       ),
     );

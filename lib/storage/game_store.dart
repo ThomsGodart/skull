@@ -1,4 +1,5 @@
 import '../engine/engine.dart';
+import '../history/game_summary.dart';
 
 /// A game as it is kept between two launches of the app: with its config, its
 /// answers are all it takes to replay it to where it was left.
@@ -37,8 +38,24 @@ abstract interface class GameStore {
     required int humanScore,
   });
 
-  /// Marks game [id] as over: it is no longer the game in progress.
-  Future<void> finish(int id, GameFinished result);
+  /// Marks game [id] as over: it is no longer the game in progress, and
+  /// joins the finished games.
+  Future<void> finish(
+    int id,
+    GameFinished result, {
+    required GameSummary summary,
+    required String playerName,
+  });
+
+  /// Every finished game, the latest first.
+  Future<List<FinishedGame>> loadFinished();
+
+  /// The config and answers of game [id], to replay it. Null when the game
+  /// is gone or can no longer be read.
+  Future<SavedGame?> loadGame(int id);
+
+  /// Forgets finished game [id].
+  Future<void> deleteFinished(int id);
 
   /// Drops the game in progress, if any.
   Future<void> discardActive();

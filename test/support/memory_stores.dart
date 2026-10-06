@@ -1,4 +1,5 @@
 import 'package:skull_kings/engine/engine.dart';
+import 'package:skull_kings/history/game_summary.dart';
 import 'package:skull_kings/storage/game_store.dart';
 import 'package:skull_kings/storage/settings_store.dart';
 
@@ -18,7 +19,12 @@ class MemorySettingsStore implements SettingsStore {
 /// Games kept in memory.
 class MemoryGameStore implements GameStore {
   SavedGame? active;
-  final List<GameFinished> finished = [];
+
+  /// Finished games, the latest first.
+  final List<FinishedGame> finished = [];
+
+  /// What was kept of each finished game, to replay it.
+  final Map<int, SavedGame> kept = {};
   int _nextId = 1;
 
   /// How many games were created.
@@ -57,9 +63,40 @@ class MemoryGameStore implements GameStore {
   }
 
   @override
-  Future<void> finish(int id, GameFinished result) async {
-    if (active?.id == id) active = null;
-    finished.add(result);
+  Future<void> finish(
+    int id,
+    GameFinished result, {
+    required GameSummary summary,
+    required String playerName,
+  }) async {
+    final game = active?.id == id ? active : null;
+    if (game != null) {
+      kept[id] = game;
+      active = null;
+    }
+    finished.insert(
+      0,
+      FinishedGame(
+        id: id,
+        finishedAt: DateTime(2026, 10, 6, 21, 30),
+        scores: result.scores,
+        winner: result.winner,
+        playerName: playerName,
+        summary: summary,
+      ),
+    );
+  }
+
+  @override
+  Future<List<FinishedGame>> loadFinished() async => List.of(finished);
+
+  @override
+  Future<SavedGame?> loadGame(int id) async => kept[id];
+
+  @override
+  Future<void> deleteFinished(int id) async {
+    finished.removeWhere((game) => game.id == id);
+    kept.remove(id);
   }
 
   @override

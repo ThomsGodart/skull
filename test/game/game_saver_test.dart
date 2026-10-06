@@ -24,7 +24,11 @@ void main() {
   tearDown(() => database.close());
 
   Future<(GameController, GameSaver)> newGame() async {
-    final saver = GameSaver(store, await store.create(config));
+    final saver = GameSaver(
+      store,
+      await store.create(config),
+      playerName: 'Anne',
+    );
     final controller = GameController(
       config: config,
       bot: randomBot(Random(13)),
@@ -44,6 +48,8 @@ void main() {
     final stored = (await database.select(database.games).get()).single;
     expect(stored.finishedAt, isNotNull);
     expect(stored.winner, controller.result!.winner);
+    expect(stored.playerName, 'Anne');
+    expect(stored.roundsPlayed, controller.scoredRounds.length);
     expect(stored.humanScore, controller.result!.scores[0]);
     final replayed = Game.replay(config, decodeAnswers(stored.answers));
     expect(replayed.isFinished, isTrue);
@@ -76,7 +82,7 @@ void main() {
         bot: randomBot(Random(13)),
         speed: TableSpeed.instant,
         savedAnswers: active.answers,
-        onProgress: GameSaver(store, active.id).record,
+        onProgress: GameSaver(store, active.id, playerName: 'Anne').record,
       )..start();
       await settle();
 
@@ -92,6 +98,7 @@ void main() {
       final saver = GameSaver(
         failing,
         await store.create(config),
+        playerName: 'Anne',
         onError: errors.add,
       );
       GameProgress progress(int round) =>
@@ -133,11 +140,10 @@ class _FailingOnce implements GameStore {
   }
 
   @override
+  Object? noSuchMethod(Invocation invocation) => throw UnimplementedError();
+
+  @override
   Future<int> create(GameConfig config) => _inner.create(config);
-  @override
-  Future<void> discardActive() => _inner.discardActive();
-  @override
-  Future<void> finish(int id, GameFinished result) => _inner.finish(id, result);
   @override
   Future<SavedGame?> loadActive() => _inner.loadActive();
 }

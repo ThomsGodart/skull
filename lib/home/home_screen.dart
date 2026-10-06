@@ -72,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final saver = GameSaver(
       _games,
       game.id,
+      playerName: _settings.playerName,
       onError: (_) => messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(const SnackBar(content: Text(Strings.saveFailed))),

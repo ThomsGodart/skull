@@ -25,6 +25,16 @@ class Games extends Table {
   /// Final score of each seat, as a JSON list. Set when the game is over.
   TextColumn get finalScores => text().nullable()();
   IntColumn get winner => integer().nullable()();
+
+  /// What the human was called when the game ended.
+  TextColumn get playerName => text().nullable()();
+
+  /// How the human bid over the game, for the statistics. All four are set
+  /// together when the game ends; null for a game kept before version 2.
+  IntColumn get roundsPlayed => integer().nullable()();
+  IntColumn get bidsMade => integer().nullable()();
+  IntColumn get zeroBids => integer().nullable()();
+  IntColumn get zeroBidsMade => integer().nullable()();
 }
 
 /// The app's settings, one row per key.
@@ -46,5 +56,18 @@ class AppDatabase extends _$AppDatabase {
       AppDatabase(driftDatabase(name: 'skull_kings'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) {
+        await migrator.addColumn(games, games.playerName);
+        await migrator.addColumn(games, games.roundsPlayed);
+        await migrator.addColumn(games, games.bidsMade);
+        await migrator.addColumn(games, games.zeroBids);
+        await migrator.addColumn(games, games.zeroBidsMade);
+      }
+    },
+  );
 }

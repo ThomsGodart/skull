@@ -107,6 +107,61 @@ class $GamesTable extends Games with TableInfo<$GamesTable, StoredGame> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _playerNameMeta = const VerificationMeta(
+    'playerName',
+  );
+  @override
+  late final GeneratedColumn<String> playerName = GeneratedColumn<String>(
+    'player_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _roundsPlayedMeta = const VerificationMeta(
+    'roundsPlayed',
+  );
+  @override
+  late final GeneratedColumn<int> roundsPlayed = GeneratedColumn<int>(
+    'rounds_played',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bidsMadeMeta = const VerificationMeta(
+    'bidsMade',
+  );
+  @override
+  late final GeneratedColumn<int> bidsMade = GeneratedColumn<int>(
+    'bids_made',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _zeroBidsMeta = const VerificationMeta(
+    'zeroBids',
+  );
+  @override
+  late final GeneratedColumn<int> zeroBids = GeneratedColumn<int>(
+    'zero_bids',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _zeroBidsMadeMeta = const VerificationMeta(
+    'zeroBidsMade',
+  );
+  @override
+  late final GeneratedColumn<int> zeroBidsMade = GeneratedColumn<int>(
+    'zero_bids_made',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -118,6 +173,11 @@ class $GamesTable extends Games with TableInfo<$GamesTable, StoredGame> {
     finishedAt,
     finalScores,
     winner,
+    playerName,
+    roundsPlayed,
+    bidsMade,
+    zeroBids,
+    zeroBidsMade,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -187,6 +247,42 @@ class $GamesTable extends Games with TableInfo<$GamesTable, StoredGame> {
         winner.isAcceptableOrUnknown(data['winner']!, _winnerMeta),
       );
     }
+    if (data.containsKey('player_name')) {
+      context.handle(
+        _playerNameMeta,
+        playerName.isAcceptableOrUnknown(data['player_name']!, _playerNameMeta),
+      );
+    }
+    if (data.containsKey('rounds_played')) {
+      context.handle(
+        _roundsPlayedMeta,
+        roundsPlayed.isAcceptableOrUnknown(
+          data['rounds_played']!,
+          _roundsPlayedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('bids_made')) {
+      context.handle(
+        _bidsMadeMeta,
+        bidsMade.isAcceptableOrUnknown(data['bids_made']!, _bidsMadeMeta),
+      );
+    }
+    if (data.containsKey('zero_bids')) {
+      context.handle(
+        _zeroBidsMeta,
+        zeroBids.isAcceptableOrUnknown(data['zero_bids']!, _zeroBidsMeta),
+      );
+    }
+    if (data.containsKey('zero_bids_made')) {
+      context.handle(
+        _zeroBidsMadeMeta,
+        zeroBidsMade.isAcceptableOrUnknown(
+          data['zero_bids_made']!,
+          _zeroBidsMadeMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -232,6 +328,26 @@ class $GamesTable extends Games with TableInfo<$GamesTable, StoredGame> {
         DriftSqlType.int,
         data['${effectivePrefix}winner'],
       ),
+      playerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}player_name'],
+      ),
+      roundsPlayed: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rounds_played'],
+      ),
+      bidsMade: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}bids_made'],
+      ),
+      zeroBids: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}zero_bids'],
+      ),
+      zeroBidsMade: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}zero_bids_made'],
+      ),
     );
   }
 
@@ -259,6 +375,16 @@ class StoredGame extends DataClass implements Insertable<StoredGame> {
   /// Final score of each seat, as a JSON list. Set when the game is over.
   final String? finalScores;
   final int? winner;
+
+  /// What the human was called when the game ended.
+  final String? playerName;
+
+  /// How the human bid over the game, for the statistics. All four are set
+  /// together when the game ends; null for a game kept before version 2.
+  final int? roundsPlayed;
+  final int? bidsMade;
+  final int? zeroBids;
+  final int? zeroBidsMade;
   const StoredGame({
     required this.id,
     required this.startedAt,
@@ -269,6 +395,11 @@ class StoredGame extends DataClass implements Insertable<StoredGame> {
     this.finishedAt,
     this.finalScores,
     this.winner,
+    this.playerName,
+    this.roundsPlayed,
+    this.bidsMade,
+    this.zeroBids,
+    this.zeroBidsMade,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -287,6 +418,21 @@ class StoredGame extends DataClass implements Insertable<StoredGame> {
     }
     if (!nullToAbsent || winner != null) {
       map['winner'] = Variable<int>(winner);
+    }
+    if (!nullToAbsent || playerName != null) {
+      map['player_name'] = Variable<String>(playerName);
+    }
+    if (!nullToAbsent || roundsPlayed != null) {
+      map['rounds_played'] = Variable<int>(roundsPlayed);
+    }
+    if (!nullToAbsent || bidsMade != null) {
+      map['bids_made'] = Variable<int>(bidsMade);
+    }
+    if (!nullToAbsent || zeroBids != null) {
+      map['zero_bids'] = Variable<int>(zeroBids);
+    }
+    if (!nullToAbsent || zeroBidsMade != null) {
+      map['zero_bids_made'] = Variable<int>(zeroBidsMade);
     }
     return map;
   }
@@ -308,6 +454,21 @@ class StoredGame extends DataClass implements Insertable<StoredGame> {
       winner: winner == null && nullToAbsent
           ? const Value.absent()
           : Value(winner),
+      playerName: playerName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(playerName),
+      roundsPlayed: roundsPlayed == null && nullToAbsent
+          ? const Value.absent()
+          : Value(roundsPlayed),
+      bidsMade: bidsMade == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bidsMade),
+      zeroBids: zeroBids == null && nullToAbsent
+          ? const Value.absent()
+          : Value(zeroBids),
+      zeroBidsMade: zeroBidsMade == null && nullToAbsent
+          ? const Value.absent()
+          : Value(zeroBidsMade),
     );
   }
 
@@ -326,6 +487,11 @@ class StoredGame extends DataClass implements Insertable<StoredGame> {
       finishedAt: serializer.fromJson<DateTime?>(json['finishedAt']),
       finalScores: serializer.fromJson<String?>(json['finalScores']),
       winner: serializer.fromJson<int?>(json['winner']),
+      playerName: serializer.fromJson<String?>(json['playerName']),
+      roundsPlayed: serializer.fromJson<int?>(json['roundsPlayed']),
+      bidsMade: serializer.fromJson<int?>(json['bidsMade']),
+      zeroBids: serializer.fromJson<int?>(json['zeroBids']),
+      zeroBidsMade: serializer.fromJson<int?>(json['zeroBidsMade']),
     );
   }
   @override
@@ -341,6 +507,11 @@ class StoredGame extends DataClass implements Insertable<StoredGame> {
       'finishedAt': serializer.toJson<DateTime?>(finishedAt),
       'finalScores': serializer.toJson<String?>(finalScores),
       'winner': serializer.toJson<int?>(winner),
+      'playerName': serializer.toJson<String?>(playerName),
+      'roundsPlayed': serializer.toJson<int?>(roundsPlayed),
+      'bidsMade': serializer.toJson<int?>(bidsMade),
+      'zeroBids': serializer.toJson<int?>(zeroBids),
+      'zeroBidsMade': serializer.toJson<int?>(zeroBidsMade),
     };
   }
 
@@ -354,6 +525,11 @@ class StoredGame extends DataClass implements Insertable<StoredGame> {
     Value<DateTime?> finishedAt = const Value.absent(),
     Value<String?> finalScores = const Value.absent(),
     Value<int?> winner = const Value.absent(),
+    Value<String?> playerName = const Value.absent(),
+    Value<int?> roundsPlayed = const Value.absent(),
+    Value<int?> bidsMade = const Value.absent(),
+    Value<int?> zeroBids = const Value.absent(),
+    Value<int?> zeroBidsMade = const Value.absent(),
   }) => StoredGame(
     id: id ?? this.id,
     startedAt: startedAt ?? this.startedAt,
@@ -364,6 +540,11 @@ class StoredGame extends DataClass implements Insertable<StoredGame> {
     finishedAt: finishedAt.present ? finishedAt.value : this.finishedAt,
     finalScores: finalScores.present ? finalScores.value : this.finalScores,
     winner: winner.present ? winner.value : this.winner,
+    playerName: playerName.present ? playerName.value : this.playerName,
+    roundsPlayed: roundsPlayed.present ? roundsPlayed.value : this.roundsPlayed,
+    bidsMade: bidsMade.present ? bidsMade.value : this.bidsMade,
+    zeroBids: zeroBids.present ? zeroBids.value : this.zeroBids,
+    zeroBidsMade: zeroBidsMade.present ? zeroBidsMade.value : this.zeroBidsMade,
   );
   StoredGame copyWithCompanion(GamesCompanion data) {
     return StoredGame(
@@ -382,6 +563,17 @@ class StoredGame extends DataClass implements Insertable<StoredGame> {
           ? data.finalScores.value
           : this.finalScores,
       winner: data.winner.present ? data.winner.value : this.winner,
+      playerName: data.playerName.present
+          ? data.playerName.value
+          : this.playerName,
+      roundsPlayed: data.roundsPlayed.present
+          ? data.roundsPlayed.value
+          : this.roundsPlayed,
+      bidsMade: data.bidsMade.present ? data.bidsMade.value : this.bidsMade,
+      zeroBids: data.zeroBids.present ? data.zeroBids.value : this.zeroBids,
+      zeroBidsMade: data.zeroBidsMade.present
+          ? data.zeroBidsMade.value
+          : this.zeroBidsMade,
     );
   }
 
@@ -396,7 +588,12 @@ class StoredGame extends DataClass implements Insertable<StoredGame> {
           ..write('humanScore: $humanScore, ')
           ..write('finishedAt: $finishedAt, ')
           ..write('finalScores: $finalScores, ')
-          ..write('winner: $winner')
+          ..write('winner: $winner, ')
+          ..write('playerName: $playerName, ')
+          ..write('roundsPlayed: $roundsPlayed, ')
+          ..write('bidsMade: $bidsMade, ')
+          ..write('zeroBids: $zeroBids, ')
+          ..write('zeroBidsMade: $zeroBidsMade')
           ..write(')'))
         .toString();
   }
@@ -412,6 +609,11 @@ class StoredGame extends DataClass implements Insertable<StoredGame> {
     finishedAt,
     finalScores,
     winner,
+    playerName,
+    roundsPlayed,
+    bidsMade,
+    zeroBids,
+    zeroBidsMade,
   );
   @override
   bool operator ==(Object other) =>
@@ -425,7 +627,12 @@ class StoredGame extends DataClass implements Insertable<StoredGame> {
           other.humanScore == this.humanScore &&
           other.finishedAt == this.finishedAt &&
           other.finalScores == this.finalScores &&
-          other.winner == this.winner);
+          other.winner == this.winner &&
+          other.playerName == this.playerName &&
+          other.roundsPlayed == this.roundsPlayed &&
+          other.bidsMade == this.bidsMade &&
+          other.zeroBids == this.zeroBids &&
+          other.zeroBidsMade == this.zeroBidsMade);
 }
 
 class GamesCompanion extends UpdateCompanion<StoredGame> {
@@ -438,6 +645,11 @@ class GamesCompanion extends UpdateCompanion<StoredGame> {
   final Value<DateTime?> finishedAt;
   final Value<String?> finalScores;
   final Value<int?> winner;
+  final Value<String?> playerName;
+  final Value<int?> roundsPlayed;
+  final Value<int?> bidsMade;
+  final Value<int?> zeroBids;
+  final Value<int?> zeroBidsMade;
   const GamesCompanion({
     this.id = const Value.absent(),
     this.startedAt = const Value.absent(),
@@ -448,6 +660,11 @@ class GamesCompanion extends UpdateCompanion<StoredGame> {
     this.finishedAt = const Value.absent(),
     this.finalScores = const Value.absent(),
     this.winner = const Value.absent(),
+    this.playerName = const Value.absent(),
+    this.roundsPlayed = const Value.absent(),
+    this.bidsMade = const Value.absent(),
+    this.zeroBids = const Value.absent(),
+    this.zeroBidsMade = const Value.absent(),
   });
   GamesCompanion.insert({
     this.id = const Value.absent(),
@@ -459,6 +676,11 @@ class GamesCompanion extends UpdateCompanion<StoredGame> {
     this.finishedAt = const Value.absent(),
     this.finalScores = const Value.absent(),
     this.winner = const Value.absent(),
+    this.playerName = const Value.absent(),
+    this.roundsPlayed = const Value.absent(),
+    this.bidsMade = const Value.absent(),
+    this.zeroBids = const Value.absent(),
+    this.zeroBidsMade = const Value.absent(),
   }) : config = Value(config);
   static Insertable<StoredGame> custom({
     Expression<int>? id,
@@ -470,6 +692,11 @@ class GamesCompanion extends UpdateCompanion<StoredGame> {
     Expression<DateTime>? finishedAt,
     Expression<String>? finalScores,
     Expression<int>? winner,
+    Expression<String>? playerName,
+    Expression<int>? roundsPlayed,
+    Expression<int>? bidsMade,
+    Expression<int>? zeroBids,
+    Expression<int>? zeroBidsMade,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -481,6 +708,11 @@ class GamesCompanion extends UpdateCompanion<StoredGame> {
       if (finishedAt != null) 'finished_at': finishedAt,
       if (finalScores != null) 'final_scores': finalScores,
       if (winner != null) 'winner': winner,
+      if (playerName != null) 'player_name': playerName,
+      if (roundsPlayed != null) 'rounds_played': roundsPlayed,
+      if (bidsMade != null) 'bids_made': bidsMade,
+      if (zeroBids != null) 'zero_bids': zeroBids,
+      if (zeroBidsMade != null) 'zero_bids_made': zeroBidsMade,
     });
   }
 
@@ -494,6 +726,11 @@ class GamesCompanion extends UpdateCompanion<StoredGame> {
     Value<DateTime?>? finishedAt,
     Value<String?>? finalScores,
     Value<int?>? winner,
+    Value<String?>? playerName,
+    Value<int?>? roundsPlayed,
+    Value<int?>? bidsMade,
+    Value<int?>? zeroBids,
+    Value<int?>? zeroBidsMade,
   }) {
     return GamesCompanion(
       id: id ?? this.id,
@@ -505,6 +742,11 @@ class GamesCompanion extends UpdateCompanion<StoredGame> {
       finishedAt: finishedAt ?? this.finishedAt,
       finalScores: finalScores ?? this.finalScores,
       winner: winner ?? this.winner,
+      playerName: playerName ?? this.playerName,
+      roundsPlayed: roundsPlayed ?? this.roundsPlayed,
+      bidsMade: bidsMade ?? this.bidsMade,
+      zeroBids: zeroBids ?? this.zeroBids,
+      zeroBidsMade: zeroBidsMade ?? this.zeroBidsMade,
     );
   }
 
@@ -538,6 +780,21 @@ class GamesCompanion extends UpdateCompanion<StoredGame> {
     if (winner.present) {
       map['winner'] = Variable<int>(winner.value);
     }
+    if (playerName.present) {
+      map['player_name'] = Variable<String>(playerName.value);
+    }
+    if (roundsPlayed.present) {
+      map['rounds_played'] = Variable<int>(roundsPlayed.value);
+    }
+    if (bidsMade.present) {
+      map['bids_made'] = Variable<int>(bidsMade.value);
+    }
+    if (zeroBids.present) {
+      map['zero_bids'] = Variable<int>(zeroBids.value);
+    }
+    if (zeroBidsMade.present) {
+      map['zero_bids_made'] = Variable<int>(zeroBidsMade.value);
+    }
     return map;
   }
 
@@ -552,7 +809,12 @@ class GamesCompanion extends UpdateCompanion<StoredGame> {
           ..write('humanScore: $humanScore, ')
           ..write('finishedAt: $finishedAt, ')
           ..write('finalScores: $finalScores, ')
-          ..write('winner: $winner')
+          ..write('winner: $winner, ')
+          ..write('playerName: $playerName, ')
+          ..write('roundsPlayed: $roundsPlayed, ')
+          ..write('bidsMade: $bidsMade, ')
+          ..write('zeroBids: $zeroBids, ')
+          ..write('zeroBidsMade: $zeroBidsMade')
           ..write(')'))
         .toString();
   }
@@ -788,6 +1050,11 @@ typedef $$GamesTableCreateCompanionBuilder = GamesCompanion Function({
   Value<DateTime?> finishedAt,
   Value<String?> finalScores,
   Value<int?> winner,
+  Value<String?> playerName,
+  Value<int?> roundsPlayed,
+  Value<int?> bidsMade,
+  Value<int?> zeroBids,
+  Value<int?> zeroBidsMade,
 });
 typedef $$GamesTableUpdateCompanionBuilder = GamesCompanion Function({
   Value<int> id,
@@ -799,6 +1066,11 @@ typedef $$GamesTableUpdateCompanionBuilder = GamesCompanion Function({
   Value<DateTime?> finishedAt,
   Value<String?> finalScores,
   Value<int?> winner,
+  Value<String?> playerName,
+  Value<int?> roundsPlayed,
+  Value<int?> bidsMade,
+  Value<int?> zeroBids,
+  Value<int?> zeroBidsMade,
 });
 
 class $$GamesTableFilterComposer extends Composer<_$AppDatabase, $GamesTable> {
@@ -851,6 +1123,31 @@ class $$GamesTableFilterComposer extends Composer<_$AppDatabase, $GamesTable> {
 
   ColumnFilters<int> get winner => $composableBuilder(
     column: $table.winner,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get playerName => $composableBuilder(
+    column: $table.playerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get roundsPlayed => $composableBuilder(
+    column: $table.roundsPlayed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get bidsMade => $composableBuilder(
+    column: $table.bidsMade,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get zeroBids => $composableBuilder(
+    column: $table.zeroBids,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get zeroBidsMade => $composableBuilder(
+    column: $table.zeroBidsMade,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -908,6 +1205,31 @@ class $$GamesTableOrderingComposer
     column: $table.winner,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get playerName => $composableBuilder(
+    column: $table.playerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get roundsPlayed => $composableBuilder(
+    column: $table.roundsPlayed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get bidsMade => $composableBuilder(
+    column: $table.bidsMade,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get zeroBids => $composableBuilder(
+    column: $table.zeroBids,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get zeroBidsMade => $composableBuilder(
+    column: $table.zeroBidsMade,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$GamesTableAnnotationComposer
@@ -951,6 +1273,27 @@ class $$GamesTableAnnotationComposer
 
   GeneratedColumn<int> get winner =>
       $composableBuilder(column: $table.winner, builder: (column) => column);
+
+  GeneratedColumn<String> get playerName => $composableBuilder(
+    column: $table.playerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get roundsPlayed => $composableBuilder(
+    column: $table.roundsPlayed,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get bidsMade =>
+      $composableBuilder(column: $table.bidsMade, builder: (column) => column);
+
+  GeneratedColumn<int> get zeroBids =>
+      $composableBuilder(column: $table.zeroBids, builder: (column) => column);
+
+  GeneratedColumn<int> get zeroBidsMade => $composableBuilder(
+    column: $table.zeroBidsMade,
+    builder: (column) => column,
+  );
 }
 
 class $$GamesTableTableManager
@@ -990,6 +1333,11 @@ class $$GamesTableTableManager
                 Value<DateTime?> finishedAt = const Value.absent(),
                 Value<String?> finalScores = const Value.absent(),
                 Value<int?> winner = const Value.absent(),
+                Value<String?> playerName = const Value.absent(),
+                Value<int?> roundsPlayed = const Value.absent(),
+                Value<int?> bidsMade = const Value.absent(),
+                Value<int?> zeroBids = const Value.absent(),
+                Value<int?> zeroBidsMade = const Value.absent(),
               }) => GamesCompanion(
                 id: id,
                 startedAt: startedAt,
@@ -1000,6 +1348,11 @@ class $$GamesTableTableManager
                 finishedAt: finishedAt,
                 finalScores: finalScores,
                 winner: winner,
+                playerName: playerName,
+                roundsPlayed: roundsPlayed,
+                bidsMade: bidsMade,
+                zeroBids: zeroBids,
+                zeroBidsMade: zeroBidsMade,
               ),
           createCompanionCallback:
               ({
@@ -1012,6 +1365,11 @@ class $$GamesTableTableManager
                 Value<DateTime?> finishedAt = const Value.absent(),
                 Value<String?> finalScores = const Value.absent(),
                 Value<int?> winner = const Value.absent(),
+                Value<String?> playerName = const Value.absent(),
+                Value<int?> roundsPlayed = const Value.absent(),
+                Value<int?> bidsMade = const Value.absent(),
+                Value<int?> zeroBids = const Value.absent(),
+                Value<int?> zeroBidsMade = const Value.absent(),
               }) => GamesCompanion.insert(
                 id: id,
                 startedAt: startedAt,
@@ -1022,6 +1380,11 @@ class $$GamesTableTableManager
                 finishedAt: finishedAt,
                 finalScores: finalScores,
                 winner: winner,
+                playerName: playerName,
+                roundsPlayed: roundsPlayed,
+                bidsMade: bidsMade,
+                zeroBids: zeroBids,
+                zeroBidsMade: zeroBidsMade,
               ),
           withReferenceMapper: (p0) => p0
               .map(
