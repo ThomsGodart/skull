@@ -102,14 +102,14 @@ class _TableScreenState extends State<TableScreen> {
   }
 
   /// The power question and the stock a dialog was already opened for.
-  Question? _powerShown;
+  PowerQuestion? _powerShown;
   List<Card>? _stockShown;
 
   bool get _namedPirates => _game.config.piratePowers;
 
   /// A pirate just won the human a trick: a dialog asks how to use its power.
   /// It cannot be dismissed, since the game waits for the answer.
-  Future<void> _askPower(Question question) async {
+  Future<void> _askPower(PowerQuestion question) async {
     final answer = await showDialog<Answer>(
       context: context,
       barrierDismissible: false,
@@ -281,7 +281,11 @@ class _TableScreenState extends State<TableScreen> {
     if (game.playQuestion case final question?) {
       if (_selected != null) return Strings.tapAgain;
       final suit = game.leadSuit;
-      if (suit == null) return Strings.yourLead;
+      // No suit to follow: either the human leads, or a character or a
+      // creature already on the table lifted the obligation.
+      if (suit == null) {
+        return game.trick.isEmpty ? Strings.yourLead : Strings.playAnything;
+      }
       return question.legalCards.any((card) => card.suit == suit)
           ? Strings.followSuit(suit)
           : Strings.noSuitHeld(suit);

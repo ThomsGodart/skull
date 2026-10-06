@@ -147,6 +147,14 @@ void main() {
       expect(result.alliances, isEmpty);
     });
 
+    test('when a loot wins a trick of escapes, nobody is allied, not even '
+        'the player of a second loot', () {
+      final result = resolve([loot(1), loot(2), esc()]);
+
+      expect(result.winner, 0);
+      expect(result.alliances, isEmpty);
+    });
+
     test('a destroyed trick makes no alliance', () {
       expect(resolve([loot(), kraken, g(3)]).alliances, isEmpty);
     });

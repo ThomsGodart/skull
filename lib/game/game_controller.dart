@@ -108,10 +108,8 @@ class GameController extends ChangeNotifier {
   /// Set when the human must play a card.
   PlayQuestion? playQuestion;
 
-  /// Set when the human must decide how to use a pirate's power: one of
-  /// [ChooseLeaderQuestion], [DiscardQuestion], [WagerQuestion] and
-  /// [AdjustBidQuestion].
-  Question? powerQuestion;
+  /// Set when the human must decide how to use a pirate's power.
+  PowerQuestion? powerQuestion;
 
   /// The latest thing a pirate's power did, for the table to announce. One of
   /// [PowerUsed], [LeaderChosen], [CardsDiscarded], [WagerPlaced] and
@@ -274,10 +272,7 @@ class GameController extends ChangeNotifier {
         bidQuestion = question;
       case PlayQuestion():
         playQuestion = question;
-      case ChooseLeaderQuestion() ||
-          DiscardQuestion() ||
-          WagerQuestion() ||
-          AdjustBidQuestion():
+      case PowerQuestion():
         powerQuestion = question;
     }
     _notify();
@@ -368,10 +363,13 @@ class GameController extends ChangeNotifier {
         ];
         await _announce(event);
       case StockRevealed():
-        revealedStock = event.cards;
-        _notify();
-        await _holdFor(null);
-        revealedStock = null;
+        // Only as it happens: a resumed game does not show old reveals again.
+        if (!_catchingUp) {
+          revealedStock = event.cards;
+          _notify();
+          await _holdFor(null);
+          revealedStock = null;
+        }
       case RoundScored():
         scoredRounds.add(event);
         scores = [for (final result in event.results) result.totalScore];

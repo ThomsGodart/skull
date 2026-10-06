@@ -171,8 +171,13 @@ final class PlayQuestion extends Question {
   final List<Card> legalCards;
 }
 
+/// How to use the power of the pirate that just won its player a trick.
+sealed class PowerQuestion extends Question {
+  const PowerQuestion(super.seat);
+}
+
 /// Rosie's power: name the seat that leads the next trick.
-final class ChooseLeaderQuestion extends Question {
+final class ChooseLeaderQuestion extends PowerQuestion {
   const ChooseLeaderQuestion({required int seat, required this.seats})
     : super(seat);
 
@@ -181,7 +186,7 @@ final class ChooseLeaderQuestion extends Question {
 }
 
 /// Will's power: after drawing, put [count] cards of the hand out of play.
-final class DiscardQuestion extends Question {
+final class DiscardQuestion extends PowerQuestion {
   const DiscardQuestion({
     required int seat,
     required this.hand,
@@ -194,14 +199,14 @@ final class DiscardQuestion extends Question {
 }
 
 /// Rascal's power: stake one of [amounts] on making the bid.
-final class WagerQuestion extends Question {
+final class WagerQuestion extends PowerQuestion {
   const WagerQuestion({required int seat, required this.amounts}) : super(seat);
 
   final List<int> amounts;
 }
 
 /// Harry's power: move the bid by one of [changes], which always holds 0.
-final class AdjustBidQuestion extends Question {
+final class AdjustBidQuestion extends PowerQuestion {
   const AdjustBidQuestion({required int seat, required this.changes})
     : super(seat);
 

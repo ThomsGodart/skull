@@ -18,8 +18,7 @@ class PowerDialog extends StatefulWidget {
     this.namedPirates = true,
   });
 
-  /// One of the four power questions.
-  final Question question;
+  final PowerQuestion question;
   final List<SeatIdentity> seats;
 
   /// The human's current bid, to show what Harry would make of it.
@@ -129,11 +128,6 @@ class _PowerDialogState extends State<PowerDialog> {
             child: const Text(Strings.discardConfirm),
           ),
         ],
-      ),
-      BidQuestion() || PlayQuestion() => throw ArgumentError.value(
-        widget.question,
-        'question',
-        'is not a pirate power',
       ),
     };
     return AlertDialog(

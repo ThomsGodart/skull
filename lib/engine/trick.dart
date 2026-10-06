@@ -164,9 +164,12 @@ TrickResult _resolvePlain(List<Play> trick) {
     winner: winner.seat,
     bonuses: bonuses,
     alliances: [
-      for (final play in trick)
-        if (play.isLoot && play.seat != winner.seat)
-          Alliance(lootSeat: play.seat, winnerSeat: winner.seat),
+      // A loot that takes a trick of escapes allies nobody, as the rulebook
+      // has it: "aucune alliance n'aura été formée".
+      if (!winner.isLoot)
+        for (final play in trick)
+          if (play.isLoot)
+            Alliance(lootSeat: play.seat, winnerSeat: winner.seat),
     ],
   );
 }

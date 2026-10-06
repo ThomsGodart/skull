@@ -312,6 +312,49 @@ void main() {
       },
     );
 
+    test('a resumed game does not show again the cards Juanita revealed '
+        'earlier', () async {
+      for (var seed = 0; seed < 40; seed++) {
+        GameProgress? last;
+        final original = GameController(
+          config: GameConfig(players: 4, seed: seed, piratePowers: true),
+          bot: randomBot(Random(seed)),
+          speed: TableSpeed.instant,
+          onProgress: (progress) => last = progress,
+        )..start();
+        var revealed = false;
+        await playUntil(
+          original,
+          // Stop at a bid some time after the stock was shown and closed.
+          () =>
+              original.result != null ||
+              (revealed &&
+                  original.revealedStock == null &&
+                  original.bidQuestion != null),
+          onStep: () => revealed |= original.revealedStock != null,
+        );
+        original.dispose();
+        if (original.result != null) continue;
+
+        final resumed = GameController(
+          config: GameConfig(players: 4, seed: seed, piratePowers: true),
+          bot: randomBot(Random(seed)),
+          speed: TableSpeed.instant,
+          savedAnswers: last!.answers,
+        );
+        var shownAgain = false;
+        resumed.addListener(() => shownAgain |= resumed.revealedStock != null);
+        resumed.start();
+        await settle();
+
+        expect(shownAgain, isFalse);
+        expect(resumed.bidQuestion, isNotNull);
+        resumed.dispose();
+        return;
+      }
+      fail('Juanita never won the human a trick in forty games');
+    });
+
     test('a destroyed trick is shown as such and counts for nobody', () async {
       for (var seed = 0; seed < 40; seed++) {
         final controller = GameController(

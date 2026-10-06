@@ -26,9 +26,17 @@ Le code, les identifiants et les tests sont en anglais ; tout ce que voit le jou
 | `Mermaid` | sirène | |
 | `Bonus` | bonus | Points gagnés avec un pli, comptés seulement si le pari est réussi. |
 | `Capture` | capture | Un personnage en bat un autre et rapporte un bonus. |
-| `Loot` | butin | Carte d'extension. |
+| `Loot` | Butin | Carte d'extension. Crée une `Alliance` (alliance) entre son joueur et le gagnant du pli. |
 | `Kraken` | Kraken | Carte d'extension. |
 | `White Whale` | Baleine blanche | Carte d'extension. |
+| `Creature` | — | Le Kraken ou la Baleine blanche (`Play.isCreature`). |
+| `Destroyed` (trick) | pli détruit | Pli que personne ne remporte. Son `winner` désigne alors seulement qui entame le suivant. |
+| `Pirate` (enum) | Rosie, Will, Rascal, Juanita, Harry | Les cinq pirates nommés ; `Pirate.of(card)` donne celui d'une carte Pirate. |
+| `Power` | pouvoir | Ce qu'un pirate nommé permet à son joueur quand il gagne un pli (`PowerQuestion`). |
+| `Stock` | pioche | Les cartes non distribuées d'une manche. |
+| `Discard` | défausse | Cartes mises hors jeu par Will le Bandit. |
+| `Wager` | mise | Les 0, 10 ou 20 points que Rascal le Flambeur fait miser. |
+| `Scoring` | calcul des points | `classic` (livret) ou `rascal` (score Rascal). |
 | `Question` / `Answer` / `Event` | — | Contrat entre le moteur et ce qui le pilote (voir `docs/REFERENCE_RTAROT.md`). |
 | `View` | — | Ce qu'un siège a le droit de voir de la partie. |
 

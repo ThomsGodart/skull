@@ -15,6 +15,19 @@ const _head = TextStyle(
 /// Everything a seat scored on top of its bid.
 int _extras(SeatResult result) => result.score.total - result.score.bidPoints;
 
+/// What the bonus column says for [result]: nothing to count, bonuses that
+/// were lost with the bid, or what the extras add up to (even zero, when a
+/// lost wager cancels a bonus).
+String _extrasLabel(SeatResult result) {
+  final score = result.score;
+  final nothingCounted =
+      score.bonusPoints == 0 &&
+      score.alliancePoints == 0 &&
+      score.wagerPoints == 0;
+  if (!nothingCounted) return Strings.signedOrZero(_extras(result));
+  return result.bonuses.isEmpty ? Strings.noBonus : Strings.bonusLost;
+}
+
 /// What made up the extras of [result], in words.
 List<String> _details(SeatResult result) => [
   ...result.bonuses.map(Strings.bonusName),
@@ -87,12 +100,8 @@ class RoundSummaryTable extends StatelessWidget {
                 number('${result.bid}/${result.tricksWon}'),
                 number(Strings.signed(result.score.bidPoints)),
                 number(
-                  _extras(result) != 0
-                      ? Strings.signed(_extras(result))
-                      : result.bonuses.isEmpty
-                      ? Strings.noBonus
-                      : Strings.bonusLost,
-                  color: _extras(result) == 0 && result.bonuses.isEmpty
+                  _extrasLabel(result),
+                  color: _extrasLabel(result) == Strings.noBonus
                       ? Tokens.mutedText
                       : null,
                 ),

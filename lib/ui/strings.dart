@@ -30,6 +30,8 @@ abstract final class Strings {
   static const pickBidFirst = 'Choisis un nombre';
   static const bidsHidden = 'Les autres ont déjà parié en secret.';
   static const yourLead = 'À toi — joue la carte de ton choix';
+  static const playAnything =
+      'À toi — pas de couleur à suivre : joue ce que tu veux';
   static String followSuit(Suit suit) => 'À toi — fournis du ${suitName(suit)}';
   static String noSuitHeld(Suit suit) =>
       'À toi — pas de ${suitName(suit)} : joue ce que tu veux';
@@ -160,7 +162,8 @@ abstract final class Strings {
   static const scoringRascal = 'Rascal';
   static const scoringRascalHelp =
       'Même potentiel pour tous : tout si le pari est exact, la moitié à un '
-      'pli près, rien au-delà. Jamais de points négatifs.';
+      'pli près, rien au-delà. Pas de points négatifs, sauf une mise de '
+      'Rascal le Flambeur perdue.';
   static const optionKraken = 'Kraken';
   static const optionKrakenHelp = 'Détruit le pli : personne ne le remporte.';
   static const optionWhale = 'Baleine blanche';
@@ -168,8 +171,8 @@ abstract final class Strings {
       'Détruit les cartes spéciales : la plus haute valeur gagne.';
   static const optionLoot = 'Butin (2 cartes)';
   static const optionLootHelp =
-      'Alliance avec le gagnant du pli : +20 chacun si les deux paris '
-      'sont réussis.';
+      'Alliance avec le gagnant du pli : +$allianceBonus chacun si les deux '
+      'paris sont réussis.';
   static const optionPowers = 'Pouvoirs des pirates';
   static const optionPowersHelp =
       'Gagner un pli avec un pirate déclenche son pouvoir.';
@@ -232,8 +235,8 @@ abstract final class Strings {
   static String trickDestroyed(String leader) => 'Pli détruit — $leader entame';
   static const trickDestroyedYouLead = 'Pli détruit — tu entames';
   static String alliance(String first, String second) =>
-      'Alliance : $first et $second, +20 chacun si les deux paris '
-      'sont réussis';
+      'Alliance : $first et $second, +$allianceBonus chacun si les deux '
+      'paris sont réussis';
   static String allianceLine(int points) => 'alliance ${signed(points)}';
   static String wagerLine(int points) => 'mise ${signed(points)}';
 
@@ -290,7 +293,7 @@ abstract final class Strings {
     CardKind.mermaid => 'Sirène',
     CardKind.loot => 'Butin',
     CardKind.kraken => 'Kraken',
-    CardKind.whiteWhale => 'Baleine',
+    CardKind.whiteWhale => 'Baleine blanche',
   };
 
   static String bonusName(Bonus bonus) => switch (bonus) {
@@ -302,4 +305,7 @@ abstract final class Strings {
   };
 
   static String signed(int points) => points > 0 ? '+$points' : '$points';
+
+  /// Like [signed], for a figure that may well be zero.
+  static String signedOrZero(int points) => points == 0 ? '0' : signed(points);
 }

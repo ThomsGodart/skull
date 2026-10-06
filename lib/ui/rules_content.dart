@@ -103,7 +103,10 @@ abstract final class RulesContent {
           'des cartes spéciales, le pli est détruit.\n'
           '• Les deux dans le même pli : seule la dernière jouée agit.\n'
           '• Butin : perd comme une fuite, mais allie son joueur au gagnant '
-          'du pli. Si tous deux réussissent leur pari, chacun marque +20.\n\n'
+          'du pli. Si tous deux réussissent leur pari, chacun marque +20. '
+          'Pas d\'alliance si le pli est détruit, ni si c\'est le Butin qui '
+          'l\'emporte parce que tout le monde a joué une fuite. En entame, '
+          'il laisse la carte suivante fixer la couleur.\n\n'
           'Dès qu\'un Kraken ou une Baleine blanche est sur la table, plus '
           'personne n\'est obligé de suivre la couleur.',
     ),
@@ -112,9 +115,12 @@ abstract final class RulesContent {
       body:
           'Si l\'option est activée, gagner un pli avec un pirate déclenche '
           'son pouvoir, tout de suite. La Tigresse n\'en a pas, et un pli '
-          'détruit n\'en déclenche aucun.\n\n'
+          'détruit n\'en déclenche aucun. Tu peux toujours choisir de ne '
+          'rien changer.\n\n'
           '• Rosie la Douce : choisis qui entame le prochain pli.\n'
-          '• Will le Bandit : pioche 2 cartes, puis défausse-en 2.\n'
+          '• Will le Bandit : pioche 2 cartes, puis défausse-en 2 (celles '
+          'que tu viens de piocher si tu veux). S\'il reste moins de 2 '
+          'cartes dans la pioche, tu prends ce qu\'il y a.\n'
           '• Rascal le Flambeur : mise 0, 10 ou 20 points, gagnés si ton '
           'pari est réussi, perdus sinon.\n'
           '• Juanita Jade : regarde les cartes qui n\'ont pas été '
@@ -131,8 +137,10 @@ abstract final class RulesContent {
           '• Pari exact : la totalité, et tous tes bonus.\n'
           '• À un pli près : la moitié, et la moitié de tes bonus.\n'
           '• Deux plis d\'écart ou plus : rien.\n\n'
-          'Il n\'y a jamais de points négatifs. L\'alliance du Butin et la '
-          'mise de Rascal demandent toujours un pari exact.',
+          'Un pari ne fait jamais perdre de points. L\'alliance du Butin et '
+          'la mise de Rascal demandent toujours un pari exact : à un pli '
+          'près, la mise est perdue, et c\'est le seul moyen de finir une '
+          'manche dans le négatif.',
     ),
   ];
 }

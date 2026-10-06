@@ -92,7 +92,7 @@ final class Game {
   final List<Alliance> _alliances = [];
 
   /// A pirate power waiting for its player's decision.
-  Question? _power;
+  PowerQuestion? _power;
   late final List<int> _scores = List.filled(config.players, 0);
 
   int get _players => config.players;
