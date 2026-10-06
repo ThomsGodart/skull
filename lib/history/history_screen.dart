@@ -114,12 +114,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ),
       ),
       subtitle: Text(
-        Strings.historyDetails(
-          date: game.finishedAt,
-          winner: game.humanWon ? null : seats[game.winner].name,
-        ),
+        [
+          Strings.historyDetails(
+            date: game.finishedAt,
+            winner: game.humanWon ? null : seats[game.winner].name,
+          ),
+          if (game.config case final config?) Strings.modeName(config),
+        ].join('\n'),
       ),
-      isThreeLine: true,
+      isThreeLine: game.config != null,
       trailing: Text(
         Strings.playersCount(game.players),
         style: const TextStyle(color: Tokens.mutedText),

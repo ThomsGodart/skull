@@ -96,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _saving = saver.done;
           },
         ),
-        onPlayAgain: () => _start(game.config.players, replace: true),
+        onPlayAgain: () => _start(game.config, replace: true),
       ),
     );
     final navigator = Navigator.of(context);
@@ -120,8 +120,8 @@ class _HomeScreenState extends State<HomeScreen> {
     await _play(saved);
   }
 
-  /// Creates a game for [players] and opens the table on it.
-  Future<void> _start(int players, {bool replace = false}) async {
+  /// Creates a game played as [setup] and opens the table on it.
+  Future<void> _start(GameConfig setup, {bool replace = false}) async {
     if (_starting) return;
     _starting = true;
     // Creating a game drops the one in progress: the game just finished must
@@ -131,10 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _starting = false;
       return;
     }
-    final config = GameConfig(
-      players: players,
-      seed: Random().nextInt(1 << 32),
-    );
+    final config = setup.copyWith(seed: Random().nextInt(1 << 32));
     final messenger = ScaffoldMessenger.of(context);
     final int id;
     try {
@@ -164,16 +161,19 @@ class _HomeScreenState extends State<HomeScreen> {
     MaterialPageRoute<void>(
       builder: (context) => SetupScreen(
         settings: _settings,
-        onLaunch: (players) => _launchFromSetup(context, players),
+        onLaunch: (setup) => _launchFromSetup(context, setup),
       ),
     ),
   );
 
-  Future<void> _launchFromSetup(BuildContext setupContext, int players) async {
+  Future<void> _launchFromSetup(
+    BuildContext setupContext,
+    GameConfig setup,
+  ) async {
     if (_launching) return;
     _launching = true;
     try {
-      await _confirmAndStart(setupContext, players);
+      await _confirmAndStart(setupContext, setup);
     } finally {
       _launching = false;
     }
@@ -181,7 +181,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _launching = false;
 
-  Future<void> _confirmAndStart(BuildContext setupContext, int players) async {
+  Future<void> _confirmAndStart(
+    BuildContext setupContext,
+    GameConfig setup,
+  ) async {
     await _saving;
     if (await _games.loadActive() != null) {
       if (!setupContext.mounted) return;
@@ -205,9 +208,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!(replace ?? false)) return;
     }
     // Remembering the choice must never stand in the way of the game.
-    unawaited(_settings.setOpponents(players - 1).catchError((Object _) {}));
+    unawaited(_settings.setLastSetup(setup).catchError((Object _) {}));
     // The table takes the place of the setup screen.
-    await _start(players, replace: true);
+    await _start(setup, replace: true);
   }
 
   /// A secondary screen reached from the home.

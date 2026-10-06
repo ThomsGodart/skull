@@ -137,7 +137,18 @@ final class DriftGameStore implements GameStore {
         scores: List.unmodifiable(scores),
         winner: winner,
         playerName: row.playerName,
+        config: _config(row),
         summary: summary,
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  static GameConfig? _config(StoredGame row) {
+    try {
+      return GameConfig.fromJson(
+        jsonDecode(row.config) as Map<String, Object?>,
       );
     } on Object {
       return null;

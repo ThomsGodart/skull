@@ -78,8 +78,8 @@ abstract final class Strings {
 
   static const setupTitle = 'Nouvelle partie';
   static const launch = 'Lancer la partie';
-  static String setupSummary(int players) =>
-      '$players joueurs · jeu de base · score classique · '
+  static String setupSummary(GameConfig config) =>
+      '${config.players} joueurs · ${modeName(config)} · '
       '$standardRounds manches';
   static String fewerCardsNote(int players, int cards) =>
       'À $players joueurs, les dernières manches se jouent avec $cards cartes.';
@@ -93,14 +93,12 @@ abstract final class Strings {
   static String playersCount(int players) => '$players joueurs';
   static String wonBy(String name) => 'Gagnée par $name';
   static const wonByYou = 'Gagnée par toi';
-  static const baseGameClassic = 'Jeu de base · score classique';
 
-  /// The two lines under a game in the history. A null [winner] is the human.
+  /// The first line under a game in the history. A null [winner] is the human.
   static String historyDetails({required DateTime date, String? winner}) =>
-      '${dateTime(date)} · ${winner == null ? wonByYou : wonBy(winner)}\n'
-      '$baseGameClassic';
-  static String gameSetup(int players) =>
-      '${playersCount(players)} · $baseGameClassic';
+      '${dateTime(date)} · ${winner == null ? wonByYou : wonBy(winner)}';
+  static String gameSetup(int players, GameConfig? config) =>
+      [playersCount(players), if (config != null) modeName(config)].join(' · ');
   static const delete = 'Supprimer';
   static const deleteGameTitle = 'Supprimer cette partie ?';
   static const deleteGameBody =
@@ -153,6 +151,92 @@ abstract final class Strings {
   static const rules = 'Règles';
   static const rulesTitle = 'Règles du jeu';
 
+  static const presetLabel = 'Mode de jeu';
+  static const presetClassic = 'Classique';
+  static const presetFull = 'Extension';
+  static const presetCustom = 'Personnalisé';
+  static const scoringLabel = 'Calcul des points';
+  static const scoringClassic = 'Classique';
+  static const scoringRascal = 'Rascal';
+  static const scoringRascalHelp =
+      'Même potentiel pour tous : tout si le pari est exact, la moitié à un '
+      'pli près, rien au-delà. Jamais de points négatifs.';
+  static const optionKraken = 'Kraken';
+  static const optionKrakenHelp = 'Détruit le pli : personne ne le remporte.';
+  static const optionWhale = 'Baleine blanche';
+  static const optionWhaleHelp =
+      'Détruit les cartes spéciales : la plus haute valeur gagne.';
+  static const optionLoot = 'Butin (2 cartes)';
+  static const optionLootHelp =
+      'Alliance avec le gagnant du pli : +20 chacun si les deux paris '
+      'sont réussis.';
+  static const optionPowers = 'Pouvoirs des pirates';
+  static const optionPowersHelp =
+      'Gagner un pli avec un pirate déclenche son pouvoir.';
+
+  /// What a game is played with, as one line.
+  static String modeName(GameConfig config) => [
+    config.usesFullExpansion
+        ? 'Extension complète'
+        : config.usesExpansion
+        ? 'Extension partielle'
+        : 'Jeu de base',
+    config.scoring == Scoring.rascal ? 'score Rascal' : 'score classique',
+  ].join(' · ');
+
+  static String pirateName(Pirate pirate) => switch (pirate) {
+    Pirate.rosie => 'Rosie la Douce',
+    Pirate.will => 'Will le Bandit',
+    Pirate.rascal => 'Rascal le Flambeur',
+    Pirate.juanita => 'Juanita Jade',
+    Pirate.harry => 'Harry le Géant',
+  };
+
+  /// The short name written on a pirate card.
+  static String pirateShortName(Pirate pirate) => switch (pirate) {
+    Pirate.rosie => 'Rosie',
+    Pirate.will => 'Will',
+    Pirate.rascal => 'Rascal',
+    Pirate.juanita => 'Juanita',
+    Pirate.harry => 'Harry',
+  };
+
+  static String usesPower(String name, Pirate pirate) =>
+      '$name utilise ${pirateName(pirate)}';
+  static String leaderChosen(String leader) =>
+      '${pirateName(Pirate.rosie)} : $leader entame le prochain pli';
+  static String cardsDiscarded(String name, int count) =>
+      '${pirateName(Pirate.will)} : $name pioche et défausse '
+      '$count carte${count > 1 ? 's' : ''}';
+  static String wagerPlaced(String name, int amount) =>
+      '${pirateName(Pirate.rascal)} : $name mise $amount';
+  static String bidChanged(String name, int bid) =>
+      '${pirateName(Pirate.harry)} : $name parie maintenant $bid';
+
+  static const chooseLeaderBody = 'Qui entame le prochain pli ?';
+  static String discardBody(int count) =>
+      'Tu as pioché. Choisis $count carte${count > 1 ? 's' : ''} à défausser.';
+  static const discardConfirm = 'Défausser';
+  static const wagerBody =
+      'Mise sur ton pari : gagnée s\'il est réussi, perdue sinon.';
+  static String wagerOption(int amount) =>
+      amount == 0 ? 'Ne rien miser' : 'Miser $amount';
+  static const adjustBidBody = 'Tu peux modifier ton pari d\'un pli.';
+  static String adjustBidOption(int change, int bid) => switch (change) {
+    0 => 'Garder $bid',
+    > 0 => 'Monter à $bid',
+    _ => 'Descendre à $bid',
+  };
+  static const stockBody = 'Ces cartes ne sont pas en jeu dans cette manche.';
+
+  static String trickDestroyed(String leader) => 'Pli détruit — $leader entame';
+  static const trickDestroyedYouLead = 'Pli détruit — tu entames';
+  static String alliance(String first, String second) =>
+      'Alliance : $first et $second, +20 chacun si les deux paris '
+      'sont réussis';
+  static String allianceLine(int points) => 'alliance ${signed(points)}';
+  static String wagerLine(int points) => 'mise ${signed(points)}';
+
   static const profileTitle = 'Ton profil';
   static const playerNameLabel = 'Nom';
   static const playerColorLabel = 'Couleur';
@@ -171,8 +255,8 @@ abstract final class Strings {
   static const colTotal = 'Total';
   static const bonusLost = 'perdu';
   static const noBonus = '—';
-  static String bonusesOf(String name, List<Bonus> bonuses) =>
-      '$name : ${bonuses.map(bonusName).join(', ')}';
+  static String detailsOf(String name, List<String> details) =>
+      '$name : ${details.join(', ')}';
 
   static const gameOver = 'Partie terminée';
   static const winnerMark = '🏆';
@@ -190,7 +274,14 @@ abstract final class Strings {
 
   static const trump = 'ATOUT';
 
-  static String cardName(Card card) => switch (card.kind) {
+  /// The name of [card]. With [namedPirates], a pirate goes by its own name.
+  static String cardName(Card card, {bool namedPirates = false}) =>
+      switch (Pirate.of(card)) {
+        final pirate? when namedPirates => pirateShortName(pirate),
+        _ => _kindName(card),
+      };
+
+  static String _kindName(Card card) => switch (card.kind) {
     CardKind.number => '${card.value} ${suitName(card.suit!)}',
     CardKind.escape => 'Fuite',
     CardKind.pirate => 'Pirate',

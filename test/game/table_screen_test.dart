@@ -152,6 +152,91 @@ void main() {
     expect(find.text('4.'), findsOneWidget);
   });
 
+  testWidgets('a whole game with the expansion and the pirate powers runs '
+      'to the end, every power answered in its dialog', (tester) async {
+    tester.view.physicalSize = const Size(360, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final dialogs = <String>{};
+    for (var seed = 0; seed < 6; seed++) {
+      final controller = GameController(
+        config: GameConfig(
+          players: 5,
+          seed: seed,
+          kraken: true,
+          whiteWhale: true,
+          loot: true,
+          piratePowers: true,
+          scoring: Scoring.rascal,
+        ),
+        bot: randomBot(Random(seed)),
+        speed: TableSpeed.instant,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: Tokens.theme(),
+          home: TableScreen(
+            key: ValueKey(seed),
+            controller: controller,
+            onPlayAgain: () {},
+          ),
+        ),
+      );
+      Future<bool> tapIfShown(String key) async {
+        final finder = find.byKey(Key(key));
+        if (finder.evaluate().isEmpty) return false;
+        await tester.tap(finder);
+        await tester.pumpAndSettle();
+        dialogs.add(key.split('-').take(2).join('-'));
+        return true;
+      }
+
+      for (var step = 0; step < 3000; step++) {
+        await tester.pumpAndSettle();
+        if (controller.result != null && controller.roundSummary == null) break;
+        if (await tapIfShown('stock-close')) continue;
+        if (await tapIfShown('power-leader-0')) continue;
+        if (await tapIfShown('power-wager-10')) continue;
+        if (await tapIfShown('power-change-0')) continue;
+        if (controller.powerQuestion case DiscardQuestion(
+          :final hand,
+          :final count,
+        )) {
+          for (final card in hand.take(count)) {
+            await tester.tap(find.byKey(Key('power-discard-${card.id}')));
+            await tester.pump();
+          }
+          await tapIfShown('power-confirm');
+          continue;
+        }
+        if (controller.roundSummary != null) {
+          await tester.tap(find.byKey(const Key('continue')));
+        } else if (controller.bidQuestion != null) {
+          await tester.tap(find.byKey(const Key('bid-0')));
+          await tester.pump();
+          await tester.tap(find.byKey(const Key('place-bid')));
+        } else if (controller.playQuestion case final question?) {
+          final card = question.legalCards.first;
+          await tapCard(tester, card);
+          await tapCard(tester, card);
+          if (card.kind == CardKind.tigress) {
+            await tester.tap(find.byKey(const Key('tigress-escape')));
+          }
+        }
+      }
+      expect(controller.result, isNotNull, reason: 'seed $seed');
+    }
+    expect(
+      dialogs,
+      containsAll([
+        'power-leader',
+        'power-wager',
+        'power-change',
+        'power-confirm',
+      ]),
+    );
+  });
+
   for (final players in [3, 8]) {
     testWidgets('a whole game with $players players runs to the final '
         'standings without a layout error', (tester) async {

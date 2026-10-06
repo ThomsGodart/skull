@@ -6,10 +6,12 @@ import '../rules/rules_screen.dart';
 import '../settings/app_settings.dart';
 import '../theme/tokens.dart';
 import '../ui/cards/card_look.dart';
+import '../ui/cards/card_view.dart';
 import '../ui/cards/hand_fan.dart';
 import '../ui/strings.dart';
 import 'bid_panel.dart';
 import 'game_controller.dart';
+import 'power_dialog.dart';
 import 'score_views.dart';
 import 'screen_awake.dart';
 import 'seat_chip.dart';
@@ -87,6 +89,77 @@ class _TableScreenState extends State<TableScreen> {
   void _onGameChanged() {
     if (_game.playQuestion == null) _selected = null;
     setState(() {});
+    final power = _game.powerQuestion;
+    if (power != null && !identical(power, _powerShown)) {
+      _powerShown = power;
+      _askPower(power);
+    }
+    final stock = _game.revealedStock;
+    if (stock != null && !identical(stock, _stockShown)) {
+      _stockShown = stock;
+      _showStock(stock);
+    }
+  }
+
+  /// The power question and the stock a dialog was already opened for.
+  Question? _powerShown;
+  List<Card>? _stockShown;
+
+  bool get _namedPirates => _game.config.piratePowers;
+
+  /// A pirate just won the human a trick: a dialog asks how to use its power.
+  /// It cannot be dismissed, since the game waits for the answer.
+  Future<void> _askPower(Question question) async {
+    final answer = await showDialog<Answer>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: PowerDialog(
+          question: question,
+          seats: _seats,
+          bid: _game.bids[_game.humanSeat] ?? 0,
+          namedPirates: _namedPirates,
+        ),
+      ),
+    );
+    if (answer != null) _game.answerPower(answer);
+  }
+
+  /// Juanita's power: the cards nobody was dealt.
+  Future<void> _showStock(List<Card> stock) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Tokens.panel,
+        title: Text(Strings.pirateName(Pirate.juanita)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(Strings.stockBody),
+              const SizedBox(height: Tokens.space3),
+              Wrap(
+                spacing: Tokens.space1,
+                runSpacing: Tokens.space1,
+                children: [
+                  for (final card in sortedHand(stock))
+                    CardView(card, width: 40, namedPirates: _namedPirates),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            key: const Key('stock-close'),
+            onPressed: () => Navigator.pop(context),
+            child: const Text(Strings.close),
+          ),
+        ],
+      ),
+    );
+    _game.dismissStock();
   }
 
   Future<void> _onCardTap(Card card) async {
@@ -180,6 +253,7 @@ class _TableScreenState extends State<TableScreen> {
               seats: _seats,
               winner: _game.lastTrickWinner,
               cardWidth: 46,
+              namedPirates: _namedPirates,
             ),
       actions: [
         TextButton(
@@ -193,10 +267,16 @@ class _TableScreenState extends State<TableScreen> {
   String _status() {
     final game = _game;
     if (game.trickWinner case final winner?) {
+      if (game.trickDestroyed) {
+        return winner == game.humanSeat
+            ? Strings.trickDestroyedYouLead
+            : Strings.trickDestroyed(_seats[winner].name);
+      }
       return winner == game.humanSeat
           ? Strings.trickForYou
           : Strings.trickFor(_seats[winner].name);
     }
+    if (_powerNotice() case final notice?) return notice;
     if (game.bidQuestion != null) return Strings.bidsHidden;
     if (game.playQuestion case final question?) {
       if (_selected != null) return Strings.tapAgain;
@@ -210,6 +290,31 @@ class _TableScreenState extends State<TableScreen> {
       return Strings.thinking(_seats[seat].name);
     }
     return '';
+  }
+
+  /// What a pirate's power just did, in words.
+  String? _powerNotice() {
+    String name(int seat) => _seats[seat].name;
+    return switch (_game.powerNotice) {
+      PowerUsed(:final seat, :final pirate) => Strings.usesPower(
+        name(seat),
+        pirate,
+      ),
+      LeaderChosen(:final leader) => Strings.leaderChosen(name(leader)),
+      CardsDiscarded(:final seat, :final count) => Strings.cardsDiscarded(
+        name(seat),
+        count,
+      ),
+      WagerPlaced(:final seat, :final amount) => Strings.wagerPlaced(
+        name(seat),
+        amount,
+      ),
+      BidChanged(:final seat, :final bid) => Strings.bidChanged(
+        name(seat),
+        bid,
+      ),
+      _ => null,
+    };
   }
 
   @override
@@ -270,6 +375,7 @@ class _TableScreenState extends State<TableScreen> {
                             selected: _selected,
                             onTap: _onCardTap,
                             cardWidth: 64,
+                            namedPirates: _namedPirates,
                           ),
                         ],
                       ),
@@ -370,7 +476,24 @@ class _TableScreenState extends State<TableScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        TrickArea(plays: _game.trick, seats: _seats, winner: _game.trickWinner),
+        TrickArea(
+          plays: _game.trick,
+          seats: _seats,
+          winner: _game.trickDestroyed ? null : _game.trickWinner,
+          namedPirates: _namedPirates,
+        ),
+        for (final alliance in _game.trickAlliances)
+          Padding(
+            padding: const EdgeInsets.only(top: Tokens.space2),
+            child: Text(
+              Strings.alliance(
+                _seats[alliance.lootSeat].name,
+                _seats[alliance.winnerSeat].name,
+              ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Tokens.gold, fontSize: 12),
+            ),
+          ),
         if (bonuses.isNotEmpty) ...[
           const SizedBox(height: Tokens.space2),
           Text(

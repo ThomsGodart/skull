@@ -274,6 +274,76 @@ void main() {
     });
   });
 
+  group('with the expansion and the pirate powers', () {
+    GameController full(int seed) => GameController(
+      config: GameConfig(
+        players: 4,
+        seed: seed,
+        kraken: true,
+        whiteWhale: true,
+        loot: true,
+        piratePowers: true,
+      ),
+      bot: randomBot(Random(seed)),
+      speed: TableSpeed.instant,
+    );
+
+    test(
+      'a whole game can be played, the human answering every power',
+      () async {
+        final asked = <Type>{};
+        var stocksShown = 0;
+        for (var seed = 0; seed < 12; seed++) {
+          final controller = full(seed)..start();
+          await playUntil(
+            controller,
+            () => controller.result != null,
+            onStep: () {
+              if (controller.powerQuestion case final question?) {
+                asked.add(question.runtimeType);
+              }
+              if (controller.revealedStock != null) stocksShown++;
+            },
+          );
+          controller.dispose();
+        }
+        expect(asked, hasLength(4), reason: 'every kind of power was asked');
+        expect(stocksShown, greaterThan(0));
+      },
+    );
+
+    test('a destroyed trick is shown as such and counts for nobody', () async {
+      for (var seed = 0; seed < 40; seed++) {
+        final controller = GameController(
+          config: GameConfig(players: 4, seed: seed, kraken: true),
+          bot: randomBot(Random(seed)),
+          speed: const TableSpeed(
+            botPlay: Duration.zero,
+            trickHold: Duration(days: 1),
+            bidReveal: Duration.zero,
+          ),
+        )..start();
+        var found = false;
+        await playUntil(
+          controller,
+          () => found || controller.result != null,
+          onStep: () {
+            if (controller.trickDestroyed) {
+              final cards = controller.cardsDealt;
+              final left = controller.handSizes.first;
+              final won = controller.tricksWon.fold(0, (a, b) => a + b);
+              expect(won, lessThan(cards - left), reason: 'one trick is lost');
+              found = true;
+            }
+          },
+        );
+        controller.dispose();
+        if (found) return;
+      }
+      fail('no trick was destroyed in forty games');
+    });
+  });
+
   test('notifies its listeners as the table changes', () async {
     final controller = controllerFor();
     var notified = 0;
@@ -290,17 +360,28 @@ TigressMode? tigressModeFor(Card card) =>
     card.kind == CardKind.tigress ? TigressMode.pirate : null;
 
 /// Plays the human seat with the first legal choice until [done].
-Future<void> playUntil(GameController controller, bool Function() done) async {
-  for (var step = 0; step < 5000; step++) {
+Future<void> playUntil(
+  GameController controller,
+  bool Function() done, {
+  void Function()? onStep,
+}) async {
+  for (var step = 0; step < 8000; step++) {
     await settle();
+    onStep?.call();
     if (done()) return;
     if (controller.roundSummary != null) {
       controller.continueAfterRound();
+    } else if (controller.revealedStock != null) {
+      controller.dismissStock();
+    } else if (controller.powerQuestion case final question?) {
+      controller.answerPower(randomAnswer(question, Random(step)));
     } else if (controller.bidQuestion != null) {
       controller.bid(0);
     } else if (controller.playQuestion case final question?) {
       final card = question.legalCards.first;
       controller.play(card, tigressAs: tigressModeFor(card));
+    } else if (controller.trickWinner != null) {
+      controller.skipHold();
     }
   }
   fail('the condition was never reached');

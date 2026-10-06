@@ -1,5 +1,6 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:skull_kings/engine/engine.dart';
 import 'package:skull_kings/game/table_speed.dart';
 import 'package:skull_kings/settings/app_settings.dart';
 import 'package:skull_kings/storage/app_database.dart';
@@ -116,6 +117,39 @@ void main() {
     );
 
     expect(settings.botSpeed, BotSpeed.normal);
+  });
+
+  test('the last setup is offered again, whatever its seed was', () async {
+    final store = MemorySettingsStore();
+    final settings = await AppSettings.load(store);
+
+    await settings.setLastSetup(
+      const GameConfig(
+        players: 6,
+        seed: 1234,
+        scoring: Scoring.rascal,
+        kraken: true,
+        piratePowers: true,
+      ),
+    );
+
+    final reloaded = (await AppSettings.load(store)).lastSetup;
+    expect(reloaded.players, 6);
+    expect(reloaded.seed, 0);
+    expect(reloaded.scoring, Scoring.rascal);
+    expect(reloaded.kraken, isTrue);
+    expect(reloaded.piratePowers, isTrue);
+    expect(reloaded.loot, isFalse);
+  });
+
+  test('a setup that can no longer be read falls back to a base game with '
+      'the remembered number of opponents', () async {
+    final settings = await AppSettings.load(
+      MemorySettingsStore({'lastSetup': 'not json', 'opponents': '5'}),
+    );
+
+    expect(settings.lastSetup.players, 6);
+    expect(settings.lastSetup.usesExpansion, isFalse);
   });
 
   test('listeners are told when a setting changes', () async {

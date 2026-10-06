@@ -47,6 +47,9 @@ class GameController extends ChangeNotifier {
   }) : _game = Game.replay(config, savedAnswers),
        players = config.players;
 
+  /// What the game is played with.
+  GameConfig get config => _game.config;
+
   /// Called after every answer, the bots' included.
   final void Function(GameProgress progress)? onProgress;
 

@@ -58,6 +58,30 @@ final class GameConfig {
   /// A pirate that wins a trick lets its player use that pirate's power.
   final bool piratePowers;
 
+  GameConfig copyWith({
+    int? players,
+    int? seed,
+    Scoring? scoring,
+    bool? kraken,
+    bool? whiteWhale,
+    bool? loot,
+    bool? piratePowers,
+  }) => GameConfig(
+    players: players ?? this.players,
+    seed: seed ?? this.seed,
+    scoring: scoring ?? this.scoring,
+    kraken: kraken ?? this.kraken,
+    whiteWhale: whiteWhale ?? this.whiteWhale,
+    loot: loot ?? this.loot,
+    piratePowers: piratePowers ?? this.piratePowers,
+  );
+
+  /// Any expansion card or the pirate powers are in play.
+  bool get usesExpansion => kraken || whiteWhale || loot || piratePowers;
+
+  /// Every expansion card and the pirate powers are in play.
+  bool get usesFullExpansion => kraken && whiteWhale && loot && piratePowers;
+
   Map<String, Object?> toJson() => {
     'players': players,
     'seed': seed,

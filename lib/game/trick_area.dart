@@ -14,6 +14,7 @@ class TrickArea extends StatelessWidget {
     required this.seats,
     this.winner,
     this.cardWidth = 54,
+    this.namedPirates = false,
   });
 
   final List<Play> plays;
@@ -22,6 +23,7 @@ class TrickArea extends StatelessWidget {
   /// The seat that takes the trick, once it is complete.
   final int? winner;
   final double cardWidth;
+  final bool namedPirates;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +40,7 @@ class TrickArea extends StatelessWidget {
                 play.card,
                 width: cardWidth,
                 winning: play.seat == winner,
+                namedPirates: namedPirates,
               ),
               const SizedBox(height: 2),
               Text(

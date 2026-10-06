@@ -39,6 +39,7 @@ final class FinishedGame {
     required this.scores,
     required this.winner,
     required this.playerName,
+    this.config,
     this.summary,
     this.humanSeat = 0,
   });
@@ -53,6 +54,9 @@ final class FinishedGame {
 
   /// What the human was called when the game ended, if it was recorded.
   final String? playerName;
+
+  /// What the game was played with, when it can still be read.
+  final GameConfig? config;
 
   /// Missing for a game kept before summaries were recorded.
   final GameSummary? summary;

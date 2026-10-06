@@ -82,6 +82,7 @@ class MemoryGameStore implements GameStore {
         scores: result.scores,
         winner: result.winner,
         playerName: playerName,
+        config: game?.config,
         summary: summary,
       ),
     );

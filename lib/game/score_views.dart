@@ -12,6 +12,18 @@ const _head = TextStyle(
   fontWeight: FontWeight.w700,
 );
 
+/// Everything a seat scored on top of its bid.
+int _extras(SeatResult result) => result.score.total - result.score.bidPoints;
+
+/// What made up the extras of [result], in words.
+List<String> _details(SeatResult result) => [
+  ...result.bonuses.map(Strings.bonusName),
+  if (result.score.alliancePoints != 0)
+    Strings.allianceLine(result.score.alliancePoints),
+  if (result.score.wagerPoints != 0)
+    Strings.wagerLine(result.score.wagerPoints),
+];
+
 /// What every seat scored in one round, and why.
 class RoundSummaryTable extends StatelessWidget {
   const RoundSummaryTable({
@@ -75,12 +87,14 @@ class RoundSummaryTable extends StatelessWidget {
                 number('${result.bid}/${result.tricksWon}'),
                 number(Strings.signed(result.score.bidPoints)),
                 number(
-                  result.bonuses.isEmpty
+                  _extras(result) != 0
+                      ? Strings.signed(_extras(result))
+                      : result.bonuses.isEmpty
                       ? Strings.noBonus
-                      : result.score.bonusPoints > 0
-                      ? Strings.signed(result.score.bonusPoints)
                       : Strings.bonusLost,
-                  color: result.bonuses.isEmpty ? Tokens.mutedText : null,
+                  color: _extras(result) == 0 && result.bonuses.isEmpty
+                      ? Tokens.mutedText
+                      : null,
                 ),
                 number(
                   Strings.signed(result.score.total),
@@ -92,11 +106,11 @@ class RoundSummaryTable extends StatelessWidget {
           ],
         ),
         for (final (seat, result) in round.results.indexed)
-          if (result.bonuses.isNotEmpty)
+          if (_details(result).isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: Tokens.space1),
               child: Text(
-                Strings.bonusesOf(seats[seat].name, result.bonuses),
+                Strings.detailsOf(seats[seat].name, _details(result)),
                 style: const TextStyle(color: Tokens.mutedText, fontSize: 11),
               ),
             ),

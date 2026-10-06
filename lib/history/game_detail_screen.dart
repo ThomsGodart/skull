@@ -55,7 +55,7 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
               style: const TextStyle(color: Tokens.mutedText),
             ),
             Text(
-              Strings.gameSetup(game.players),
+              Strings.gameSetup(game.players, game.config),
               style: const TextStyle(color: Tokens.mutedText),
             ),
             const SizedBox(height: Tokens.space4),

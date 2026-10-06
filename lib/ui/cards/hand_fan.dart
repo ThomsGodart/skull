@@ -15,6 +15,7 @@ class HandFan extends StatelessWidget {
     this.selected,
     this.onTap,
     this.cardWidth = 64,
+    this.namedPirates = false,
   });
 
   final List<Card> cards;
@@ -22,6 +23,7 @@ class HandFan extends StatelessWidget {
   final Card? selected;
   final ValueChanged<Card>? onTap;
   final double cardWidth;
+  final bool namedPirates;
 
   static const _lift = 18.0;
 
@@ -72,6 +74,7 @@ class HandFan extends StatelessWidget {
         width: cardWidth,
         dimmed: legal != null && !playable,
         selected: card == selected,
+        namedPirates: namedPirates,
       ),
     );
   }

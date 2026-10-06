@@ -90,6 +90,55 @@ void main() {
     expect(settingsStore.values['opponents'], '4');
   });
 
+  testWidgets('the expansion preset turns every option on, and the game is '
+      'created and remembered that way', (tester) async {
+    await openApp(tester);
+    await tester.tap(find.text(Strings.newGame));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(Strings.presetFull));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(Strings.scoringRascal));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('launch')));
+    await tester.pumpAndSettle();
+
+    final config = games.active!.config;
+    expect(config.usesFullExpansion, isTrue);
+    expect(config.scoring, Scoring.rascal);
+    final settings = await AppSettings.load(settingsStore);
+    expect(settings.lastSetup.usesFullExpansion, isTrue);
+    expect(settings.lastSetup.scoring, Scoring.rascal);
+  });
+
+  testWidgets('a custom game picks its expansion cards one by one', (
+    tester,
+  ) async {
+    await openApp(tester);
+    await tester.tap(find.text(Strings.newGame));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(Strings.presetCustom));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(Strings.optionKraken));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text(Strings.optionPowers),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text(Strings.optionPowers));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('launch')));
+    await tester.pumpAndSettle();
+
+    final config = games.active!.config;
+    expect(config.kraken, isTrue);
+    expect(config.piratePowers, isTrue);
+    expect(config.whiteWhale, isFalse);
+    expect(config.loot, isFalse);
+  });
+
   testWidgets('tapping Launch twice in a row still starts a single game', (
     tester,
   ) async {

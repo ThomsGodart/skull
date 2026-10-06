@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import '../engine/engine.dart';
@@ -20,6 +22,7 @@ class AppSettings extends ChangeNotifier {
   static const _nameKey = 'playerName';
   static const _colorKey = 'playerColor';
   static const _opponentsKey = 'opponents';
+  static const _setupKey = 'lastSetup';
   static const _botSpeedKey = 'botSpeed';
   static const _singleTapKey = 'singleTapPlay';
   static const _hapticsKey = 'haptics';
@@ -33,6 +36,20 @@ class AppSettings extends ChangeNotifier {
     if (color != null && _isColor(color)) settings._playerColor = color;
     final opponents = int.tryParse(values[_opponentsKey] ?? '');
     if (opponents != null) settings._opponents = _clampOpponents(opponents);
+    try {
+      final setup = GameConfig.fromJson(
+        jsonDecode(values[_setupKey] ?? '') as Map<String, Object?>,
+      );
+      settings._lastSetup = setup.copyWith(
+        players: _clampOpponents(setup.players - 1) + 1,
+      );
+    } on Object {
+      // Never set, or no longer readable: the opponents alone are kept.
+      settings._lastSetup = GameConfig(
+        players: settings._opponents + 1,
+        seed: 0,
+      );
+    }
     settings._botSpeed =
         BotSpeed.values.asNameMap()[values[_botSpeedKey]] ?? BotSpeed.normal;
     settings._singleTapPlay = values[_singleTapKey] == 'true';
@@ -45,6 +62,7 @@ class AppSettings extends ChangeNotifier {
   String _playerName = defaultPlayerName;
   int _playerColor = 0;
   int _opponents = 3;
+  GameConfig _lastSetup = const GameConfig(players: 4, seed: 0);
   BotSpeed _botSpeed = BotSpeed.normal;
   bool _singleTapPlay = false;
   bool _haptics = true;
@@ -57,7 +75,21 @@ class AppSettings extends ChangeNotifier {
   int get playerColor => _playerColor;
 
   /// How many bots the last game was set up with.
-  int get opponents => _opponents;
+  int get opponents => _lastSetup.players - 1;
+
+  /// What the last game was set up with, offered again for the next one.
+  /// Its seed means nothing.
+  GameConfig get lastSetup => _lastSetup;
+
+  Future<void> setLastSetup(GameConfig setup) async {
+    _lastSetup = setup.copyWith(
+      players: _clampOpponents(setup.players - 1) + 1,
+      seed: 0,
+    );
+    _opponents = _lastSetup.players - 1;
+    await _changed(_setupKey, jsonEncode(_lastSetup.toJson()));
+    await _store.write(_opponentsKey, '$_opponents');
+  }
 
   BotSpeed get botSpeed => _botSpeed;
 
@@ -107,11 +139,8 @@ class AppSettings extends ChangeNotifier {
     await _store.write(_colorKey, '$_playerColor');
   }
 
-  Future<void> setOpponents(int opponents) async {
-    _opponents = _clampOpponents(opponents);
-    notifyListeners();
-    await _store.write(_opponentsKey, '$_opponents');
-  }
+  Future<void> setOpponents(int opponents) =>
+      setLastSetup(_lastSetup.copyWith(players: opponents + 1));
 
   static bool _isColor(int color) =>
       color >= 0 && color < Tokens.playerColors.length;

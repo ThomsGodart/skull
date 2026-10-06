@@ -14,6 +14,7 @@ class CardView extends StatelessWidget {
     this.dimmed = false,
     this.selected = false,
     this.winning = false,
+    this.namedPirates = false,
   });
 
   static const aspect = 1.45;
@@ -30,12 +31,15 @@ class CardView extends StatelessWidget {
   /// The card takes the trick.
   final bool winning;
 
+  /// Pirates go by their own name, as they do when their powers are in play.
+  final bool namedPirates;
+
   @override
   Widget build(BuildContext context) {
     final look = CardLook.of(card);
     final highlighted = selected || winning;
     return Semantics(
-      label: Strings.cardName(card),
+      label: Strings.cardName(card, namedPirates: namedPirates),
       child: Opacity(
         opacity: dimmed ? 0.4 : 1,
         child: Container(
@@ -115,7 +119,7 @@ class CardView extends StatelessWidget {
             Text(look.emblem, style: TextStyle(fontSize: width * 0.46)),
             SizedBox(height: width * 0.04),
             Text(
-              Strings.cardName(card),
+              Strings.cardName(card, namedPirates: namedPirates),
               style: TextStyle(
                 color: look.color,
                 fontSize: width * 0.2,

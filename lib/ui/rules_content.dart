@@ -1,5 +1,5 @@
-/// The rules as the player reads them in the app: our own summary of the
-/// base game, written from GAME_RULES.md.
+/// The rules as the player reads them in the app: our own summary, written
+/// from GAME_RULES.md.
 ///
 /// Kept apart from `strings.dart` because of its length; like it, this file
 /// holds nothing but text.
@@ -89,6 +89,50 @@ abstract final class RulesContent {
           'Si plusieurs joueurs sont premiers à égalité après la manche 10, '
           'on joue une manche de départage, et on recommence jusqu\'à avoir '
           'un seul premier.',
+    ),
+    (
+      title: 'Extension : Kraken, Baleine blanche, Butin',
+      body:
+          'Ces cartes s\'ajoutent au choix à la création de la partie. '
+          'Comme toute carte spéciale, elles se jouent à tout moment.\n\n'
+          '• Kraken : le pli est détruit, personne ne le remporte et ses '
+          'bonus sont perdus. Celui qui l\'aurait gagné entame le suivant.\n'
+          '• Baleine blanche : toutes les cartes spéciales du pli sont '
+          'détruites et les couleurs ne comptent plus ; la plus haute valeur '
+          'gagne, la première jouée en cas d\'égalité. S\'il ne reste que '
+          'des cartes spéciales, le pli est détruit.\n'
+          '• Les deux dans le même pli : seule la dernière jouée agit.\n'
+          '• Butin : perd comme une fuite, mais allie son joueur au gagnant '
+          'du pli. Si tous deux réussissent leur pari, chacun marque +20.\n\n'
+          'Dès qu\'un Kraken ou une Baleine blanche est sur la table, plus '
+          'personne n\'est obligé de suivre la couleur.',
+    ),
+    (
+      title: 'Extension : pouvoirs des pirates',
+      body:
+          'Si l\'option est activée, gagner un pli avec un pirate déclenche '
+          'son pouvoir, tout de suite. La Tigresse n\'en a pas, et un pli '
+          'détruit n\'en déclenche aucun.\n\n'
+          '• Rosie la Douce : choisis qui entame le prochain pli.\n'
+          '• Will le Bandit : pioche 2 cartes, puis défausse-en 2.\n'
+          '• Rascal le Flambeur : mise 0, 10 ou 20 points, gagnés si ton '
+          'pari est réussi, perdus sinon.\n'
+          '• Juanita Jade : regarde les cartes qui n\'ont pas été '
+          'distribuées.\n'
+          '• Harry le Géant : modifie ton pari de plus ou moins 1.\n\n'
+          'Après le dernier pli d\'une manche, seul Harry sert encore.',
+    ),
+    (
+      title: 'Score Rascal',
+      body:
+          'Une autre façon de compter, au choix à la création de la partie. '
+          'À chaque manche, tout le monde peut gagner la même chose : 10 '
+          'points par carte distribuée.\n\n'
+          '• Pari exact : la totalité, et tous tes bonus.\n'
+          '• À un pli près : la moitié, et la moitié de tes bonus.\n'
+          '• Deux plis d\'écart ou plus : rien.\n\n'
+          'Il n\'y a jamais de points négatifs. L\'alliance du Butin et la '
+          'mise de Rascal demandent toujours un pari exact.',
     ),
   ];
 }
