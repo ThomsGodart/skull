@@ -3,7 +3,33 @@ import 'deck.dart';
 /// The four suits of number cards. Black is the trump suit.
 enum Suit { green, yellow, purple, black }
 
-enum CardKind { number, escape, pirate, tigress, skullKing, mermaid }
+enum CardKind {
+  number,
+  escape,
+  pirate,
+  tigress,
+  skullKing,
+  mermaid,
+
+  // Expansion cards.
+  loot,
+  kraken,
+  whiteWhale,
+}
+
+/// The five pirates of the deck, each with a power of its own when the
+/// advanced pirate powers are in play. A pirate card's [Card.copy] names it.
+enum Pirate {
+  rosie,
+  will,
+  rascal,
+  juanita,
+  harry;
+
+  /// The pirate drawn on [card], or null when it is not a pirate card.
+  static Pirate? of(Card card) =>
+      card.kind == CardKind.pirate ? values[card.copy - 1] : null;
+}
 
 /// One physical card of the deck.
 ///
@@ -26,7 +52,7 @@ final class Card {
       _byId[id] ?? (throw FormatException('unknown card', id));
 
   static final Map<String, Card> _byId = {
-    for (final card in baseDeck()) card.id: card,
+    for (final card in allCards()) card.id: card,
   };
 
   final CardKind kind;

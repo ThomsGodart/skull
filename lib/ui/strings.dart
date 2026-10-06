@@ -197,6 +197,9 @@ abstract final class Strings {
     CardKind.tigress => 'Tigresse',
     CardKind.skullKing => 'Skull King',
     CardKind.mermaid => 'Sirène',
+    CardKind.loot => 'Butin',
+    CardKind.kraken => 'Kraken',
+    CardKind.whiteWhale => 'Baleine',
   };
 
   static String bonusName(Bonus bonus) => switch (bonus) {

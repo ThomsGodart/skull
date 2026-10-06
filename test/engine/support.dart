@@ -19,3 +19,7 @@ List<Play> trick(List<Card> cards, {TigressMode? tigressAs}) => [
       tigressAs: card.kind == CardKind.tigress ? tigressAs : null,
     ),
 ];
+
+final Card kraken = Card.special(CardKind.kraken);
+final Card whale = Card.special(CardKind.whiteWhale);
+Card loot([int copy = 1]) => Card.special(CardKind.loot, copy);

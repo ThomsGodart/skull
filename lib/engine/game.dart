@@ -83,6 +83,16 @@ final class Game {
   late List<int> _tricksWon;
   late List<List<Bonus>> _bonuses;
   List<Play> _trick = [];
+
+  /// The cards nobody was dealt this round.
+  List<Card> _stock = [];
+
+  /// What each seat staked with Rascal this round.
+  late List<int> _wagers;
+  final List<Alliance> _alliances = [];
+
+  /// A pirate power waiting for its player's decision.
+  Question? _power;
   late final List<int> _scores = List.filled(config.players, 0);
 
   int get _players => config.players;
@@ -96,6 +106,7 @@ final class Game {
   /// single seat whose turn it is to play. Empty once the game is over.
   List<Question> get pending {
     if (_finished) return const [];
+    if (_power case final power?) return [power];
     if (!_bidsRevealed) {
       return [
         for (var seat = 0; seat < _players; seat++)
@@ -142,6 +153,35 @@ final class Game {
         _bid(question, answer);
       case (final PlayQuestion question, final PlayAnswer answer):
         _play(question, answer);
+      case (
+        final ChooseLeaderQuestion question,
+        final ChooseLeaderAnswer answer,
+      ):
+        if (!question.seats.contains(answer.leader)) {
+          throw IllegalAnswer('seat ${answer.leader} cannot lead');
+        }
+        _leader = answer.leader;
+        _events.add(LeaderChosen(seat: answer.seat, leader: answer.leader));
+        _powerDone();
+      case (final DiscardQuestion question, final DiscardAnswer answer):
+        _discard(question, answer);
+      case (final WagerQuestion question, final WagerAnswer answer):
+        if (!question.amounts.contains(answer.amount)) {
+          throw IllegalAnswer('${answer.amount} cannot be staked');
+        }
+        _wagers[answer.seat] = answer.amount;
+        _events.add(WagerPlaced(seat: answer.seat, amount: answer.amount));
+        _powerDone();
+      case (final AdjustBidQuestion question, final AdjustBidAnswer answer):
+        if (!question.changes.contains(answer.change)) {
+          throw IllegalAnswer('the bid cannot move by ${answer.change}');
+        }
+        final bid = _bids[answer.seat]! + answer.change;
+        _bids[answer.seat] = bid;
+        if (answer.change != 0) {
+          _events.add(BidChanged(seat: answer.seat, bid: bid));
+        }
+        _powerDone();
       default:
         throw IllegalAnswer('seat ${answer.seat} is not asked for this');
     }
@@ -177,26 +217,124 @@ final class Game {
     if (_trick.length == _players) _finishTrick();
   }
 
+  void _discard(DiscardQuestion question, DiscardAnswer answer) {
+    final hand = _hands[answer.seat];
+    final cards = answer.cards;
+    if (cards.length != question.count ||
+        cards.toSet().length != cards.length ||
+        !cards.every(hand.contains)) {
+      throw IllegalAnswer('${question.count} cards of the hand must go');
+    }
+    cards.forEach(hand.remove);
+    _events
+      ..add(CardsDiscarded(seat: answer.seat, count: cards.length))
+      ..add(OwnCardsDiscarded(seat: answer.seat, cards: List.of(cards)));
+    _powerDone();
+  }
+
   void _finishTrick() {
-    final result = resolveTrick(_trick);
-    _tricksWon[result.winner]++;
-    _bonuses[result.winner].addAll(result.bonuses);
+    final plays = _trick;
+    final result = resolveTrick(plays);
+    if (!result.destroyed) {
+      _tricksWon[result.winner]++;
+      _bonuses[result.winner].addAll(result.bonuses);
+      _alliances.addAll(result.alliances);
+    }
     _events.add(
-      TrickWon(winner: result.winner, plays: _trick, bonuses: result.bonuses),
+      TrickWon(
+        winner: result.winner,
+        plays: plays,
+        bonuses: result.bonuses,
+        alliances: result.alliances,
+        destroyed: result.destroyed,
+      ),
     );
     _leader = result.winner;
     _trick = [];
-    if (_hands.first.isEmpty) _finishRound();
+    if (config.piratePowers && !result.destroyed) {
+      final card = plays.firstWhere((p) => p.seat == result.winner).card;
+      if (Pirate.of(card) case final pirate?) _usePower(pirate, result.winner);
+    }
+    if (_power == null) _afterTrick();
+  }
+
+  bool get _roundOver => _hands.every((hand) => hand.isEmpty);
+
+  /// Lets [seat] use the power of [pirate], which just won it a trick.
+  ///
+  /// After the last trick of a round only Harry still serves a purpose.
+  void _usePower(Pirate pirate, int seat) {
+    if (_roundOver && pirate != Pirate.harry) return;
+    switch (pirate) {
+      case Pirate.rosie:
+        _power = ChooseLeaderQuestion(
+          seat: seat,
+          seats: [for (var other = 0; other < _players; other++) other],
+        );
+      case Pirate.will:
+        // Whatever is left of the stock, two cards at most.
+        final drawn = _stock.take(2).toList();
+        if (drawn.isEmpty) return;
+        _stock = _stock.sublist(drawn.length);
+        _hands[seat].addAll(drawn);
+        _events.add(PowerUsed(seat: seat, pirate: pirate));
+        _events.add(CardsDrawn(seat: seat, cards: drawn));
+        _power = DiscardQuestion(
+          seat: seat,
+          hand: List.unmodifiable(_hands[seat]),
+          count: drawn.length,
+        );
+        return;
+      case Pirate.rascal:
+        _power = WagerQuestion(seat: seat, amounts: const [0, 10, 20]);
+      case Pirate.juanita:
+        if (_stock.isEmpty) return;
+        _events.add(PowerUsed(seat: seat, pirate: pirate));
+        _events.add(
+          StockRevealed(seat: seat, cards: List.unmodifiable(_stock)),
+        );
+        return;
+      case Pirate.harry:
+        final bid = _bids[seat]!;
+        _power = AdjustBidQuestion(
+          seat: seat,
+          changes: [
+            for (final change in const [-1, 0, 1])
+              if (bid + change >= 0 && bid + change <= _cardsDealt) change,
+          ],
+        );
+    }
+    _events.add(PowerUsed(seat: seat, pirate: pirate));
+  }
+
+  void _powerDone() {
+    _power = null;
+    _afterTrick();
+  }
+
+  void _afterTrick() {
+    if (_roundOver) _finishRound();
   }
 
   void _finishRound() {
     final results = <SeatResult>[];
+    bool made(int seat) => _bids[seat] == _tricksWon[seat];
     for (var seat = 0; seat < _players; seat++) {
       final score = scoreRound(
         bid: _bids[seat]!,
         tricksWon: _tricksWon[seat],
         cardsDealt: _cardsDealt,
         bonuses: _bonuses[seat],
+        scoring: config.scoring,
+        // An alliance counts once its other member made their bid too.
+        alliancesMade: _alliances
+            .where(
+              (alliance) =>
+                  (alliance.lootSeat == seat && made(alliance.winnerSeat)) ||
+                  (alliance.winnerSeat == seat && made(alliance.lootSeat)),
+            )
+            .length,
+        wager: _wagers[seat],
       );
       _scores[seat] += score.total;
       results.add(
@@ -237,13 +375,16 @@ final class Game {
     _bids = List.filled(_players, null);
     _tricksWon = List.filled(_players, 0);
     _bonuses = List.generate(_players, (_) => []);
+    _wagers = List.filled(_players, 0);
+    _alliances.clear();
     _trick = [];
-    final deck = baseDeck();
+    final deck = deckFor(config);
     _random.shuffle(deck);
     _hands = [
       for (var seat = 0; seat < _players; seat++)
         deck.sublist(seat * _cardsDealt, (seat + 1) * _cardsDealt),
     ];
+    _stock = deck.sublist(_players * _cardsDealt);
     _events.add(
       RoundStarted(
         round: _round,

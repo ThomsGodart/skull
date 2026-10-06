@@ -105,6 +105,26 @@ class GameController extends ChangeNotifier {
   /// Set when the human must play a card.
   PlayQuestion? playQuestion;
 
+  /// Set when the human must decide how to use a pirate's power: one of
+  /// [ChooseLeaderQuestion], [DiscardQuestion], [WagerQuestion] and
+  /// [AdjustBidQuestion].
+  Question? powerQuestion;
+
+  /// The latest thing a pirate's power did, for the table to announce. One of
+  /// [PowerUsed], [LeaderChosen], [CardsDiscarded], [WagerPlaced] and
+  /// [BidChanged]. Cleared when the next card is played.
+  Event? powerNotice;
+
+  /// Juanita's power, used by the human: the cards nobody was dealt, shown
+  /// until [dismissStock].
+  List<Card>? revealedStock;
+
+  /// True while the trick held on the table was destroyed.
+  bool trickDestroyed = false;
+
+  /// The alliances the trick held on the table made.
+  List<Alliance> trickAlliances = const [];
+
   /// Set when a round has just been scored and awaits [continueAfterRound].
   RoundScored? roundSummary;
 
@@ -147,12 +167,24 @@ class GameController extends ChangeNotifier {
     unawaited(_run());
   }
 
+  /// Answers the pirate power the human is asked about. Ignored when there
+  /// is none.
+  void answerPower(Answer answer) {
+    if (powerQuestion == null) return;
+    _answer(answer);
+    powerQuestion = null;
+    unawaited(_run());
+  }
+
   /// Moves on from the round summary to the next deal.
   void continueAfterRound() => _releaseHold();
 
+  /// Closes the cards Juanita showed.
+  void dismissStock() => _releaseHold();
+
   /// Cuts short the pause on a finished trick.
   void skipHold() {
-    if (roundSummary == null) _releaseHold();
+    if (roundSummary == null && revealedStock == null) _releaseHold();
   }
 
   @override
@@ -239,6 +271,11 @@ class GameController extends ChangeNotifier {
         bidQuestion = question;
       case PlayQuestion():
         playQuestion = question;
+      case ChooseLeaderQuestion() ||
+          DiscardQuestion() ||
+          WagerQuestion() ||
+          AdjustBidQuestion():
+        powerQuestion = question;
     }
     _notify();
   }
@@ -254,6 +291,7 @@ class GameController extends ChangeNotifier {
         bids = List.filled(players, null);
         tricksWon = List.filled(players, 0);
         trick = const [];
+        powerNotice = null;
         lastTrick = null;
         lastTrickWinner = null;
       case HandDealt():
@@ -265,6 +303,7 @@ class GameController extends ChangeNotifier {
         await _wait(speed.bidReveal);
         _revealingBids = false;
       case CardPlayed(:final play):
+        powerNotice = null;
         trick = [...trick, play];
         handSizes = [
           for (var seat = 0; seat < players; seat++)
@@ -279,10 +318,14 @@ class GameController extends ChangeNotifier {
       case TrickWon():
         trickWinner = event.winner;
         trickBonuses = event.bonuses;
-        tricksWon = [
-          for (var seat = 0; seat < players; seat++)
-            tricksWon[seat] + (seat == event.winner ? 1 : 0),
-        ];
+        trickDestroyed = event.destroyed;
+        trickAlliances = event.alliances;
+        if (!event.destroyed) {
+          tricksWon = [
+            for (var seat = 0; seat < players; seat++)
+              tricksWon[seat] + (seat == event.winner ? 1 : 0),
+          ];
+        }
         _notify();
         await _holdFor(speed.trickHold);
         lastTrick = event.plays;
@@ -290,7 +333,42 @@ class GameController extends ChangeNotifier {
         trick = const [];
         trickWinner = null;
         trickBonuses = const [];
+        trickDestroyed = false;
+        trickAlliances = const [];
         _leader = event.winner;
+      case PowerUsed():
+        powerNotice = event;
+        // A bot's power is announced long enough to be read; the human's own
+        // is followed by a question or a result of its own.
+        if (event.seat != humanSeat) {
+          _notify();
+          await _wait(speed.bidReveal);
+        }
+      case LeaderChosen():
+        _leader = event.leader;
+        await _announce(event);
+      case CardsDrawn():
+        hand = sortedHand([...hand, ...event.cards]);
+      case OwnCardsDiscarded():
+        hand = [
+          for (final card in hand)
+            if (!event.cards.contains(card)) card,
+        ];
+      case CardsDiscarded():
+        await _announce(event);
+      case WagerPlaced():
+        await _announce(event);
+      case BidChanged():
+        bids = [
+          for (var seat = 0; seat < players; seat++)
+            seat == event.seat ? event.bid : bids[seat],
+        ];
+        await _announce(event);
+      case StockRevealed():
+        revealedStock = event.cards;
+        _notify();
+        await _holdFor(null);
+        revealedStock = null;
       case RoundScored():
         scoredRounds.add(event);
         scores = [for (final result in event.results) result.totalScore];
@@ -305,6 +383,13 @@ class GameController extends ChangeNotifier {
         _report(event);
     }
     _notify();
+  }
+
+  /// Shows what a power just did, long enough to be read.
+  Future<void> _announce(Event outcome) async {
+    powerNotice = outcome;
+    _notify();
+    await _wait(speed.bidReveal);
   }
 
   void _notify() {

@@ -11,7 +11,61 @@ Bot sensibleBot() =>
         bid: _bid(view).clamp(0, question.maxBid),
       ),
       PlayQuestion() => _play(question, view),
+      ChooseLeaderQuestion() => ChooseLeaderAnswer(
+        seat: question.seat,
+        // Leading suits a hand that still wants tricks; otherwise pass it on.
+        leader: _needsTricks(view)
+            ? question.seat
+            : (question.seat + 1) % view.handSizes.length,
+      ),
+      DiscardQuestion() => DiscardAnswer(
+        seat: question.seat,
+        cards: _discards(question, view),
+      ),
+      WagerQuestion() => WagerAnswer(
+        seat: question.seat,
+        amount: _wager(question, view),
+      ),
+      AdjustBidQuestion() => AdjustBidAnswer(
+        seat: question.seat,
+        change: _bidChange(question, view),
+      ),
     };
+
+bool _needsTricks(GameView view) =>
+    view.bids[view.seat]! > view.tricksWon[view.seat];
+
+/// Keeps what serves the bid: strong cards while tricks are missing, weak
+/// ones once there are enough.
+List<Card> _discards(DiscardQuestion question, GameView view) {
+  final options = [
+    for (final card in question.hand)
+      (
+        card: card,
+        tigressAs: card.kind == CardKind.tigress ? TigressMode.pirate : null,
+      ),
+  ]..sort((a, b) => _strength(a).compareTo(_strength(b)));
+  final ordered = _needsTricks(view) ? options : options.reversed.toList();
+  return [for (final option in ordered.take(question.count)) option.card];
+}
+
+/// Stakes only on a bid that is already exactly made, and more when few
+/// cards are left to spoil it.
+int _wager(WagerQuestion question, GameView view) {
+  final seat = view.seat;
+  if (view.bids[seat] != view.tricksWon[seat]) return 0;
+  final wanted = view.hand.length <= 2 ? 20 : 10;
+  return question.amounts.contains(wanted) ? wanted : 0;
+}
+
+/// Raises a bid that was just overshot; lowers one that can no longer be
+/// reached because the round is over.
+int _bidChange(AdjustBidQuestion question, GameView view) {
+  final seat = view.seat;
+  final missing = view.bids[seat]! - view.tricksWon[seat];
+  final wanted = missing < 0 ? 1 : (missing > 0 && view.hand.isEmpty ? -1 : 0);
+  return question.changes.contains(wanted) ? wanted : 0;
+}
 
 /// How many tricks the hand should take: the sum of each card's chance.
 int _bid(GameView view) {
@@ -25,7 +79,9 @@ int _bid(GameView view) {
       CardKind.pirate => 0.75,
       CardKind.tigress => 0.7,
       CardKind.mermaid => 0.45,
-      CardKind.escape => 0.0,
+      CardKind.escape || CardKind.loot => 0.0,
+      // Whatever they do to a trick, they never take one.
+      CardKind.kraken || CardKind.whiteWhale => 0.0,
       CardKind.number when card.suit == Suit.black => switch (card.value!) {
         >= 10 => 0.5 + (card.value! - 10) * 0.1,
         >= 6 => 0.3,
@@ -60,12 +116,15 @@ PlayAnswer _play(PlayQuestion question, GameView view) {
   ];
   Play played(_Option option) =>
       Play(seat: seat, card: option.card, tigressAs: option.tigressAs);
-  bool winsSoFar(_Option option) =>
-      resolveTrick([...view.trick, played(option)]).winner == seat;
+  bool winsSoFar(_Option option) {
+    final result = resolveTrick([...view.trick, played(option)]);
+    // A destroyed trick is taken by nobody.
+    return !result.destroyed && result.winner == seat;
+  }
 
   final winning = options.where(winsSoFar).toList();
   final losing = options.where((option) => !winsSoFar(option)).toList();
-  final needsTricks = view.bids[seat]! > view.tricksWon[seat];
+  final needsTricks = _needsTricks(view);
   final isLast = view.trick.length == view.handSizes.length - 1;
 
   final _Option choice;
@@ -114,7 +173,8 @@ _Option _strongest(List<_Option> options) =>
 
 /// A rough ranking of how likely a card is to take a trick.
 int _strength(_Option option) => switch (option.card.kind) {
-  CardKind.escape => 0,
+  CardKind.escape || CardKind.loot => 0,
+  CardKind.kraken || CardKind.whiteWhale => 1,
   CardKind.number =>
     option.card.value! + (option.card.suit == Suit.black ? 20 : 0),
   CardKind.mermaid => 40,

@@ -42,6 +42,7 @@ List<String> trace(List<Event> events) => [
       TrickWon e => 'trick ${e.winner} ${e.bonuses}',
       RoundScored e => 'scored ${e.results.map((r) => r.totalScore)}',
       GameFinished e => 'finished ${e.winner} ${e.scores}',
+      _ => '$event',
     },
 ];
 

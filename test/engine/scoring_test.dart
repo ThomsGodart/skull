@@ -115,4 +115,101 @@ void main() {
       expect(score.total, -30);
     });
   });
+
+  group('rascal scoring', () {
+    RoundScore rascal(
+      int bid,
+      int won,
+      int cards, {
+      List<Bonus> bonuses = const [],
+    }) => scoreRound(
+      bid: bid,
+      tricksWon: won,
+      cardsDealt: cards,
+      bonuses: bonuses,
+      scoring: Scoring.rascal,
+    );
+
+    test('an exact bid earns 10 per card dealt, whatever the bid', () {
+      // Official sheet, example A: three cards, bids 0, 1 and 2 all made.
+      expect(rascal(0, 0, 3).bidPoints, 30);
+      expect(rascal(1, 1, 3).bidPoints, 30);
+      expect(rascal(2, 2, 3).bidPoints, 30);
+    });
+
+    test('one trick off earns half, two or more nothing', () {
+      // Official sheet, example B: four cards.
+      expect(rascal(1, 1, 4).bidPoints, 40);
+      expect(rascal(0, 1, 4).bidPoints, 20);
+      expect(rascal(4, 2, 4).bidPoints, 0);
+    });
+
+    test('a score is never negative', () {
+      expect(rascal(0, 5, 5).total, 0);
+    });
+
+    test('capture bonuses follow the same rule: all, half or none', () {
+      const bonuses = [Bonus.skullKingCaptured, Bonus.standardFourteen];
+
+      expect(rascal(2, 2, 5, bonuses: bonuses).bonusPoints, 50);
+      expect(rascal(2, 3, 5, bonuses: bonuses).bonusPoints, 25);
+      expect(rascal(2, 4, 5, bonuses: bonuses).bonusPoints, 0);
+    });
+  });
+
+  group('loot alliances', () {
+    RoundScore score(int won, {Scoring scoring = Scoring.classic}) =>
+        scoreRound(
+          bid: 2,
+          tricksWon: won,
+          cardsDealt: 5,
+          alliancesMade: 2,
+          scoring: scoring,
+        );
+
+    test('each alliance whose two members made their bid is worth 20', () {
+      expect(score(2).alliancePoints, 40);
+      expect(score(2).total, 40 + 40);
+    });
+
+    test('a missed bid earns nothing from an alliance', () {
+      expect(score(3).alliancePoints, 0);
+    });
+
+    test('in rascal scoring too the bid must be exact: one off earns '
+        'nothing from an alliance', () {
+      expect(score(2, scoring: Scoring.rascal).alliancePoints, 40);
+      expect(score(3, scoring: Scoring.rascal).alliancePoints, 0);
+    });
+  });
+
+  group('the wager of Rascal the gambler', () {
+    RoundScore score(int won, int wager, {Scoring scoring = Scoring.classic}) =>
+        scoreRound(
+          bid: 1,
+          tricksWon: won,
+          cardsDealt: 4,
+          wager: wager,
+          scoring: scoring,
+        );
+
+    test('is won on a made bid', () {
+      expect(score(1, 20).wagerPoints, 20);
+      expect(score(1, 20).total, 20 + 20);
+    });
+
+    test('is lost on a missed bid', () {
+      expect(score(2, 10).wagerPoints, -10);
+      expect(score(2, 10).total, -10 - 10);
+    });
+
+    test('a wager of zero changes nothing', () {
+      expect(score(2, 0).wagerPoints, 0);
+    });
+
+    test('in rascal scoring it is lost when one trick off', () {
+      expect(score(2, 20, scoring: Scoring.rascal).wagerPoints, -20);
+      expect(score(2, 20, scoring: Scoring.rascal).total, 20 - 20);
+    });
+  });
 }

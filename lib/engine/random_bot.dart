@@ -16,6 +16,22 @@ Answer randomAnswer(Question question, Random random) => switch (question) {
     legalCards[random.nextInt(legalCards.length)],
     random,
   ),
+  ChooseLeaderQuestion(:final seat, :final seats) => ChooseLeaderAnswer(
+    seat: seat,
+    leader: seats[random.nextInt(seats.length)],
+  ),
+  DiscardQuestion(:final seat, :final hand, :final count) => DiscardAnswer(
+    seat: seat,
+    cards: (List.of(hand)..shuffle(random)).take(count).toList(),
+  ),
+  WagerQuestion(:final seat, :final amounts) => WagerAnswer(
+    seat: seat,
+    amount: amounts[random.nextInt(amounts.length)],
+  ),
+  AdjustBidQuestion(:final seat, :final changes) => AdjustBidAnswer(
+    seat: seat,
+    change: changes[random.nextInt(changes.length)],
+  ),
 };
 
 PlayAnswer _randomPlay(int seat, Card card, Random random) => PlayAnswer(

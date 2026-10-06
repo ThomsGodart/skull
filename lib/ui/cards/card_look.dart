@@ -24,5 +24,8 @@ final class CardLook {
     CardKind.tigress => const CardLook(Color(0xFFD9822B), '🐯'),
     CardKind.skullKing => const CardLook(Color(0xFF7A1420), '👑'),
     CardKind.mermaid => const CardLook(Color(0xFF16897C), '🧜‍♀️'),
+    CardKind.loot => const CardLook(Color(0xFF9A7B1F), '💎'),
+    CardKind.kraken => const CardLook(Color(0xFF8E2A4F), '🐙'),
+    CardKind.whiteWhale => const CardLook(Color(0xFF3F7FB5), '🐳'),
   };
 }
