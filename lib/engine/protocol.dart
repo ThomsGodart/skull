@@ -12,6 +12,40 @@ final class GameConfig {
   /// Seeds every shuffle and the choice of the first dealer: the same seed and
   /// the same answers always give the same game.
   final int seed;
+
+  factory GameConfig.fromJson(Map<String, Object?> json) =>
+      GameConfig(players: json['players']! as int, seed: json['seed']! as int);
+
+  Map<String, Object?> toJson() => {'players': players, 'seed': seed};
+}
+
+/// [answer] as JSON. With its [GameConfig], the list of a game's answers is
+/// all it takes to save it.
+Map<String, Object?> answerToJson(Answer answer) => switch (answer) {
+  BidAnswer() => {'seat': answer.seat, 'bid': answer.bid},
+  PlayAnswer() => {
+    'seat': answer.seat,
+    'card': answer.card.id,
+    if (answer.tigressAs case final mode?) 'tigressAs': mode.name,
+  },
+};
+
+/// The reverse of [answerToJson]. Throws a [FormatException] on anything else.
+Answer answerFromJson(Map<String, Object?> json) {
+  try {
+    final seat = json['seat']! as int;
+    if (json['bid'] case final int bid) return BidAnswer(seat: seat, bid: bid);
+    final mode = json['tigressAs'] as String?;
+    return PlayAnswer(
+      seat: seat,
+      card: Card.fromId(json['card']! as String),
+      tigressAs: mode == null ? null : TigressMode.values.byName(mode),
+    );
+  } on FormatException {
+    rethrow;
+  } catch (error) {
+    throw FormatException('not a saved answer: $error', json);
+  }
 }
 
 /// Something the game needs from a seat before it can go on.

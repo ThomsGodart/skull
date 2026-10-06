@@ -38,6 +38,24 @@ final class TableSpeed {
   final Duration bidReveal;
 }
 
+/// Where a game stands after an answer: what it takes to save it.
+final class GameProgress {
+  const GameProgress({
+    required this.answers,
+    required this.round,
+    required this.humanScore,
+    this.result,
+  });
+
+  /// Every answer given since the start of the game.
+  final List<Answer> answers;
+  final int round;
+  final int humanScore;
+
+  /// Set once, by the answer that ends the game.
+  final GameFinished? result;
+}
+
 /// Runs a game for one human against bots, and holds what the table shows.
 ///
 /// The engine resolves everything at once; this replays its events one at a
@@ -48,8 +66,13 @@ class GameController extends ChangeNotifier {
     required this.bot,
     this.speed = TableSpeed.normal,
     this.humanSeat = 0,
-  }) : _game = Game(config),
+    List<Answer> savedAnswers = const [],
+    this.onProgress,
+  }) : _game = Game.replay(config, savedAnswers),
        players = config.players;
+
+  /// Called after every answer, the bots' included.
+  final void Function(GameProgress progress)? onProgress;
 
   final Bot bot;
   final TableSpeed speed;
@@ -60,6 +83,9 @@ class GameController extends ChangeNotifier {
   final Queue<Event> _events = Queue();
   bool _running = false;
 
+  /// True while the events of a resumed game are applied in one go.
+  bool _catchingUp = false;
+
   /// True while the revealed bids are left on show, before anyone plays.
   bool _revealingBids = false;
 
@@ -67,6 +93,8 @@ class GameController extends ChangeNotifier {
   void Function(Object error)? onError;
   bool _disposed = false;
   Completer<void>? _hold;
+  Timer? _pause;
+  Completer<void>? _pauseDone;
 
   int round = 0;
   int cardsDealt = 0;
@@ -121,12 +149,22 @@ class GameController extends ChangeNotifier {
   /// The suit to follow in the trick on the table, if any.
   Suit? get leadSuit => engine.leadSuit(trick);
 
-  void start() => unawaited(_run());
+  /// Starts the game, or picks a resumed one up where it was left.
+  void start() {
+    _catchingUp = true;
+    _collectEvents();
+    // A game resumed after its last answer: whoever keeps it must still learn
+    // that it is over.
+    if (_events.whereType<GameFinished>().firstOrNull case final result?) {
+      _report(result);
+    }
+    unawaited(_run());
+  }
 
   /// Ignored unless the human is being asked to bid.
   void bid(int bid) {
     if (bidQuestion == null) return;
-    _game.answer(BidAnswer(seat: humanSeat, bid: bid));
+    _answer(BidAnswer(seat: humanSeat, bid: bid));
     bidQuestion = null;
     unawaited(_run());
   }
@@ -134,7 +172,7 @@ class GameController extends ChangeNotifier {
   /// Ignored unless the human is being asked to play.
   void play(Card card, {TigressMode? tigressAs}) {
     if (playQuestion == null) return;
-    _game.answer(PlayAnswer(seat: humanSeat, card: card, tigressAs: tigressAs));
+    _answer(PlayAnswer(seat: humanSeat, card: card, tigressAs: tigressAs));
     playQuestion = null;
     unawaited(_run());
   }
@@ -151,6 +189,8 @@ class GameController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _releaseHold();
+    _pause?.cancel();
+    if (_pauseDone case final done? when !done.isCompleted) done.complete();
     super.dispose();
   }
 
@@ -177,15 +217,13 @@ class GameController extends ChangeNotifier {
 
   Future<void> _advance() async {
     while (!_disposed) {
-      _events.addAll(
-        _game.takeEvents().where(
-          (event) => event.audience == null || event.audience == humanSeat,
-        ),
-      );
+      _collectEvents();
       if (_events.isNotEmpty) {
         await _show(_events.removeFirst());
         continue;
       }
+      // Whatever a resumed game had already been through is now on screen.
+      _catchingUp = false;
       final questions = _game.pending;
       if (questions.isEmpty) break;
       final forBots = questions.where((q) => q.seat != humanSeat);
@@ -196,8 +234,32 @@ class GameController extends ChangeNotifier {
       final question = forBots.first;
       if (question is PlayQuestion) await _wait(speed.botPlay);
       if (_disposed) break;
-      _game.answer(bot(question, _game.viewFor(question.seat)));
+      _answer(bot(question, _game.viewFor(question.seat)));
     }
+  }
+
+  void _collectEvents() => _events.addAll(
+    _game.takeEvents().where(
+      (event) => event.audience == null || event.audience == humanSeat,
+    ),
+  );
+
+  void _answer(Answer answer) {
+    _game.answer(answer);
+    _collectEvents();
+    _report(_events.whereType<GameFinished>().firstOrNull);
+  }
+
+  void _report(GameFinished? result) {
+    final view = _game.viewFor(humanSeat);
+    onProgress?.call(
+      GameProgress(
+        answers: _game.answers,
+        round: view.round,
+        humanScore: view.scores[humanSeat],
+        result: result,
+      ),
+    );
   }
 
   void _ask(Question question) {
@@ -275,12 +337,21 @@ class GameController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
-  Future<void> _wait(Duration duration) =>
-      duration == Duration.zero ? Future.value() : Future.delayed(duration);
+  /// Waits for [duration]. Cut short when the controller is disposed, so no
+  /// timer outlives the table.
+  Future<void> _wait(Duration duration) {
+    if (duration == Duration.zero || _catchingUp || _disposed) {
+      return Future.value();
+    }
+    final done = Completer<void>();
+    _pause = Timer(duration, done.complete);
+    _pauseDone = done;
+    return done.future;
+  }
 
   /// Waits until released, or for [duration] at most when one is given.
   Future<void> _holdFor(Duration? duration) async {
-    if (duration == Duration.zero || _disposed) return;
+    if (duration == Duration.zero || _disposed || _catchingUp) return;
     final hold = _hold = Completer<void>();
     final timer = duration == null ? null : Timer(duration, _releaseHold);
     await hold.future;

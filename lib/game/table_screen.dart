@@ -19,7 +19,11 @@ class TableScreen extends StatefulWidget {
     super.key,
     required this.controller,
     required this.onPlayAgain,
+    this.human = const SeatIdentity(Strings.you, Tokens.gold),
   });
+
+  /// Who the human is, as shown at their seat.
+  final SeatIdentity human;
 
   final GameController controller;
 
@@ -33,6 +37,7 @@ class TableScreen extends StatefulWidget {
 class _TableScreenState extends State<TableScreen> {
   late final List<SeatIdentity> _seats = SeatIdentity.table(
     widget.controller.players,
+    human: widget.human,
   );
 
   /// The card lifted by a first tap, waiting for the second.
@@ -97,21 +102,22 @@ class _TableScreenState extends State<TableScreen> {
   static String _emblem(CardKind kind) =>
       CardLook.of(Card.special(kind)).emblem;
 
-  Future<void> _confirmQuit() async {
+  /// The game is saved as it goes, so leaving loses nothing.
+  Future<void> _pause() async {
     final navigator = Navigator.of(context);
     final quit = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text(Strings.quitTitle),
-        content: const Text(Strings.quitBody),
+        title: const Text(Strings.pause),
+        content: const Text(Strings.gameIsSaved),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(Strings.stay),
-          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text(Strings.quit),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(Strings.resume),
           ),
         ],
       ),
@@ -182,7 +188,7 @@ class _TableScreenState extends State<TableScreen> {
     return PopScope(
       canPop: over,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _confirmQuit();
+        if (!didPop) _pause();
       },
       child: Scaffold(
         body: SafeArea(
@@ -257,9 +263,9 @@ class _TableScreenState extends State<TableScreen> {
     return Row(
       children: [
         IconButton(
-          tooltip: Strings.quit,
-          onPressed: _confirmQuit,
-          icon: const Icon(Icons.close),
+          tooltip: Strings.pause,
+          onPressed: _pause,
+          icon: const Icon(Icons.pause),
         ),
         Expanded(
           child: Text(

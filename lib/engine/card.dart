@@ -17,6 +17,16 @@ final class Card {
       suit = null,
       value = null;
 
+  /// The card named by [id], as written by [Card.id].
+  ///
+  /// Throws a [FormatException] when no card of the deck has that identifier.
+  factory Card.fromId(String id) =>
+      _byId[id] ?? (throw FormatException('unknown card', id));
+
+  static final Map<String, Card> _byId = {
+    for (final card in _everyCard()) card.id: card,
+  };
+
   final CardKind kind;
 
   /// Null for a special card.
@@ -44,4 +54,26 @@ final class Card {
 
   @override
   String toString() => id;
+}
+
+/// How many copies of each special card exist, expansion cards included.
+const specialCardCopies = {
+  CardKind.escape: 5,
+  CardKind.pirate: 5,
+  CardKind.tigress: 1,
+  CardKind.skullKing: 1,
+  CardKind.mermaid: 2,
+};
+
+Iterable<Card> _everyCard() sync* {
+  for (final suit in Suit.values) {
+    for (var value = 1; value <= 14; value++) {
+      yield Card.number(suit, value);
+    }
+  }
+  for (final MapEntry(key: kind, value: copies) in specialCardCopies.entries) {
+    for (var copy = 1; copy <= copies; copy++) {
+      yield Card.special(kind, copy);
+    }
+  }
 }

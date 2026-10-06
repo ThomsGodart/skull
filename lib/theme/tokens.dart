@@ -15,6 +15,15 @@ abstract final class Tokens {
   static const onAvatar = Colors.white;
   static const cardShadow = Colors.black45;
 
+  /// The colours the player may pick for their own seat.
+  static const playerColors = [
+    gold,
+    Color(0xFFE0605A),
+    Color(0xFF3FB3A8),
+    Color(0xFF9B7BE0),
+    Color(0xFF6FBF5A),
+  ];
+
   /// One colour per bot seat, in seat order.
   static const botColors = [
     Color(0xFF3F8EC4),

@@ -14,4 +14,6 @@ Les règles complètes du jeu (cartes, hiérarchie, scores, restrictions, modes 
 
 Vocabulaire du domaine (termes du code en anglais, de l'interface en français) : `CONTEXT.md`. Le moteur de règles est dans `lib/engine/`, en Dart pur : aucun import Flutter n'y est permis (un test le vérifie).
 
+Stockage : drift (SQLite), schéma dans `lib/storage/app_database.dart`. Après toute modification du schéma, régénérer avec `dart run build_runner build` et incrémenter `schemaVersion` avec une migration.
+
 @GAME_RULES.md

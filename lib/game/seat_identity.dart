@@ -12,10 +12,11 @@ final class SeatIdentity {
 
   String get initials => name.substring(0, name.length < 2 ? 1 : 2);
 
-  /// The human at seat 0, bots at the others.
-  static List<SeatIdentity> table(int players) => [
-    const SeatIdentity(Strings.you, Tokens.gold),
-    for (var bot = 0; bot < players - 1; bot++)
-      SeatIdentity(Strings.botNames[bot], Tokens.botColors[bot]),
-  ];
+  /// [human] at seat 0, bots at the others.
+  static List<SeatIdentity> table(int players, {required SeatIdentity human}) =>
+      [
+        human,
+        for (var bot = 0; bot < players - 1; bot++)
+          SeatIdentity(Strings.botNames[bot], Tokens.botColors[bot]),
+      ];
 }

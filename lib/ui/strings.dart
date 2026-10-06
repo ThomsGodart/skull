@@ -3,6 +3,7 @@ import '../engine/engine.dart';
 /// Every text the player reads. Kept in one place so it can be translated.
 abstract final class Strings {
   static const appTitle = 'Skull Kings';
+  static const homeEmblem = '☠️';
   static const tagline = 'Parie tes plis, tiens ta parole.';
   static const newGame = 'Nouvelle partie';
   static const opponents = 'Adversaires';
@@ -62,9 +63,31 @@ abstract final class Strings {
   static const scoreSheet = 'Feuille de score';
   static const close = 'Fermer';
   static const quit = 'Quitter';
-  static const quitTitle = 'Quitter la partie ?';
-  static const quitBody = 'La partie en cours sera perdue.';
-  static const stay = 'Rester';
+  static const pause = 'Pause';
+  static const gameIsSaved =
+      'La partie est sauvegardée. Tu pourras la reprendre depuis l\'accueil.';
+  static const resume = 'Reprendre';
+
+  static String savedGameSummary(int round, int score) =>
+      'Manche $round · ${points(score)}';
+  static const replaceGameTitle = 'Remplacer la partie en cours ?';
+  static const replaceGameBody =
+      'Une partie est déjà commencée. En lancer une nouvelle l\'efface.';
+  static const replaceGame = 'Remplacer';
+  static const keepGame = 'Garder';
+
+  static const setupTitle = 'Nouvelle partie';
+  static const launch = 'Lancer la partie';
+  static String setupSummary(int players) =>
+      '$players joueurs · jeu de base · score classique · 10 manches';
+  static const eightPlayersNote =
+      'À 8 joueurs, les manches 9 et 10 se jouent avec 8 cartes.';
+
+  static const profileTitle = 'Ton profil';
+  static const playerNameLabel = 'Nom';
+  static const playerColorLabel = 'Couleur';
+  static const save = 'Enregistrer';
+  static const cancel = 'Annuler';
 
   static String roundOver(int round) => 'Fin de la manche $round';
   static const continueGame = 'Continuer';

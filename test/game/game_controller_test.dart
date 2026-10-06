@@ -182,6 +182,98 @@ void main() {
     expect(error, isStateError);
   });
 
+  group('saving and resuming', () {
+    GameController resumable(
+      List<GameProgress> log, {
+      List<Answer> saved = const [],
+    }) => GameController(
+      config: const GameConfig(players: 4, seed: 5),
+      bot: randomBot(Random(5)),
+      speed: TableSpeed.instant,
+      savedAnswers: saved,
+      onProgress: log.add,
+    );
+
+    test('every answer is reported, bots included, with where the game '
+        'stands', () async {
+      final log = <GameProgress>[];
+      final controller = resumable(log)..start();
+      await playUntil(controller, () => controller.round == 3);
+
+      expect(log.last.round, 3);
+      expect(log.last.humanScore, controller.scores[0]);
+      expect(log.last.result, isNull);
+      final sizes = log.map((progress) => progress.answers.length).toList();
+      expect(sizes, [...sizes]..sort(), reason: 'answers only ever grow');
+      // Rounds one and two: 4 bids each, then 4 and 8 cards.
+      expect(log.last.answers.length, greaterThanOrEqualTo(4 + 4 + 4 + 8));
+    });
+
+    test('a game resumed from its saved answers shows the table as it was, '
+        'without replaying past rounds on screen', () async {
+      final log = <GameProgress>[];
+      final original = resumable(log)..start();
+      await playUntil(
+        original,
+        () => original.round == 4 && original.playQuestion != null,
+      );
+
+      final resumed = resumable([], saved: log.last.answers)..start();
+      await settle();
+
+      expect(resumed.round, 4);
+      expect(resumed.roundSummary, isNull);
+      expect(resumed.hand, original.hand);
+      expect(resumed.bids, original.bids);
+      expect(resumed.tricksWon, original.tricksWon);
+      expect(resumed.scores, original.scores);
+      expect(
+        resumed.trick.map((p) => p.card),
+        original.trick.map((p) => p.card),
+      );
+      expect(resumed.scoredRounds, hasLength(3));
+      expect(
+        resumed.playQuestion!.legalCards,
+        original.playQuestion!.legalCards,
+      );
+    });
+
+    test('a resumed game plays on to the end', () async {
+      final log = <GameProgress>[];
+      final original = resumable(log)..start();
+      await playUntil(original, () => original.round == 5);
+
+      final resumed = resumable([], saved: log.last.answers)..start();
+      await playUntil(resumed, () => resumed.result != null);
+
+      expect(resumed.scoredRounds.length, greaterThanOrEqualTo(10));
+    });
+
+    test('a game saved after its last answer but never marked as over '
+        'is reported as over when it is opened again', () async {
+      final log = <GameProgress>[];
+      final original = resumable(log)..start();
+      await playUntil(original, () => original.result != null);
+
+      final reopened = <GameProgress>[];
+      final resumed = resumable(reopened, saved: log.last.answers)..start();
+      await settle();
+
+      expect(resumed.result, isNotNull);
+      expect(reopened.single.result?.scores, original.result!.scores);
+    });
+
+    test('the end of the game is reported with its result', () async {
+      final log = <GameProgress>[];
+      final controller = resumable(log)..start();
+
+      await playUntil(controller, () => controller.result != null);
+
+      expect(log.last.result?.scores, controller.result!.scores);
+      expect(log.where((progress) => progress.result != null), hasLength(1));
+    });
+  });
+
   test('notifies its listeners as the table changes', () async {
     final controller = controllerFor();
     var notified = 0;
