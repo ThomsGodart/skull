@@ -5,67 +5,62 @@ import 'package:flutter/foundation.dart';
 
 import '../bots/bot.dart';
 import '../engine/engine.dart';
+import 'local_table.dart';
+import 'seat_feed.dart';
 import 'table_speed.dart';
 
+export 'local_table.dart' show GameProgress;
 export 'table_speed.dart';
 import '../engine/engine.dart' as engine show leadSuit;
 
-/// Where a game stands after an answer: what it takes to save it.
-final class GameProgress {
-  const GameProgress({
-    required this.answers,
-    required this.round,
-    required this.humanScore,
-    this.rounds = const [],
-    this.result,
-  });
-
-  /// Every answer given since the start of the game.
-  final List<Answer> answers;
-  final int round;
-  final int humanScore;
-
-  /// Every round scored and shown so far.
-  final List<RoundScored> rounds;
-
-  /// Set once, when the final standings are shown.
-  final GameFinished? result;
-}
-
-/// Runs a game for one human against bots, and holds what the table shows.
+/// Holds what the table shows of a game, for the seat of one [SeatFeed].
 ///
-/// The engine resolves everything at once; this replays its events one at a
-/// time, so the screen shows each card, each trick and each round in turn.
+/// The game resolves everything at once, wherever it runs; this replays its
+/// events one at a time, so the screen shows each card, each trick and each
+/// round in turn.
 class GameController extends ChangeNotifier {
-  GameController({
+  /// A game on this phone: one human against bots.
+  factory GameController({
     required GameConfig config,
-    required this.bot,
-    this.speed = TableSpeed.normal,
-    this.humanSeat = 0,
+    required Bot bot,
+    TableSpeed speed = TableSpeed.normal,
+    int humanSeat = 0,
     List<Answer> savedAnswers = const [],
-    this.onProgress,
-  }) : _game = Game.replay(config, savedAnswers);
+    void Function(GameProgress progress)? onProgress,
+  }) => GameController.onFeed(
+    LocalTable(
+      config: config,
+      bot: bot,
+      savedAnswers: savedAnswers,
+      humanSeats: {humanSeat},
+      primarySeat: humanSeat,
+      onProgress: onProgress,
+    ).feedFor(humanSeat),
+    speed: speed,
+  );
+
+  /// The table of the seat [feed] is for, wherever the game runs.
+  GameController.onFeed(this._feed, {this.speed = TableSpeed.normal});
+
+  final SeatFeed _feed;
 
   /// What the game is played with.
-  GameConfig get config => _game.config;
+  GameConfig get config => _feed.config;
 
-  /// Called after every answer, the bots' included.
-  final void Function(GameProgress progress)? onProgress;
-
-  final Bot bot;
   final TableSpeed speed;
-  final int humanSeat;
+
+  /// The seat this table is seen from.
+  int get humanSeat => _feed.seat;
 
   /// Seats at the table, the ghost's included when two play.
-  int get seats => _game.seats;
+  int get seats => tableHands(config.players);
 
   /// The seat of Greybeard's ghost in a two-player game.
-  int? get ghostSeat => _game.ghostSeat;
+  int? get ghostSeat => seats > config.players ? seats - 1 : null;
 
   /// The seats that bid and score: every one but the ghost's.
-  int get scoringSeats => _game.config.players;
+  int get scoringSeats => config.players;
 
-  final Game _game;
   final Queue<Event> _events = Queue();
   bool _running = false;
 
@@ -168,23 +163,29 @@ class GameController extends ChangeNotifier {
   /// Starts the game, or picks a resumed one up where it was left.
   void start() {
     _catchingUp = true;
+    _feed
+      ..onUpdate = (() => unawaited(_run()))
+      ..onError = _fail
+      ..open();
     unawaited(_run());
+  }
+
+  void _fail(Object error) {
+    final report = onError;
+    if (report == null) throw error;
+    report(error);
   }
 
   /// Ignored unless the human is being asked to bid.
   void bid(int bid) {
     if (bidQuestion == null) return;
     _answer(BidAnswer(seat: humanSeat, bid: bid));
-    bidQuestion = null;
-    unawaited(_run());
   }
 
   /// Ignored unless the human is being asked to play.
   void play(Card card, {TigressMode? tigressAs}) {
     if (playQuestion == null) return;
     _answer(PlayAnswer(seat: humanSeat, card: card, tigressAs: tigressAs));
-    playQuestion = null;
-    unawaited(_run());
   }
 
   /// Answers the pirate power the human is asked about. Ignored when there
@@ -192,8 +193,6 @@ class GameController extends ChangeNotifier {
   void answerPower(Answer answer) {
     if (powerQuestion == null) return;
     _answer(answer);
-    powerQuestion = null;
-    unawaited(_run());
   }
 
   /// Moves on from the round summary to the next deal.
@@ -210,6 +209,7 @@ class GameController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _feed.close();
     _releaseHold();
     _waitTimer?.cancel();
     if (_waitDone case final done? when !done.isCompleted) done.complete();
@@ -226,63 +226,46 @@ class GameController extends ChangeNotifier {
     if (_running) return;
     _running = true;
     try {
-      await _advance();
-    } catch (error) {
-      // Left unreported, a failing bot would freeze the table for good.
-      final report = onError;
-      if (report == null) rethrow;
-      report(error);
+      while (!_disposed) {
+        _events.addAll(_feed.takeEvents());
+        if (_events.isNotEmpty) {
+          await _show(_events.removeFirst());
+          continue;
+        }
+        // Whatever a resumed game had already been through is now on screen.
+        _catchingUp = false;
+        final question = _feed.question;
+        if (question != null && !identical(question, _asked)) {
+          _asked = question;
+          _ask(question);
+        }
+        break;
+      }
     } finally {
       _running = false;
     }
   }
 
-  Future<void> _advance() async {
-    while (!_disposed) {
-      _collectEvents();
-      if (_events.isNotEmpty) {
-        await _show(_events.removeFirst());
-        continue;
-      }
-      // Whatever a resumed game had already been through is now on screen.
-      _catchingUp = false;
-      final questions = _game.pending;
-      if (questions.isEmpty) break;
-      final forBots = questions.where((q) => q.seat != humanSeat);
-      if (forBots.isEmpty) {
-        _ask(questions.single);
-        break;
-      }
-      final question = forBots.first;
-      if (question is PlayQuestion) await _wait(speed.botPlay);
-      if (_disposed) break;
-      _answer(bot(question, _game.viewFor(question.seat)));
-    }
-  }
+  /// The question already put to the human, so it is not asked twice.
+  Question? _asked;
 
-  void _collectEvents() => _events.addAll(
-    _game.takeEvents().where(
-      (event) => event.audience == null || event.audience == humanSeat,
-    ),
-  );
-
+  /// Sends the human's [answer]. The question is taken off the table first,
+  /// since the game may come back with the next thing to show at once; it is
+  /// put back if the answer is refused.
   void _answer(Answer answer) {
-    _game.answer(answer);
-    _collectEvents();
-    _report(null);
-  }
-
-  void _report(GameFinished? result) {
-    final view = _game.viewFor(humanSeat);
-    onProgress?.call(
-      GameProgress(
-        answers: _game.answers,
-        round: view.round,
-        humanScore: view.scores[humanSeat],
-        rounds: List.unmodifiable(scoredRounds),
-        result: result,
-      ),
-    );
+    final asked = (bidQuestion, playQuestion, powerQuestion);
+    bidQuestion = null;
+    playQuestion = null;
+    powerQuestion = null;
+    try {
+      _feed.answer(answer);
+    } on Object {
+      bidQuestion = asked.$1;
+      playQuestion = asked.$2;
+      powerQuestion = asked.$3;
+      rethrow;
+    }
+    unawaited(_run());
   }
 
   void _ask(Question question) {
@@ -322,6 +305,9 @@ class GameController extends ChangeNotifier {
         await _wait(speed.bidReveal);
         _revealingBids = false;
       case CardPlayed(:final play):
+        // Someone else's card takes a moment to come: the game itself, bots
+        // included, runs faster than anyone could follow.
+        if (play.seat != humanSeat) await _wait(speed.botPlay);
         powerNotice = null;
         trick = [...trick, play];
         handSizes = [
@@ -405,7 +391,7 @@ class GameController extends ChangeNotifier {
         result = event;
         // Only now: a game left before its standings were seen stays
         // resumable, and is reported as over when it is opened again.
-        _report(event);
+        _feed.acknowledgeEnd(event);
     }
     _notify();
   }
