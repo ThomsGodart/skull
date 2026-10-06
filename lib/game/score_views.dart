@@ -6,10 +6,10 @@ import '../ui/pictogram.dart';
 import '../ui/strings.dart';
 import 'seat_identity.dart';
 
-const _cell = TextStyle(color: Tokens.text, fontSize: 13);
+const _cell = TextStyle(color: Tokens.text, fontSize: 17);
 const _head = TextStyle(
   color: Tokens.mutedText,
-  fontSize: 11,
+  fontSize: 13,
   fontWeight: FontWeight.w700,
 );
 
@@ -55,17 +55,22 @@ class RoundSummaryTable extends StatelessWidget {
       children: [
         for (final cell in cells)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 3),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 3),
             child: cell,
           ),
       ],
     );
-    Widget number(String text, {Color? color, bool bold = false}) => Text(
-      text,
-      textAlign: TextAlign.right,
-      style: _cell.copyWith(
-        color: color,
-        fontWeight: bold ? FontWeight.w800 : null,
+    // A figure never wraps: it shrinks to its column instead.
+    Widget number(String text, {Color? color, bool bold = false}) => FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerRight,
+      child: Text(
+        text,
+        maxLines: 1,
+        style: _cell.copyWith(
+          color: color,
+          fontWeight: bold ? FontWeight.w800 : null,
+        ),
       ),
     );
     return Column(
@@ -122,7 +127,7 @@ class RoundSummaryTable extends StatelessWidget {
               Strings.bonusHeading,
               style: TextStyle(
                 color: Tokens.gold,
-                fontSize: 13,
+                fontSize: 16,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -133,7 +138,7 @@ class RoundSummaryTable extends StatelessWidget {
               padding: const EdgeInsets.only(top: Tokens.space1),
               child: Text(
                 Strings.detailsOf(seats[seat].name, _details(result)),
-                style: const TextStyle(color: Tokens.mutedText, fontSize: 11),
+                style: const TextStyle(color: Tokens.mutedText, fontSize: 14),
               ),
             ),
       ],
@@ -148,7 +153,6 @@ class ScoreSheet extends StatelessWidget {
     required this.rounds,
     required this.seats,
     this.onRoundTap,
-    this.large = false,
   });
 
   final List<RoundScored> rounds;
@@ -157,26 +161,20 @@ class ScoreSheet extends StatelessWidget {
   /// Called with a round's number when it is tapped, to correct it.
   final ValueChanged<int>? onRoundTap;
 
-  /// Bigger figures, for when the sheet has the screen to itself.
-  final bool large;
-
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
-        columnSpacing: large ? Tokens.space6 : Tokens.space4,
-        headingRowHeight: large ? 44 : 36,
-        dataRowMinHeight: large ? 52 : 40,
-        dataRowMaxHeight: large ? 58 : 44,
+        columnSpacing: Tokens.space6,
+        headingRowHeight: 48,
+        dataRowMinHeight: 60,
+        dataRowMaxHeight: 66,
         columns: [
           const DataColumn(label: Text(Strings.colRound, style: _head)),
           for (final seat in seats)
             DataColumn(
-              label: Text(
-                seat.name,
-                style: _head.copyWith(fontSize: large ? 14 : null),
-              ),
+              label: Text(seat.name, style: _head.copyWith(fontSize: 15)),
             ),
         ],
         rows: [
@@ -188,7 +186,7 @@ class ScoreSheet extends StatelessWidget {
                     '${round.round}',
                     key: Key('sheet-round-${round.round}'),
                     style: _cell.copyWith(
-                      fontSize: large ? 16 : null,
+                      fontSize: 18,
                       color: onRoundTap == null ? null : Tokens.gold,
                       fontWeight: onRoundTap == null ? null : FontWeight.w800,
                     ),
@@ -207,7 +205,7 @@ class ScoreSheet extends StatelessWidget {
                           '${result.totalScore}',
                           style: _cell.copyWith(
                             fontWeight: FontWeight.w800,
-                            fontSize: large ? 18 : null,
+                            fontSize: 20,
                           ),
                         ),
                         Text(
@@ -215,7 +213,7 @@ class ScoreSheet extends StatelessWidget {
                           '${Strings.signed(result.score.total)}',
                           style: TextStyle(
                             color: Tokens.mutedText,
-                            fontSize: large ? 13 : 10,
+                            fontSize: 14,
                           ),
                         ),
                       ],
@@ -249,17 +247,17 @@ class Standings extends StatelessWidget {
       children: [
         for (final seat in order)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
               children: [
                 SizedBox(
-                  width: 28,
+                  width: 36,
                   child: _rank(seat) == 1
                       ? const Align(
                           alignment: Alignment.centerLeft,
                           child: Pictogram(
                             Strings.winnerMark,
-                            size: 18,
+                            size: 24,
                             color: Tokens.gold,
                           ),
                         )
@@ -274,7 +272,7 @@ class Standings extends StatelessWidget {
                     style: _cell.copyWith(
                       color: _rank(seat) == 1 ? Tokens.gold : Tokens.text,
                       fontWeight: FontWeight.w700,
-                      fontSize: 15,
+                      fontSize: 20,
                     ),
                   ),
                 ),
@@ -283,7 +281,7 @@ class Standings extends StatelessWidget {
                   style: _cell.copyWith(
                     color: _rank(seat) == 1 ? Tokens.gold : Tokens.text,
                     fontWeight: FontWeight.w800,
-                    fontSize: 15,
+                    fontSize: 20,
                   ),
                 ),
               ],

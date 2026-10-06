@@ -283,7 +283,6 @@ class _TableScreenState extends State<TableScreen> {
               child: ScoreSheet(
                 rounds: _game.scoredRounds,
                 seats: _scoringSeats,
-                large: true,
               ),
             ),
           ),
@@ -617,10 +616,13 @@ class _TableScreenState extends State<TableScreen> {
       color: Tokens.scrim,
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(Tokens.space3),
+          padding: const EdgeInsets.all(Tokens.space2),
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 480),
-            padding: const EdgeInsets.all(Tokens.space4),
+            constraints: const BoxConstraints(maxWidth: 560),
+            padding: const EdgeInsets.symmetric(
+              horizontal: Tokens.space3,
+              vertical: Tokens.space6,
+            ),
             decoration: BoxDecoration(
               color: Tokens.panel,
               borderRadius: BorderRadius.circular(Tokens.radiusPanel),
@@ -649,11 +651,11 @@ class _TableScreenState extends State<TableScreen> {
         textAlign: TextAlign.center,
         style: const TextStyle(
           color: Tokens.text,
-          fontSize: 18,
+          fontSize: 24,
           fontWeight: FontWeight.w800,
         ),
       ),
-      const SizedBox(height: Tokens.space3),
+      const SizedBox(height: Tokens.space4),
     ],
     body: RoundSummaryTable(round: summary, seats: _scoringSeats),
     actions: [
