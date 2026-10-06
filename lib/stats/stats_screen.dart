@@ -20,9 +20,9 @@ class _StatsScreenState extends State<StatsScreen> {
     GameStatistics.of,
   );
 
-  /// A figure, or a dash when there is nothing to measure.
-  static String _show<T>(T? value, String Function(T) format) =>
-      value == null ? Strings.unavailable : format(value);
+  /// A figure as text, or null when there is nothing to measure.
+  static String? _show<T>(T? value, String Function(T) format) =>
+      value == null ? null : format(value);
 
   @override
   Widget build(BuildContext context) {
@@ -32,9 +32,21 @@ class _StatsScreenState extends State<StatsScreen> {
         child: FutureBuilder(
           future: _stats,
           builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(Tokens.space6),
+                  child: Text(
+                    Strings.loadFailed,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Tokens.mutedText),
+                  ),
+                ),
+              );
+            }
             final stats = snapshot.data;
             if (stats == null) return const SizedBox.shrink();
-            final lines = [
+            final lines = <(String, String?)>[
               (Strings.statGamesPlayed, '${stats.gamesPlayed}'),
               (Strings.statWins, '${stats.wins}'),
               (Strings.statWinRate, _show(stats.winRate, Strings.percent)),
@@ -73,9 +85,9 @@ class _StatsScreenState extends State<StatsScreen> {
                           ),
                         ),
                         Text(
-                          value,
+                          value ?? Strings.unavailable,
                           style: TextStyle(
-                            color: value == Strings.unavailable
+                            color: value == null
                                 ? Tokens.mutedText
                                 : Tokens.gold,
                             fontSize: 18,

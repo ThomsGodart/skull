@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../home/profile_dialog.dart';
+import 'profile_dialog.dart';
 import '../theme/tokens.dart';
 import '../ui/strings.dart';
 import 'app_settings.dart';

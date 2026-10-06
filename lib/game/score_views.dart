@@ -167,6 +167,10 @@ class Standings extends StatelessWidget {
   final List<int> scores;
   final List<SeatIdentity> seats;
 
+  /// 1 for the best score. Equal scores share a place.
+  int _rank(int seat) =>
+      1 + scores.where((score) => score > scores[seat]).length;
+
   @override
   Widget build(BuildContext context) {
     final order = [for (var seat = 0; seat < scores.length; seat++) seat]
@@ -174,7 +178,7 @@ class Standings extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        for (final (rank, seat) in order.indexed)
+        for (final seat in order)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 3),
             child: Row(
@@ -182,7 +186,7 @@ class Standings extends StatelessWidget {
                 SizedBox(
                   width: 28,
                   child: Text(
-                    rank == 0 ? '🏆' : '${rank + 1}.',
+                    _rank(seat) == 1 ? Strings.winnerMark : '${_rank(seat)}.',
                     style: _cell.copyWith(color: Tokens.mutedText),
                   ),
                 ),
@@ -190,7 +194,7 @@ class Standings extends StatelessWidget {
                   child: Text(
                     seats[seat].name,
                     style: _cell.copyWith(
-                      color: rank == 0 ? Tokens.gold : Tokens.text,
+                      color: _rank(seat) == 1 ? Tokens.gold : Tokens.text,
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
                     ),
@@ -199,7 +203,7 @@ class Standings extends StatelessWidget {
                 Text(
                   '${scores[seat]}',
                   style: _cell.copyWith(
-                    color: rank == 0 ? Tokens.gold : Tokens.text,
+                    color: _rank(seat) == 1 ? Tokens.gold : Tokens.text,
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
                   ),

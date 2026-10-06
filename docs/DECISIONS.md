@@ -36,7 +36,7 @@ Ces dix décisions orientent tout le reste ou coûtent cher à changer plus tard
 | **P5** | En ligne ? | Oui, voir la section 6 « Jeu en ligne ». **Demandé par Thomas le 2026-10-05.** | — | — |
 | **P6** | Nom, marque, visuels | Projet personnel. Nos propres visuels. Pas de publication sur un store sous le nom « Skull King » ni avec les illustrations officielles sans y réfléchir à nouveau. | Skull King® est une marque de Grandpa Beck's Games ; les illustrations sont protégées. | Reprendre les illustrations du livret. |
 | **P7** | Plateforme cible | Android uniquement pour le moment. Les autres dossiers générés par Flutter restent en place, sans garantie. **Confirmé par Thomas le 2026-10-05.** | Tous les joueurs visés sont sur Android ; un fichier d'installation envoyé directement suffit. | iOS et web en v1. |
-| **P8** | Langues | Interface en français uniquement. Textes regroupés dans un seul fichier pour traduire plus tard. Code, identifiants et tests en anglais. | Convention de ton autre projet ; le livret de référence est le français. | Internationalisation complète dès la v1. |
+| **P8** | Langues | Interface en français uniquement. Textes regroupés dans `lib/ui/strings.dart` pour traduire plus tard ; seul le texte des règles, long, est à part dans `lib/ui/rules_content.dart`. Code, identifiants et tests en anglais. | Convention de ton autre projet ; le livret de référence est le français. | Internationalisation complète dès la v1. |
 | **P9** | Longueur d'une partie | 10 manches, comme le livret. Pas de partie courte en v1. | Reste fidèle aux règles ; une partie courte est une option facile à ajouter. | Nombre de manches réglable. |
 
 ## 2. Règles : les points que le livret ne tranche pas

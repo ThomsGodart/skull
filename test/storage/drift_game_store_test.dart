@@ -4,7 +4,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skull_kings/engine/engine.dart';
-import 'package:skull_kings/history/game_summary.dart';
+import 'package:skull_kings/storage/finished_game.dart';
 import 'package:skull_kings/storage/app_database.dart';
 import 'package:skull_kings/storage/drift_game_store.dart';
 
@@ -195,6 +195,32 @@ void main() {
       expect(game.summary!.zeroBids, 3);
       expect(game.summary!.zeroBidsMade, 2);
       expect(game.finishedAt.difference(DateTime.now()).inMinutes.abs(), 0);
+    });
+
+    test('finishing a game a second time changes nothing', () async {
+      final id = await finishGame([10, 20, 90, -30]);
+      final before = (await store.loadFinished()).single;
+
+      await store.finish(
+        id,
+        const GameFinished(winner: 0, scores: [99, 0, 0, 0]),
+        summary: summary,
+        playerName: 'Someone else',
+      );
+
+      final after = (await store.loadFinished()).single;
+      expect(after.scores, before.scores);
+      expect(after.playerName, 'Anne');
+      expect(after.finishedAt, before.finishedAt);
+    });
+
+    test('bid counters that are only partly there give no summary at all, '
+        'rather than a made-up one', () async {
+      final id = await finishGame([10, 20, 90, -30]);
+      await (database.update(database.games)..where((g) => g.id.equals(id)))
+          .write(const GamesCompanion(bidsMade: Value(null)));
+
+      expect((await store.loadFinished()).single.summary, isNull);
     });
 
     test(

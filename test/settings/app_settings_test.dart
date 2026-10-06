@@ -1,5 +1,6 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:skull_kings/game/table_speed.dart';
 import 'package:skull_kings/settings/app_settings.dart';
 import 'package:skull_kings/storage/app_database.dart';
 import 'package:skull_kings/storage/drift_settings_store.dart';

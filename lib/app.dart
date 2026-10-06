@@ -18,6 +18,19 @@ class SkullKingsApp extends StatelessWidget {
       title: Strings.appTitle,
       debugShowCheckedModeBanner: false,
       theme: Tokens.theme(),
+      // The in-app switch asks for the same as the system setting does, so
+      // every screen treats the two alike.
+      builder: (context, child) => ListenableBuilder(
+        listenable: settings,
+        builder: (context, _) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            disableAnimations:
+                settings.reduceMotion ||
+                MediaQuery.disableAnimationsOf(context),
+          ),
+          child: child!,
+        ),
+      ),
       home: HomeScreen(games: games, settings: settings),
     );
   }

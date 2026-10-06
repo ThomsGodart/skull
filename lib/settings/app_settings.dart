@@ -1,41 +1,12 @@
 import 'package:flutter/foundation.dart';
 
 import '../engine/engine.dart';
-import '../game/table_speed.dart';
 import '../storage/settings_store.dart';
 import '../theme/tokens.dart';
 import '../ui/strings.dart';
 
 /// How fast the bots play.
-enum BotSpeed {
-  normal(
-    TableSpeed(
-      botPlay: Duration(milliseconds: 700),
-      trickHold: Duration(milliseconds: 1200),
-      bidReveal: Duration(milliseconds: 900),
-    ),
-  ),
-  fast(
-    TableSpeed(
-      botPlay: Duration(milliseconds: 250),
-      trickHold: Duration(milliseconds: 800),
-      bidReveal: Duration(milliseconds: 500),
-    ),
-  ),
-
-  /// The bots answer at once; a finished trick still stays a moment.
-  instant(
-    TableSpeed(
-      botPlay: Duration.zero,
-      trickHold: Duration(milliseconds: 600),
-      bidReveal: Duration(milliseconds: 300),
-    ),
-  );
-
-  const BotSpeed(this.table);
-
-  final TableSpeed table;
-}
+enum BotSpeed { normal, fast, instant }
 
 /// What the player has chosen, kept from one launch to the next.
 class AppSettings extends ChangeNotifier {
@@ -119,9 +90,13 @@ class AppSettings extends ChangeNotifier {
     return _changed(_reduceMotionKey, '$value');
   }
 
-  Future<void> _changed(String key, String value) {
+  Future<void> _changed(String key, String value) async {
     notifyListeners();
-    return _store.write(key, value);
+    try {
+      await _store.write(key, value);
+    } on Object {
+      // The choice still applies until the app is closed.
+    }
   }
 
   Future<void> setPlayer({required String name, required int color}) async {

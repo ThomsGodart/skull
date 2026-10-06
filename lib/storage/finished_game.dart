@@ -13,13 +13,12 @@ final class GameSummary {
   /// From the scored [rounds] of a game, for the seat of the human.
   factory GameSummary.of(List<RoundScored> rounds, {required int humanSeat}) {
     final mine = [for (final round in rounds) round.results[humanSeat]];
-    bool made(SeatResult result) => result.bid == result.tricksWon;
     final zeros = mine.where((result) => result.bid == 0);
     return GameSummary(
       rounds: mine.length,
-      bidsMade: mine.where(made).length,
+      bidsMade: mine.where((result) => result.bidMade).length,
       zeroBids: zeros.length,
-      zeroBidsMade: zeros.where(made).length,
+      zeroBidsMade: zeros.where((result) => result.bidMade).length,
     );
   }
 

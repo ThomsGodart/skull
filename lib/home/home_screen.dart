@@ -18,7 +18,7 @@ import '../stats/stats_screen.dart';
 import '../storage/game_store.dart';
 import '../theme/tokens.dart';
 import '../ui/strings.dart';
-import 'profile_dialog.dart';
+import '../settings/profile_dialog.dart';
 
 /// The first screen: continue the game in progress, or start a new one.
 class HomeScreen extends StatefulWidget {
@@ -124,6 +124,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _start(int players, {bool replace = false}) async {
     if (_starting) return;
     _starting = true;
+    // Creating a game drops the one in progress: the game just finished must
+    // have been filed first.
+    await _saving;
+    if (!mounted) {
+      _starting = false;
+      return;
+    }
     final config = GameConfig(
       players: players,
       seed: Random().nextInt(1 << 32),

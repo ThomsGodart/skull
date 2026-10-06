@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../engine/engine.dart';
-import '../history/game_summary.dart';
+import 'finished_game.dart';
 import 'app_database.dart';
 import 'game_store.dart';
 
@@ -74,19 +74,22 @@ final class DriftGameStore implements GameStore {
     GameFinished result, {
     required GameSummary summary,
     required String playerName,
-  }) => _update(
-    id,
-    GamesCompanion(
-      finishedAt: Value(DateTime.now()),
-      finalScores: Value(jsonEncode(result.scores)),
-      winner: Value(result.winner),
-      playerName: Value(playerName),
-      roundsPlayed: Value(summary.rounds),
-      bidsMade: Value(summary.bidsMade),
-      zeroBids: Value(summary.zeroBids),
-      zeroBidsMade: Value(summary.zeroBidsMade),
-    ),
-  );
+  }) =>
+      // Only a game still in progress: finishing twice must not re-date it.
+      (_database.update(
+        _games,
+      )..where((game) => game.id.equals(id) & game.finishedAt.isNull())).write(
+        GamesCompanion(
+          finishedAt: Value(DateTime.now()),
+          finalScores: Value(jsonEncode(result.scores)),
+          winner: Value(result.winner),
+          playerName: Value(playerName),
+          roundsPlayed: Value(summary.rounds),
+          bidsMade: Value(summary.bidsMade),
+          zeroBids: Value(summary.zeroBids),
+          zeroBidsMade: Value(summary.zeroBidsMade),
+        ),
+      );
 
   @override
   Future<List<FinishedGame>> loadFinished() async {
@@ -107,21 +110,34 @@ final class DriftGameStore implements GameStore {
       final scores = (jsonDecode(row.finalScores!) as List).cast<int>();
       final winner = row.winner!;
       if (winner < 0 || winner >= scores.length) return null;
-      final rounds = row.roundsPlayed;
+      // The four bid counters are written together: all of them, or no summary.
+      final summary = switch ((
+        row.roundsPlayed,
+        row.bidsMade,
+        row.zeroBids,
+        row.zeroBidsMade,
+      )) {
+        (
+          final rounds?,
+          final bidsMade?,
+          final zeroBids?,
+          final zeroBidsMade?,
+        ) =>
+          GameSummary(
+            rounds: rounds,
+            bidsMade: bidsMade,
+            zeroBids: zeroBids,
+            zeroBidsMade: zeroBidsMade,
+          ),
+        _ => null,
+      };
       return FinishedGame(
         id: row.id,
         finishedAt: row.finishedAt!,
         scores: List.unmodifiable(scores),
         winner: winner,
         playerName: row.playerName,
-        summary: rounds == null
-            ? null
-            : GameSummary(
-                rounds: rounds,
-                bidsMade: row.bidsMade ?? 0,
-                zeroBids: row.zeroBids ?? 0,
-                zeroBidsMade: row.zeroBidsMade ?? 0,
-              ),
+        summary: summary,
       );
     } on Object {
       return null;

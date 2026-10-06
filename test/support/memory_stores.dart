@@ -1,5 +1,5 @@
 import 'package:skull_kings/engine/engine.dart';
-import 'package:skull_kings/history/game_summary.dart';
+import 'package:skull_kings/storage/finished_game.dart';
 import 'package:skull_kings/storage/game_store.dart';
 import 'package:skull_kings/storage/settings_store.dart';
 
@@ -87,8 +87,14 @@ class MemoryGameStore implements GameStore {
     );
   }
 
+  /// Makes [loadFinished] fail, as a broken database would.
+  bool failLoading = false;
+
   @override
-  Future<List<FinishedGame>> loadFinished() async => List.of(finished);
+  Future<List<FinishedGame>> loadFinished() async {
+    if (failLoading) throw StateError('unreadable');
+    return List.of(finished);
+  }
 
   @override
   Future<SavedGame?> loadGame(int id) async => kept[id];

@@ -6,7 +6,7 @@ import '../game/seat_identity.dart';
 import '../storage/game_store.dart';
 import '../theme/tokens.dart';
 import '../ui/strings.dart';
-import 'game_summary.dart';
+import '../storage/finished_game.dart';
 
 /// The standings and the full score sheet of a finished game.
 class GameDetailScreen extends StatefulWidget {
@@ -55,8 +55,7 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
               style: const TextStyle(color: Tokens.mutedText),
             ),
             Text(
-              '${Strings.playersCount(game.players)} · '
-              '${Strings.baseGameClassic}',
+              Strings.gameSetup(game.players),
               style: const TextStyle(color: Tokens.mutedText),
             ),
             const SizedBox(height: Tokens.space4),
@@ -67,7 +66,9 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
               builder: (context, snapshot) {
                 final rounds = snapshot.data;
                 if (rounds == null) return const SizedBox.shrink();
-                if (rounds.isEmpty) {
+                // A replay that does not match the stored result is no detail.
+                final seats = rounds.firstOrNull?.results.length;
+                if (seats != widget.seats.length) {
                   return const Text(
                     Strings.detailUnavailable,
                     style: TextStyle(color: Tokens.mutedText),

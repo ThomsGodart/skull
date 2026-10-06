@@ -1,5 +1,5 @@
 import '../engine/engine.dart';
-import '../history/game_summary.dart';
+import 'finished_game.dart';
 
 /// A game as it is kept between two launches of the app: with its config, its
 /// answers are all it takes to replay it to where it was left.

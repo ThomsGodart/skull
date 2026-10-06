@@ -1,4 +1,4 @@
-import '../history/game_summary.dart';
+import '../storage/finished_game.dart';
 import '../storage/game_store.dart';
 import 'game_controller.dart';
 

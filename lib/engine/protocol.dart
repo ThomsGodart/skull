@@ -187,6 +187,9 @@ final class SeatResult {
 
   /// Running total after this round.
   final int totalScore;
+
+  /// The seat took exactly the tricks it bid.
+  bool get bidMade => bid == tricksWon;
 }
 
 final class RoundScored extends Event {

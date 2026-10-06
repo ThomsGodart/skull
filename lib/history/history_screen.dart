@@ -5,7 +5,7 @@ import '../storage/game_store.dart';
 import '../theme/tokens.dart';
 import '../ui/strings.dart';
 import 'game_detail_screen.dart';
-import 'game_summary.dart';
+import '../storage/finished_game.dart';
 
 /// Every finished game, the latest first.
 class HistoryScreen extends StatefulWidget {
@@ -22,6 +22,7 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   List<FinishedGame>? _games;
+  bool _failed = false;
 
   @override
   void initState() {
@@ -30,8 +31,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _load() async {
-    final games = await widget.games.loadFinished();
-    if (mounted) setState(() => _games = games);
+    try {
+      final games = await widget.games.loadFinished();
+      if (mounted) setState(() => _games = games);
+    } on Object {
+      if (mounted) setState(() => _failed = true);
+    }
   }
 
   List<SeatIdentity> _seats(FinishedGame game) => SeatIdentity.table(
@@ -61,7 +66,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ),
     );
     if (!(delete ?? false)) return;
-    await widget.games.deleteFinished(game.id);
+    try {
+      await widget.games.deleteFinished(game.id);
+    } on Object {
+      if (mounted) setState(() => _failed = true);
+      return;
+    }
     await _load();
   }
 
@@ -71,19 +81,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text(Strings.history)),
       body: SafeArea(
-        child: games == null
+        child: _failed
+            ? const _Notice(Strings.loadFailed)
+            : games == null
             ? const SizedBox.shrink()
             : games.isEmpty
-            ? const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(Tokens.space6),
-                  child: Text(
-                    Strings.historyEmpty,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Tokens.mutedText),
-                  ),
-                ),
-              )
+            ? const _Notice(Strings.historyEmpty)
             : ListView.separated(
                 itemCount: games.length,
                 separatorBuilder: (context, index) => const Divider(height: 1),
@@ -111,17 +114,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ),
       ),
       subtitle: Text(
-        [
-          Strings.dateTime(game.finishedAt),
-          game.humanWon
-              ? Strings.wonByYou
-              : Strings.wonBy(seats[game.winner].name),
-        ].join(' · '),
+        Strings.historyDetails(
+          date: game.finishedAt,
+          winner: game.humanWon ? null : seats[game.winner].name,
+        ),
       ),
+      isThreeLine: true,
       trailing: Text(
         Strings.playersCount(game.players),
         style: const TextStyle(color: Tokens.mutedText),
       ),
     );
   }
+}
+
+/// A message in the middle of an otherwise empty screen.
+class _Notice extends StatelessWidget {
+  const _Notice(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(Tokens.space6),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: Tokens.mutedText),
+      ),
+    ),
+  );
 }

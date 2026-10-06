@@ -128,6 +128,20 @@ void main() {
     });
   });
 
+  testWidgets('when the games cannot be loaded, history and statistics '
+      'say so instead of staying blank', (tester) async {
+    games.failLoading = true;
+    await openApp(tester);
+
+    await open(tester, Strings.history);
+    expect(find.text(Strings.loadFailed), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await open(tester, Strings.statistics);
+    expect(find.text(Strings.loadFailed), findsOneWidget);
+  });
+
   group('statistics', () {
     testWidgets('show a dash, not a zero, when nothing has been played', (
       tester,

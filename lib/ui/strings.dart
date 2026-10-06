@@ -94,6 +94,13 @@ abstract final class Strings {
   static String wonBy(String name) => 'Gagnée par $name';
   static const wonByYou = 'Gagnée par toi';
   static const baseGameClassic = 'Jeu de base · score classique';
+
+  /// The two lines under a game in the history. A null [winner] is the human.
+  static String historyDetails({required DateTime date, String? winner}) =>
+      '${dateTime(date)} · ${winner == null ? wonByYou : wonBy(winner)}\n'
+      '$baseGameClassic';
+  static String gameSetup(int players) =>
+      '${playersCount(players)} · $baseGameClassic';
   static const delete = 'Supprimer';
   static const deleteGameTitle = 'Supprimer cette partie ?';
   static const deleteGameBody =
@@ -110,6 +117,8 @@ abstract final class Strings {
     return '${two(date.day)}/${two(date.month)}/${date.year} '
         'à ${two(date.hour)}:${two(date.minute)}';
   }
+
+  static const loadFailed = 'Impossible de lire les parties enregistrées.';
 
   static const statistics = 'Statistiques';
   static const statGamesPlayed = 'Parties jouées';
@@ -166,6 +175,7 @@ abstract final class Strings {
       '$name : ${bonuses.map(bonusName).join(', ')}';
 
   static const gameOver = 'Partie terminée';
+  static const winnerMark = '🏆';
   static const youWin = 'Tu gagnes !';
   static String wins(String name) => '$name gagne';
   static const playAgain = 'Rejouer';

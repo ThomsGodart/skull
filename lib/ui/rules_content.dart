@@ -28,7 +28,8 @@ abstract final class RulesContent {
           'Quatre couleurs, numérotées de 1 à 14 : vert, jaune, violet, et '
           'noir. Le noir est l\'atout : il bat les trois autres couleurs, '
           'quelle que soit sa valeur.\n\n'
-          'La première carte Couleur d\'un pli fixe la couleur à suivre. Si '
+          'La première carte Couleur d\'un pli fixe la couleur à suivre '
+          '(sauf si un personnage a été joué avant elle, voir plus bas). Si '
           'tu as cette couleur, tu dois la jouer — ou jouer une carte '
           'spéciale. Si tu ne l\'as pas, joue ce que tu veux.\n\n'
           'Une carte d\'une autre couleur que celle demandée perd toujours, '
@@ -47,17 +48,19 @@ abstract final class RulesContent {
           'une fuite.\n'
           '• Skull King : bat les pirates et toutes les cartes Couleur.\n'
           '• Sirène : bat toutes les cartes Couleur et le Skull King, mais '
-          'perd contre les pirates.\n\n'
+          'perd contre les pirates. Entre sirènes, la première jouée '
+          'gagne.\n\n'
           'Pirate, Skull King et sirène dans le même pli : la sirène gagne.',
     ),
     (
       title: 'Entamer avec une carte spéciale',
       body:
-          'Si le pli commence par une fuite, c\'est la carte suivante qui '
-          'fixe la couleur.\n\n'
-          'S\'il commence par un pirate, la Tigresse en pirate, le Skull '
-          'King ou une sirène, il n\'y a pas de couleur à suivre : chacun '
-          'joue ce qu\'il veut.',
+          'Une fuite (ou la Tigresse jouée comme fuite) ne fixe rien : c\'est '
+          'la première carte Couleur jouée ensuite qui fixe la couleur, '
+          'même après plusieurs fuites.\n\n'
+          'Dès qu\'un pirate, la Tigresse en pirate, le Skull King ou une '
+          'sirène est joué avant toute carte Couleur, il n\'y a plus de '
+          'couleur à suivre pour ce pli : chacun joue ce qu\'il veut.',
     ),
     (
       title: 'Les points',
@@ -76,7 +79,9 @@ abstract final class RulesContent {
           '• Le 14 noir dans un pli gagné : +20\n'
           '• Une sirène capturée par ton pirate : +20\n'
           '• Un pirate capturé par ton Skull King : +30\n'
-          '• Le Skull King capturé par ta sirène : +40',
+          '• Le Skull King capturé par ta sirène : +40\n\n'
+          'Les bonus s\'additionnent : deux pirates capturés d\'un coup '
+          'valent +60.',
     ),
     (
       title: 'Égalité',

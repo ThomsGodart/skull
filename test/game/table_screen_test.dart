@@ -6,6 +6,8 @@ import 'package:skull_kings/bots/bot.dart';
 import 'package:skull_kings/engine/engine.dart';
 import 'package:skull_kings/game/game_controller.dart';
 import 'package:skull_kings/game/score_views.dart';
+import 'package:skull_kings/game/screen_awake.dart';
+import 'package:skull_kings/game/seat_identity.dart';
 import 'package:skull_kings/game/table_screen.dart';
 import 'package:skull_kings/theme/tokens.dart';
 import 'package:skull_kings/ui/strings.dart';
@@ -93,6 +95,63 @@ void main() {
     expect(find.byType(ScoreSheet), findsOneWidget);
   });
 
+  testWidgets('the screen stays on when a new table replaces the old one', (
+    tester,
+  ) async {
+    final awake = _RecordingScreenAwake();
+    GameController controller() => GameController(
+      config: const GameConfig(players: 4, seed: 3),
+      bot: randomBot(Random(3)),
+      speed: TableSpeed.instant,
+    );
+    final navigator = GlobalKey<NavigatorState>();
+    Widget table() => TableScreen(
+      controller: controller(),
+      onPlayAgain: () {},
+      screenAwake: awake,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigator,
+        theme: Tokens.theme(),
+        home: table(),
+      ),
+    );
+    await tester.pump();
+
+    navigator.currentState!.pushReplacement(
+      MaterialPageRoute<void>(builder: (_) => table()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(awake.on, isTrue, reason: 'calls were ${awake.calls}');
+
+    await tester.pumpWidget(const SizedBox());
+    expect(awake.on, isFalse);
+  });
+
+  testWidgets('players level on points share a place in the standings', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Standings(
+            scores: const [40, 90, 40, 10],
+            seats: SeatIdentity.table(
+              4,
+              human: const SeatIdentity('Anne', Tokens.gold),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('2.'), findsNWidgets(2));
+    expect(find.text('3.'), findsNothing);
+    expect(find.text('4.'), findsOneWidget);
+  });
+
   for (final players in [3, 8]) {
     testWidgets('a whole game with $players players runs to the final '
         'standings without a layout error', (tester) async {
@@ -122,5 +181,22 @@ void main() {
       expect(find.text(Strings.gameOver), findsOneWidget);
       expect(find.text(Strings.playAgain), findsOneWidget);
     });
+  }
+}
+
+class _RecordingScreenAwake implements ScreenAwake {
+  final List<String> calls = [];
+  bool on = false;
+
+  @override
+  Future<void> keepOn() async {
+    calls.add('on');
+    on = true;
+  }
+
+  @override
+  Future<void> release() async {
+    calls.add('off');
+    on = false;
   }
 }

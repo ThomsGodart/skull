@@ -61,8 +61,13 @@ class _TableScreenState extends State<TableScreen> {
     super.initState();
     _game.addListener(_onGameChanged);
     _game.start();
+    _openTables++;
     widget.screenAwake.keepOn();
   }
+
+  /// Tables currently open. When one replaces another, the new one opens
+  /// before the old one closes: the screen must stay on in between.
+  static int _openTables = 0;
 
   bool get _singleTap => widget.settings?.singleTapPlay ?? false;
 
@@ -72,7 +77,7 @@ class _TableScreenState extends State<TableScreen> {
 
   @override
   void dispose() {
-    widget.screenAwake.release();
+    if (--_openTables == 0) widget.screenAwake.release();
     _game
       ..removeListener(_onGameChanged)
       ..dispose();
@@ -265,8 +270,6 @@ class _TableScreenState extends State<TableScreen> {
                             selected: _selected,
                             onTap: _onCardTap,
                             cardWidth: 64,
-                            reduceMotion:
-                                widget.settings?.reduceMotion ?? false,
                           ),
                         ],
                       ),

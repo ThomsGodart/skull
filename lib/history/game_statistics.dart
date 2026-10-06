@@ -1,4 +1,4 @@
-import 'game_summary.dart';
+import '../storage/finished_game.dart';
 
 /// How the human has done over every finished game.
 ///
