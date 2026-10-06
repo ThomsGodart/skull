@@ -18,6 +18,7 @@ final class GameView {
     required this.tricksWon,
     required this.trick,
     required this.scores,
+    this.config,
   });
 
   final int seat;
@@ -41,6 +42,9 @@ final class GameView {
 
   /// Total score per seat, up to the last scored round.
   final List<int> scores;
+
+  /// What the game is played with: everyone at the table knows it.
+  final GameConfig? config;
 }
 
 /// A whole game of Skull King, with no user interface attached.
@@ -154,6 +158,7 @@ final class Game {
     tricksWon: List.unmodifiable(_tricksWon),
     trick: List.unmodifiable(_trick),
     scores: List.unmodifiable(_scores),
+    config: config,
   );
 
   /// Applies [answer] and runs the game on to its next question.

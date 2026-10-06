@@ -1,5 +1,6 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:skull_kings/bots/bot_level.dart';
 import 'package:skull_kings/engine/engine.dart';
 import 'package:skull_kings/game/table_speed.dart';
 import 'package:skull_kings/settings/app_settings.dart';
@@ -109,6 +110,16 @@ void main() {
       greaterThan(Duration.zero),
       reason: 'a finished trick must stay readable',
     );
+  });
+
+  test('the bot level is normal to begin with, and kept once chosen', () async {
+    final store = MemorySettingsStore();
+    final settings = await AppSettings.load(store);
+    expect(settings.botLevel, BotLevel.normal);
+
+    await settings.setBotLevel(BotLevel.hard);
+
+    expect((await AppSettings.load(store)).botLevel, BotLevel.hard);
   });
 
   test('an unknown bot speed falls back to normal', () async {

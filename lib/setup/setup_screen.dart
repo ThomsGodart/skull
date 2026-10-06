@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../bots/bot_level.dart';
 import '../engine/engine.dart';
 import '../settings/app_settings.dart';
 import '../theme/tokens.dart';
@@ -25,6 +26,7 @@ class SetupScreen extends StatefulWidget {
 
 class _SetupScreenState extends State<SetupScreen> {
   late GameConfig _setup = widget.settings.lastSetup;
+  late BotLevel _level = widget.settings.botLevel;
   late _Preset _preset = _setup.usesFullExpansion
       ? _Preset.full
       : _setup.usesExpansion
@@ -111,6 +113,39 @@ class _SetupScreenState extends State<SetupScreen> {
                       ),
                     ],
                   ),
+                  _label(Strings.botLevelLabel),
+                  SegmentedButton<BotLevel>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                        value: BotLevel.easy,
+                        label: FittedBox(child: Text(Strings.levelEasy)),
+                      ),
+                      ButtonSegment(
+                        value: BotLevel.normal,
+                        label: FittedBox(child: Text(Strings.levelNormal)),
+                      ),
+                      ButtonSegment(
+                        value: BotLevel.hard,
+                        label: FittedBox(child: Text(Strings.levelHard)),
+                      ),
+                    ],
+                    selected: {_level},
+                    onSelectionChanged: (choice) {
+                      setState(() => _level = choice.single);
+                      widget.settings.setBotLevel(choice.single);
+                    },
+                  ),
+                  if (_level != BotLevel.normal)
+                    Padding(
+                      padding: const EdgeInsets.only(top: Tokens.space2),
+                      child: Text(
+                        _level == BotLevel.hard
+                            ? Strings.levelHardHelp
+                            : Strings.levelEasyHelp,
+                        style: const TextStyle(color: Tokens.mutedText),
+                      ),
+                    ),
                   _label(Strings.presetLabel),
                   SegmentedButton<_Preset>(
                     showSelectedIcon: false,

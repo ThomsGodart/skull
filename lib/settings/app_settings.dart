@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../bots/bot_level.dart';
 import '../engine/engine.dart';
 import '../storage/settings_store.dart';
 import '../theme/tokens.dart';
@@ -25,6 +26,7 @@ class AppSettings extends ChangeNotifier {
   static const _setupKey = 'lastSetup';
   static const _knownPlayersKey = 'counterPlayers';
   static const _botSpeedKey = 'botSpeed';
+  static const _botLevelKey = 'botLevel';
   static const _singleTapKey = 'singleTapPlay';
   static const _hapticsKey = 'haptics';
   static const _reduceMotionKey = 'reduceMotion';
@@ -59,6 +61,8 @@ class AppSettings extends ChangeNotifier {
     }
     settings._botSpeed =
         BotSpeed.values.asNameMap()[values[_botSpeedKey]] ?? BotSpeed.normal;
+    settings._botLevel =
+        BotLevel.values.asNameMap()[values[_botLevelKey]] ?? BotLevel.normal;
     settings._singleTapPlay = values[_singleTapKey] == 'true';
     settings._haptics = values[_hapticsKey] != 'false';
     settings._reduceMotion = values[_reduceMotionKey] == 'true';
@@ -72,6 +76,7 @@ class AppSettings extends ChangeNotifier {
   GameConfig _lastSetup = const GameConfig(players: 4, seed: 0);
   List<String> _knownPlayers = const [];
   BotSpeed _botSpeed = BotSpeed.normal;
+  BotLevel _botLevel = BotLevel.normal;
   bool _singleTapPlay = false;
   bool _haptics = true;
   bool _reduceMotion = false;
@@ -109,6 +114,14 @@ class AppSettings extends ChangeNotifier {
   }
 
   BotSpeed get botSpeed => _botSpeed;
+
+  /// How well the bots play in the next game.
+  BotLevel get botLevel => _botLevel;
+
+  Future<void> setBotLevel(BotLevel level) {
+    _botLevel = level;
+    return _changed(_botLevelKey, level.name);
+  }
 
   /// A card is played by one tap instead of two.
   bool get singleTapPlay => _singleTapPlay;

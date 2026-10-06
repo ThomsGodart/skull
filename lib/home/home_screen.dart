@@ -3,7 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import '../bots/sensible_bot.dart';
+import '../bots/bot_level.dart';
 import '../counter/counter_home_screen.dart';
 import '../engine/engine.dart';
 import '../game/game_controller.dart';
@@ -96,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
         settings: _settings,
         controller: GameController(
           config: game.config,
-          bot: sensibleBot(),
+          bot: botFor(_settings.botLevel, Random()),
           speed: _settings.botSpeed.table,
           savedAnswers: game.answers,
           onProgress: (progress) {

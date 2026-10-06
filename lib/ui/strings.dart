@@ -159,6 +159,15 @@ abstract final class Strings {
   static const rules = 'Règles';
   static const rulesTitle = 'Règles du jeu';
 
+  static const botLevelLabel = 'Niveau des adversaires';
+  static const levelEasy = 'Facile';
+  static const levelNormal = 'Normal';
+  static const levelHard = 'Difficile';
+  static const levelHardHelp =
+      'Les adversaires parient en comptant les cartes : la différence se '
+      'sent surtout à 5 joueurs et plus.';
+  static const levelEasyHelp =
+      'Les adversaires se trompent souvent dans leurs paris et leurs cartes.';
   static const presetLabel = 'Mode de jeu';
   static const presetClassic = 'Classique';
   static const presetFull = 'Extension';

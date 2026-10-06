@@ -117,6 +117,38 @@ void main() {
     expect(settings.lastSetup.scoring, Scoring.rascal);
   });
 
+  testWidgets('the level of the opponents is chosen when setting up a game, '
+      'and remembered', (tester) async {
+    await openApp(tester);
+    await tester.tap(find.text(Strings.newGame));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(Strings.levelHard));
+    await tester.pumpAndSettle();
+
+    expect(find.text(Strings.levelHardHelp), findsOneWidget);
+    expect(settingsStore.values['botLevel'], 'hard');
+  });
+
+  testWidgets('one opponent can be chosen: the ghost then joins the table', (
+    tester,
+  ) async {
+    await openApp(tester);
+    await tester.tap(find.text(Strings.newGame));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.remove_circle_outline));
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.remove_circle_outline));
+    await tester.pump();
+    expect(find.byKey(const Key('opponents')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('launch')));
+    await tester.pumpAndSettle();
+
+    expect(games.active!.config.players, 2);
+    expect(find.text(Strings.ghostName), findsOneWidget);
+  });
+
   testWidgets('a custom game picks its expansion cards one by one', (
     tester,
   ) async {
@@ -126,6 +158,12 @@ void main() {
 
     await tester.tap(find.text(Strings.presetCustom));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text(Strings.optionKraken),
+      100,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text(Strings.optionKraken));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
@@ -133,6 +171,7 @@ void main() {
       200,
       scrollable: find.byType(Scrollable).first,
     );
+    await tester.pumpAndSettle();
     await tester.tap(find.text(Strings.optionPowers));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('launch')));
