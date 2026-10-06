@@ -60,7 +60,13 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     settings = await AppSettings.load(settingsStore);
-    await tester.pumpWidget(SkullKingsApp(games: games, settings: settings));
+    await tester.pumpWidget(
+      SkullKingsApp(
+        games: games,
+        counters: MemoryCounterStore(),
+        settings: settings,
+      ),
+    );
     await tester.pumpAndSettle();
   }
 

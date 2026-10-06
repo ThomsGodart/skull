@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../bots/sensible_bot.dart';
+import '../counter/counter_home_screen.dart';
 import '../engine/engine.dart';
 import '../game/game_controller.dart';
 import '../game/game_saver.dart';
@@ -15,6 +16,7 @@ import '../settings/app_settings.dart';
 import '../settings/settings_screen.dart';
 import '../setup/setup_screen.dart';
 import '../stats/stats_screen.dart';
+import '../storage/counter_store.dart';
 import '../storage/game_store.dart';
 import '../theme/tokens.dart';
 import '../ui/strings.dart';
@@ -22,9 +24,15 @@ import '../settings/profile_dialog.dart';
 
 /// The first screen: continue the game in progress, or start a new one.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.games, required this.settings});
+  const HomeScreen({
+    super.key,
+    required this.games,
+    required this.counters,
+    required this.settings,
+  });
 
   final GameStore games;
+  final CounterStore counters;
   final AppSettings settings;
 
   @override
@@ -283,6 +291,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 Wrap(
                   alignment: WrapAlignment.center,
                   children: [
+                    _entry(
+                      Strings.counter,
+                      (context) => CounterHomeScreen(
+                        store: widget.counters,
+                        settings: _settings,
+                      ),
+                    ),
                     _entry(
                       Strings.history,
                       (context) => HistoryScreen(games: _games, human: _human),

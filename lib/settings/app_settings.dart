@@ -23,6 +23,7 @@ class AppSettings extends ChangeNotifier {
   static const _colorKey = 'playerColor';
   static const _opponentsKey = 'opponents';
   static const _setupKey = 'lastSetup';
+  static const _knownPlayersKey = 'counterPlayers';
   static const _botSpeedKey = 'botSpeed';
   static const _singleTapKey = 'singleTapPlay';
   static const _hapticsKey = 'haptics';
@@ -50,6 +51,12 @@ class AppSettings extends ChangeNotifier {
         seed: 0,
       );
     }
+    try {
+      settings._knownPlayers =
+          (jsonDecode(values[_knownPlayersKey] ?? '[]') as List).cast<String>();
+    } on Object {
+      settings._knownPlayers = const [];
+    }
     settings._botSpeed =
         BotSpeed.values.asNameMap()[values[_botSpeedKey]] ?? BotSpeed.normal;
     settings._singleTapPlay = values[_singleTapKey] == 'true';
@@ -63,6 +70,7 @@ class AppSettings extends ChangeNotifier {
   int _playerColor = 0;
   int _opponents = 3;
   GameConfig _lastSetup = const GameConfig(players: 4, seed: 0);
+  List<String> _knownPlayers = const [];
   BotSpeed _botSpeed = BotSpeed.normal;
   bool _singleTapPlay = false;
   bool _haptics = true;
@@ -89,6 +97,15 @@ class AppSettings extends ChangeNotifier {
     _opponents = _lastSetup.players - 1;
     await _changed(_setupKey, jsonEncode(_lastSetup.toJson()));
     await _store.write(_opponentsKey, '$_opponents');
+  }
+
+  /// Names already used in counted games, the latest first, offered again.
+  List<String> get knownPlayers => _knownPlayers;
+
+  /// Puts [names] at the front of [knownPlayers].
+  Future<void> rememberPlayers(List<String> names) {
+    _knownPlayers = {...names, ..._knownPlayers}.take(20).toList();
+    return _changed(_knownPlayersKey, jsonEncode(_knownPlayers));
   }
 
   BotSpeed get botSpeed => _botSpeed;

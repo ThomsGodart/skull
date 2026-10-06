@@ -2,14 +2,21 @@ import 'package:flutter/material.dart';
 
 import 'home/home_screen.dart';
 import 'settings/app_settings.dart';
+import 'storage/counter_store.dart';
 import 'storage/game_store.dart';
 import 'theme/tokens.dart';
 import 'ui/strings.dart';
 
 class SkullKingsApp extends StatelessWidget {
-  const SkullKingsApp({super.key, required this.games, required this.settings});
+  const SkullKingsApp({
+    super.key,
+    required this.games,
+    required this.counters,
+    required this.settings,
+  });
 
   final GameStore games;
+  final CounterStore counters;
   final AppSettings settings;
 
   @override
@@ -31,7 +38,7 @@ class SkullKingsApp extends StatelessWidget {
           child: child!,
         ),
       ),
-      home: HomeScreen(games: games, settings: settings),
+      home: HomeScreen(games: games, counters: counters, settings: settings),
     );
   }
 }

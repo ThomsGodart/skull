@@ -37,6 +37,18 @@ class Games extends Table {
   IntColumn get zeroBidsMade => integer().nullable()();
 }
 
+/// Games played with the real cards, of which only the score is kept. The
+/// one with no [finishedAt] is the one being counted.
+@DataClassName('StoredCounterGame')
+class CounterGames extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  DateTimeColumn get startedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get finishedAt => dateTime().nullable()();
+
+  /// The whole `CounterGame`, as JSON.
+  TextColumn get game => text()();
+}
+
 /// The app's settings, one row per key.
 @DataClassName('StoredSetting')
 class Settings extends Table {
@@ -47,7 +59,7 @@ class Settings extends Table {
   Set<Column<Object>> get primaryKey => {key};
 }
 
-@DriftDatabase(tables: [Games, Settings])
+@DriftDatabase(tables: [Games, CounterGames, Settings])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
@@ -56,7 +68,7 @@ class AppDatabase extends _$AppDatabase {
       AppDatabase(driftDatabase(name: 'skull_kings'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -68,6 +80,7 @@ class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(games, games.zeroBids);
         await migrator.addColumn(games, games.zeroBidsMade);
       }
+      if (from < 3) await migrator.createTable(counterGames);
     },
   );
 }

@@ -820,6 +820,308 @@ class GamesCompanion extends UpdateCompanion<StoredGame> {
   }
 }
 
+class $CounterGamesTable extends CounterGames
+    with TableInfo<$CounterGamesTable, StoredCounterGame> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CounterGamesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _finishedAtMeta = const VerificationMeta(
+    'finishedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> finishedAt = GeneratedColumn<DateTime>(
+    'finished_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _gameMeta = const VerificationMeta('game');
+  @override
+  late final GeneratedColumn<String> game = GeneratedColumn<String>(
+    'game',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, startedAt, finishedAt, game];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'counter_games';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StoredCounterGame> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    }
+    if (data.containsKey('finished_at')) {
+      context.handle(
+        _finishedAtMeta,
+        finishedAt.isAcceptableOrUnknown(data['finished_at']!, _finishedAtMeta),
+      );
+    }
+    if (data.containsKey('game')) {
+      context.handle(
+        _gameMeta,
+        game.isAcceptableOrUnknown(data['game']!, _gameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_gameMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StoredCounterGame map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StoredCounterGame(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}started_at'],
+      )!,
+      finishedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}finished_at'],
+      ),
+      game: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}game'],
+      )!,
+    );
+  }
+
+  @override
+  $CounterGamesTable createAlias(String alias) {
+    return $CounterGamesTable(attachedDatabase, alias);
+  }
+}
+
+class StoredCounterGame extends DataClass
+    implements Insertable<StoredCounterGame> {
+  final int id;
+  final DateTime startedAt;
+  final DateTime? finishedAt;
+
+  /// The whole `CounterGame`, as JSON.
+  final String game;
+  const StoredCounterGame({
+    required this.id,
+    required this.startedAt,
+    this.finishedAt,
+    required this.game,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['started_at'] = Variable<DateTime>(startedAt);
+    if (!nullToAbsent || finishedAt != null) {
+      map['finished_at'] = Variable<DateTime>(finishedAt);
+    }
+    map['game'] = Variable<String>(game);
+    return map;
+  }
+
+  CounterGamesCompanion toCompanion(bool nullToAbsent) {
+    return CounterGamesCompanion(
+      id: Value(id),
+      startedAt: Value(startedAt),
+      finishedAt: finishedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(finishedAt),
+      game: Value(game),
+    );
+  }
+
+  factory StoredCounterGame.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StoredCounterGame(
+      id: serializer.fromJson<int>(json['id']),
+      startedAt: serializer.fromJson<DateTime>(json['startedAt']),
+      finishedAt: serializer.fromJson<DateTime?>(json['finishedAt']),
+      game: serializer.fromJson<String>(json['game']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'startedAt': serializer.toJson<DateTime>(startedAt),
+      'finishedAt': serializer.toJson<DateTime?>(finishedAt),
+      'game': serializer.toJson<String>(game),
+    };
+  }
+
+  StoredCounterGame copyWith({
+    int? id,
+    DateTime? startedAt,
+    Value<DateTime?> finishedAt = const Value.absent(),
+    String? game,
+  }) => StoredCounterGame(
+    id: id ?? this.id,
+    startedAt: startedAt ?? this.startedAt,
+    finishedAt: finishedAt.present ? finishedAt.value : this.finishedAt,
+    game: game ?? this.game,
+  );
+  StoredCounterGame copyWithCompanion(CounterGamesCompanion data) {
+    return StoredCounterGame(
+      id: data.id.present ? data.id.value : this.id,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      finishedAt: data.finishedAt.present
+          ? data.finishedAt.value
+          : this.finishedAt,
+      game: data.game.present ? data.game.value : this.game,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StoredCounterGame(')
+          ..write('id: $id, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('finishedAt: $finishedAt, ')
+          ..write('game: $game')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, startedAt, finishedAt, game);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StoredCounterGame &&
+          other.id == this.id &&
+          other.startedAt == this.startedAt &&
+          other.finishedAt == this.finishedAt &&
+          other.game == this.game);
+}
+
+class CounterGamesCompanion extends UpdateCompanion<StoredCounterGame> {
+  final Value<int> id;
+  final Value<DateTime> startedAt;
+  final Value<DateTime?> finishedAt;
+  final Value<String> game;
+  const CounterGamesCompanion({
+    this.id = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.finishedAt = const Value.absent(),
+    this.game = const Value.absent(),
+  });
+  CounterGamesCompanion.insert({
+    this.id = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.finishedAt = const Value.absent(),
+    required String game,
+  }) : game = Value(game);
+  static Insertable<StoredCounterGame> custom({
+    Expression<int>? id,
+    Expression<DateTime>? startedAt,
+    Expression<DateTime>? finishedAt,
+    Expression<String>? game,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (startedAt != null) 'started_at': startedAt,
+      if (finishedAt != null) 'finished_at': finishedAt,
+      if (game != null) 'game': game,
+    });
+  }
+
+  CounterGamesCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? startedAt,
+    Value<DateTime?>? finishedAt,
+    Value<String>? game,
+  }) {
+    return CounterGamesCompanion(
+      id: id ?? this.id,
+      startedAt: startedAt ?? this.startedAt,
+      finishedAt: finishedAt ?? this.finishedAt,
+      game: game ?? this.game,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<DateTime>(startedAt.value);
+    }
+    if (finishedAt.present) {
+      map['finished_at'] = Variable<DateTime>(finishedAt.value);
+    }
+    if (game.present) {
+      map['game'] = Variable<String>(game.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CounterGamesCompanion(')
+          ..write('id: $id, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('finishedAt: $finishedAt, ')
+          ..write('game: $game')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SettingsTable extends Settings
     with TableInfo<$SettingsTable, StoredSetting> {
   @override
@@ -1032,12 +1334,17 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $GamesTable games = $GamesTable(this);
+  late final $CounterGamesTable counterGames = $CounterGamesTable(this);
   late final $SettingsTable settings = $SettingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [games, settings];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    games,
+    counterGames,
+    settings,
+  ];
 }
 
 typedef $$GamesTableCreateCompanionBuilder = GamesCompanion Function({
@@ -1417,6 +1724,196 @@ typedef $$GamesTableProcessedTableManager =
       StoredGame,
       PrefetchHooks Function()
     >;
+typedef $$CounterGamesTableCreateCompanionBuilder =
+    CounterGamesCompanion Function({
+      Value<int> id,
+      Value<DateTime> startedAt,
+      Value<DateTime?> finishedAt,
+      required String game,
+    });
+typedef $$CounterGamesTableUpdateCompanionBuilder =
+    CounterGamesCompanion Function({
+      Value<int> id,
+      Value<DateTime> startedAt,
+      Value<DateTime?> finishedAt,
+      Value<String> game,
+    });
+
+class $$CounterGamesTableFilterComposer
+    extends Composer<_$AppDatabase, $CounterGamesTable> {
+  $$CounterGamesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get game => $composableBuilder(
+    column: $table.game,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CounterGamesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CounterGamesTable> {
+  $$CounterGamesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get game => $composableBuilder(
+    column: $table.game,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CounterGamesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CounterGamesTable> {
+  $$CounterGamesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get game =>
+      $composableBuilder(column: $table.game, builder: (column) => column);
+}
+
+class $$CounterGamesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CounterGamesTable,
+          StoredCounterGame,
+          $$CounterGamesTableFilterComposer,
+          $$CounterGamesTableOrderingComposer,
+          $$CounterGamesTableAnnotationComposer,
+          $$CounterGamesTableCreateCompanionBuilder,
+          $$CounterGamesTableUpdateCompanionBuilder,
+          (
+            StoredCounterGame,
+            BaseReferences<
+              _$AppDatabase,
+              $CounterGamesTable,
+              StoredCounterGame
+            >,
+          ),
+          StoredCounterGame,
+          PrefetchHooks Function()
+        > {
+  $$CounterGamesTableTableManager(_$AppDatabase db, $CounterGamesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CounterGamesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CounterGamesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CounterGamesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> startedAt = const Value.absent(),
+                Value<DateTime?> finishedAt = const Value.absent(),
+                Value<String> game = const Value.absent(),
+              }) => CounterGamesCompanion(
+                id: id,
+                startedAt: startedAt,
+                finishedAt: finishedAt,
+                game: game,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> startedAt = const Value.absent(),
+                Value<DateTime?> finishedAt = const Value.absent(),
+                required String game,
+              }) => CounterGamesCompanion.insert(
+                id: id,
+                startedAt: startedAt,
+                finishedAt: finishedAt,
+                game: game,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$CounterGamesTable, StoredCounterGame>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $CounterGamesTable,
+                    StoredCounterGame
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CounterGamesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CounterGamesTable,
+      StoredCounterGame,
+      $$CounterGamesTableFilterComposer,
+      $$CounterGamesTableOrderingComposer,
+      $$CounterGamesTableAnnotationComposer,
+      $$CounterGamesTableCreateCompanionBuilder,
+      $$CounterGamesTableUpdateCompanionBuilder,
+      (
+        StoredCounterGame,
+        BaseReferences<_$AppDatabase, $CounterGamesTable, StoredCounterGame>,
+      ),
+      StoredCounterGame,
+      PrefetchHooks Function()
+    >;
 typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
   required String key,
   required String value,
@@ -1563,6 +2060,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$GamesTableTableManager get games =>
       $$GamesTableTableManager(_db, _db.games);
+  $$CounterGamesTableTableManager get counterGames =>
+      $$CounterGamesTableTableManager(_db, _db.counterGames);
   $$SettingsTableTableManager get settings =>
       $$SettingsTableTableManager(_db, _db.settings);
 }

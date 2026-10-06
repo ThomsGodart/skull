@@ -130,10 +130,18 @@ class RoundSummaryTable extends StatelessWidget {
 
 /// Every round of the game so far: bid, tricks and running total per seat.
 class ScoreSheet extends StatelessWidget {
-  const ScoreSheet({super.key, required this.rounds, required this.seats});
+  const ScoreSheet({
+    super.key,
+    required this.rounds,
+    required this.seats,
+    this.onRoundTap,
+  });
 
   final List<RoundScored> rounds;
   final List<SeatIdentity> seats;
+
+  /// Called with a round's number when it is tapped, to correct it.
+  final ValueChanged<int>? onRoundTap;
 
   @override
   Widget build(BuildContext context) {
@@ -153,7 +161,19 @@ class ScoreSheet extends StatelessWidget {
           for (final round in rounds)
             DataRow(
               cells: [
-                DataCell(Text('${round.round}', style: _cell)),
+                DataCell(
+                  Text(
+                    '${round.round}',
+                    key: Key('sheet-round-${round.round}'),
+                    style: _cell.copyWith(
+                      color: onRoundTap == null ? null : Tokens.gold,
+                      fontWeight: onRoundTap == null ? null : FontWeight.w800,
+                    ),
+                  ),
+                  onTap: onRoundTap == null
+                      ? null
+                      : () => onRoundTap!(round.round),
+                ),
                 for (final result in round.results)
                   DataCell(
                     Column(

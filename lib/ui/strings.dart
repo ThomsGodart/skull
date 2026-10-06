@@ -240,6 +240,61 @@ abstract final class Strings {
   static String allianceLine(int points) => 'alliance ${signed(points)}';
   static String wagerLine(int points) => 'mise ${signed(points)}';
 
+  static const counter = 'Compteur de points';
+  static const counterIntro =
+      'Vous jouez avec le vrai paquet : l\'appli tient la feuille de score.';
+  static const counterNew = 'Nouvelle partie à compter';
+  static const counterResume = 'Reprendre';
+  static String counterResumeSummary(int round, int players) =>
+      'Manche $round · ${playersCount(players)}';
+  static const counterFinished = 'Parties comptées';
+  static const counterPlayers = 'Joueurs';
+  static String counterPlayerHint(int number) => 'Joueur $number';
+  static const counterAddPlayer = 'Ajouter un joueur';
+  static const counterRemovePlayer = 'Retirer';
+  static const counterFirstLeader = 'Premier à entamer';
+  static const counterStart = 'Commencer';
+  static const counterNeedNames = 'Donne un nom à chaque joueur.';
+  static String counterRoundTitle(int round, int cards) =>
+      roundTitle(round, cards);
+  static String counterLeads(String name) => '$name entame';
+  static String counterEnterRound(int round) => 'Saisir la manche $round';
+  static String counterEnterResults(int round) =>
+      'Saisir les résultats de la manche $round';
+  static const counterBidsPhase = 'Les paris';
+  static const counterResultsPhase = 'Les résultats';
+  static const counterBidsDone = 'Valider les paris';
+  static const counterRoundDone = 'Valider la manche';
+  static const counterBid = 'Pari';
+  static const counterTricks = 'Plis';
+  static const counterBonus = 'Bonus';
+  static String counterBonusFor(String name) => 'Bonus de $name';
+  static String counterTricksMismatch(int claimed, int cards) =>
+      '$claimed pli${claimed > 1 ? 's' : ''} saisi${claimed > 1 ? 's' : ''} '
+      'pour $cards carte${cards > 1 ? 's' : ''} : vérifie, sauf si un pli a '
+      'été détruit.';
+  static const counterAlliances = 'Alliances (Butin)';
+  static const counterAddAlliance = 'Ajouter une alliance';
+  static String counterAlliance(String first, String second) =>
+      '$first et $second';
+  static const counterAllianceTitle = 'Qui s\'allie ?';
+  static const counterWager = 'Mise de Rascal';
+  static const counterBidChange = 'Harry le Géant';
+  static const counterCorrectHint =
+      'Touche le numéro d\'une manche pour la corriger.';
+  static const counterFinish = 'Terminer la partie';
+  static const counterTieBreak =
+      'Égalité en tête : jouez une manche de départage.';
+  static const ok = 'OK';
+
+  static String bonusLabel(Bonus bonus) => switch (bonus) {
+    Bonus.standardFourteen => '14 vert, jaune ou violet (+10)',
+    Bonus.blackFourteen => '14 noir (+20)',
+    Bonus.mermaidCaptured => 'Sirène capturée par un pirate (+20)',
+    Bonus.pirateCaptured => 'Pirate capturé par le Skull King (+30)',
+    Bonus.skullKingCaptured => 'Skull King capturé par une sirène (+40)',
+  };
+
   static const profileTitle = 'Ton profil';
   static const playerNameLabel = 'Nom';
   static const playerColorLabel = 'Couleur';

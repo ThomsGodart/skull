@@ -1,4 +1,6 @@
+import 'package:skull_kings/counter/counter_game.dart';
 import 'package:skull_kings/engine/engine.dart';
+import 'package:skull_kings/storage/counter_store.dart';
 import 'package:skull_kings/storage/finished_game.dart';
 import 'package:skull_kings/storage/game_store.dart';
 import 'package:skull_kings/storage/settings_store.dart';
@@ -108,4 +110,45 @@ class MemoryGameStore implements GameStore {
 
   @override
   Future<void> discardActive() async => active = null;
+}
+
+/// Counted games kept in memory.
+class MemoryCounterStore implements CounterStore {
+  SavedCounterGame? active;
+  final List<SavedCounterGame> finished = [];
+  int _nextId = 1;
+
+  @override
+  Future<SavedCounterGame?> loadActive() async => active;
+
+  @override
+  Future<int> create(CounterGame game) async {
+    active = SavedCounterGame(id: _nextId++, game: game);
+    return active!.id;
+  }
+
+  @override
+  Future<void> save(int id, CounterGame game) async {
+    if (active?.id == id) active = SavedCounterGame(id: id, game: game);
+  }
+
+  @override
+  Future<void> finish(int id, CounterGame game) async {
+    if (active?.id == id) active = null;
+    finished.insert(
+      0,
+      SavedCounterGame(
+        id: id,
+        game: game,
+        finishedAt: DateTime(2026, 10, 6, 22),
+      ),
+    );
+  }
+
+  @override
+  Future<List<SavedCounterGame>> loadFinished() async => List.of(finished);
+
+  @override
+  Future<void> delete(int id) async =>
+      finished.removeWhere((saved) => saved.id == id);
 }
