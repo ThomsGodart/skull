@@ -291,6 +291,17 @@ void main() {
     });
   });
 
+  test('when the host closes the room, the guests are told', () async {
+    final (theHost, guests, _) = await startGame(1);
+    var told = false;
+    guests.single.closed.then((_) => told = true);
+
+    await theHost.close();
+    await pause(fast);
+
+    expect(told, isTrue);
+  });
+
   test('a room code is four letters that cannot be confused', () {
     final random = Random(3);
     for (var i = 0; i < 200; i++) {

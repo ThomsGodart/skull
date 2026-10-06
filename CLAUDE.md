@@ -1,6 +1,6 @@
 # skull_kings
 
-Application Flutter pour le jeu de cartes Skull King : le **jeu complet** (distribution, mains, plis, résolution, bots à trois niveaux, extension, variante à 2 joueurs) en solo, plus un compteur de points pour jouer avec le vrai paquet. Le jeu en ligne entre amis est décidé mais pas encore fait.
+Application Flutter pour le jeu de cartes Skull King : le **jeu complet** (distribution, mains, plis, résolution, bots à trois niveaux, extension, variante à 2 joueurs) en solo, plus un compteur de points pour jouer avec le vrai paquet. Le jeu en ligne entre amis passe par Supabase Realtime (`lib/online/`) : le téléphone de l'hôte fait tourner la partie et envoie à chaque invité le flux de son siège. `dart run tool/online_smoke.dart` joue une vraie partie à travers le projet Supabase pour le vérifier.
 
 Les règles complètes du jeu (cartes, hiérarchie, scores, restrictions, modes avancés, score Rascal, FAQ officielle) sont dans `GAME_RULES.md`. C'est la référence pour toute logique de jeu : la lire avant d'implémenter ou de modifier une règle, et ne pas inventer de règle absente de ce fichier. Les points que le livret ne tranche pas (section 12) ont reçu une décision validée : l'appliquer telle quelle.
 

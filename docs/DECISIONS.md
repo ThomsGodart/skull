@@ -120,17 +120,17 @@ Ajouté le 2026-10-05 à ta demande. Supabase est déjà initialisé dans `darts
 | **O2** | Qui fait tourner la partie ? | Le téléphone de l'hôte (celui qui crée le salon). Il fait tourner le moteur, reçoit les réponses des autres et envoie à chacun la vue de son siège et les événements qui le concernent, par les canaux temps réel de Supabase. | Le moteur est en Dart : il tourne tel quel sur le téléphone de l'hôte. Aucun serveur à écrire, héberger ou payer. | Moteur côté serveur (il faudrait le réécrire en TypeScript ou héberger un serveur Dart). |
 | **O2b** | Limite assumée | L'hôte pourrait techniquement voir toutes les mains en modifiant l'appli. Acceptable entre amis, pas pour du jeu public. | Si un jour il faut de l'anti-triche, le même moteur peut tourner sur un serveur Dart sans changer le reste. | — |
 | **O3** | Avec qui ? | Parties privées entre amis : l'hôte crée un salon et partage un code court ou un lien. Pas de matchmaking public, pas de liste de salons. | C'est l'usage visé ; évite modération et triche. | Parties publiques. |
-| **O4** | Comptes | Identité anonyme créée automatiquement, plus le pseudo et la couleur du profil local. Pas d'e-mail ni de mot de passe. | Rejoindre une partie doit prendre dix secondes. | Inscription obligatoire. |
+| **O4** | Comptes | Aucun compte ni connexion : chaque téléphone tire un identifiant au hasard, qu'il garde, et annonce le pseudo et la couleur du profil local. | Rejoindre une partie doit prendre dix secondes, et les salons n'ont besoin d'aucune donnée protégée. La connexion anonyme de Supabase n'est donc pas utilisée. | Inscription ; connexion anonyme Supabase. |
 | **O5** | Salon d'attente | Liste des joueurs présents, configuration de la partie choisie par l'hôte et visible de tous, bouton « Lancer » pour l'hôte. Les sièges vides peuvent être remplis par des bots. 2 à 8 joueurs au total (P4), dont au moins 2 humains. | Reprend l'écran de nouvelle partie. | — |
 | **O6** | Paris | Chacun parie sur son téléphone ; révélation quand tous ont validé. | La règle du livret s'applique enfin naturellement. | — |
 | **O7** | Joueur déconnecté | Son siège attend 30 secondes, puis un bot joue à sa place. Il reprend la main dès qu'il revient. | Une partie ne doit pas rester bloquée. | Annuler la partie. |
-| **O8** | Hôte déconnecté | La partie est en pause pour tous jusqu'à son retour. La graine et les réponses sont enregistrées en ligne au fil de l'eau : l'hôte reprend exactement où il en était. | Conséquence de O2. Le transfert du rôle d'hôte à un autre joueur est possible plus tard grâce à cet enregistrement. | Transfert automatique d'hôte dès la v1. |
+| **O8** | Hôte déconnecté | Les invités voient « l'hôte est déconnecté : la partie est en pause » et reprennent dès son retour, en redemandant ce qu'ils ont manqué. Si l'hôte quitte la table ou ferme l'appli, la partie s'arrête pour tous : elle n'est pas sauvegardée. | Conséquence de O2. Sauvegarder une partie en ligne côté hôte reste à faire. | Transfert automatique d'hôte. |
 | **O9** | Temps de réflexion | Pas de chronomètre. | Entre amis ; à ajouter en option si besoin. | Minuteur par coup. |
 | **O10** | Discussion | Aucune en v1. | Les amis se parlent déjà ailleurs ; évite toute modération. | Messagerie ; réactions prédéfinies (plus tard). |
 | **O11** | Versions | Un salon porte la version des règles du moteur ; une appli d'une autre version ne peut pas le rejoindre et affiche « mets à jour l'appli ». | Deux moteurs différents donneraient deux parties différentes. | — |
-| **O12** | Historique et statistiques | Une partie en ligne terminée s'enregistre dans l'historique local de chaque joueur, marquée « en ligne ». Statistiques séparées solo / en ligne. | Pas de profil en ligne à gérer. | Classement en ligne, ELO. |
+| **O12** | Historique et statistiques | Pas encore : une partie en ligne n'est enregistrée ni dans l'historique ni dans les statistiques. | Reporté pour livrer d'abord le jeu lui-même. | Classement en ligne, ELO. |
 | **O13** | Variante à 2 en ligne | Deux humains peuvent jouer seuls avec Barbe Grise, ou ajouter des bots. | La variante à 2 existe dans le moteur (P4). | — |
-| **O14** | Sécurité des données | Chaque joueur ne peut lire que les messages de son siège et les messages publics du salon ; seul l'hôte écrit l'état de la partie. | Sinon n'importe qui lirait les mains des autres. | — |
+| **O14** | Confidentialité des mains | Tous les messages d'un salon passent par un même canal Supabase, chacun portant son destinataire ; l'appli ignore ceux qui ne lui sont pas adressés. Quelqu'un qui modifierait l'appli pourrait donc lire les cartes des autres. | Acceptable entre amis, comme O2b, et sans aucune configuration côté Supabase. Pour l'empêcher vraiment : canaux privés avec règles d'accès, ce qui demande la connexion anonyme et un script SQL. | Canaux privés dès maintenant. |
 
 Écrans ajoutés : sur l'accueil, « Jouer en ligne » → « Créer une partie » ou « Rejoindre avec un code » → salon d'attente → table. La table est la même qu'en solo, avec un indicateur de connexion par joueur.
 
@@ -200,7 +200,7 @@ Chaque étape se termine par quelque chose qu'on peut lancer ou vérifier.
 | 3 | Table jouable : main, pari, pli, fin de manche, feuille de score, fin de partie | Une partie complète contre des bots aléatoires |
 | 4 | Bot raisonnable | Une partie qui a de l'intérêt |
 | 5 | Sauvegarde et reprise, accueil, nouvelle partie, profil | On peut fermer l'appli et reprendre |
-| 6 | **Jeu en ligne** : identité, salon par code, partie menée par l'hôte, déconnexions | Une partie entre amis, chacun sur son téléphone |
+| 6 | **Jeu en ligne** : salon par code, partie menée par l'hôte, déconnexions (fait en dernier, le 2026-10-07) | Une partie entre amis, chacun sur son téléphone |
 | 7 | Historique, statistiques, réglages, règles | Appli complète pour le jeu de base |
 | 8 | Extension, pouvoirs des pirates, score Rascal | Tous les modes du livret, en solo et en ligne |
 | 9 | Compteur de points | Second usage de l'appli |

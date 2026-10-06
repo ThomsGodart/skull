@@ -41,6 +41,9 @@ Le code, les identifiants et les tests sont en anglais ; tout ce que voit le jou
 | `Counter` | compteur de points | La feuille de score d'une partie jouée avec le vrai paquet (`CounterGame`). |
 | `CounterEntry` | saisie | Ce qu'un joueur a fait dans une manche comptée : pari, plis, bonus, mise, changement de Harry. |
 | `Draft bids` | — | Les paris d'une manche comptée, saisis avant que ses plis soient connus. |
+| `Seat feed` | — | Ce qu'un siège reçoit d'une partie (événements, question) et sa façon d'y répondre, que la partie tourne sur ce téléphone ou chez l'hôte (`SeatFeed`). |
+| `Room` | salon | Le lieu d'une partie en ligne, rejoint par un code de quatre lettres. |
+| `Host` / `Guest` | hôte / invité | Le téléphone qui fait tourner la partie en ligne, et ceux qui la suivent. |
 | `Bot level` | niveau des adversaires | `easy`, `normal`, `hard`. |
 | `Scoring` | calcul des points | `classic` (livret) ou `rascal` (score Rascal). |
 | `Question` / `Answer` / `Event` | — | Contrat entre le moteur et ce qui le pilote (voir `docs/REFERENCE_RTAROT.md`). |

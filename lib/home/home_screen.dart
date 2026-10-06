@@ -11,6 +11,7 @@ import '../game/game_saver.dart';
 import '../game/seat_identity.dart';
 import '../game/table_screen.dart';
 import '../history/history_screen.dart';
+import '../online/online_screens.dart';
 import '../rules/rules_screen.dart';
 import '../settings/app_settings.dart';
 import '../settings/settings_screen.dart';
@@ -30,11 +31,13 @@ class HomeScreen extends StatefulWidget {
     required this.games,
     required this.counters,
     required this.settings,
+    required this.transports,
   });
 
   final GameStore games;
   final CounterStore counters;
   final AppSettings settings;
+  final TransportFactory transports;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -299,6 +302,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     onPressed: _openSetup,
                     child: const Text(Strings.newGame),
                   ),
+                const SizedBox(height: Tokens.space3),
+                OutlinedButton(
+                  key: const Key('home-online'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => OnlineHomeScreen(
+                        settings: _settings,
+                        transports: widget.transports,
+                      ),
+                    ),
+                  ),
+                  child: const Text(Strings.online),
+                ),
                 const SizedBox(height: Tokens.space4),
                 Wrap(
                   alignment: WrapAlignment.center,

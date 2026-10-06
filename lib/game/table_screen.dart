@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide Card;
 import 'package:flutter/services.dart';
 
@@ -24,8 +25,11 @@ class TableScreen extends StatefulWidget {
   const TableScreen({
     super.key,
     required this.controller,
-    required this.onPlayAgain,
+    this.onPlayAgain,
     this.human = const SeatIdentity(Strings.you, Tokens.gold),
+    this.seatIdentities,
+    this.banner,
+    this.leaveWarning,
     this.settings,
     this.screenAwake = const WakelockScreenAwake(),
   });
@@ -41,19 +45,32 @@ class TableScreen extends StatefulWidget {
 
   final GameController controller;
 
-  /// Starts a fresh game with the same setup.
-  final VoidCallback onPlayAgain;
+  /// Starts a fresh game with the same setup. Without it, the final
+  /// standings offer no rematch.
+  final VoidCallback? onPlayAgain;
+
+  /// Who sits at each seat, when it is not simply [human] against bots.
+  final List<SeatIdentity>? seatIdentities;
+
+  /// Something to tell the player above the table for as long as it is not
+  /// null: a paused online game, for instance.
+  final ValueListenable<String?>? banner;
+
+  /// What leaving costs, when the game is not one that is saved and resumed.
+  final String? leaveWarning;
 
   @override
   State<TableScreen> createState() => _TableScreenState();
 }
 
 class _TableScreenState extends State<TableScreen> {
-  late final List<SeatIdentity> _seats = SeatIdentity.table(
-    widget.controller.seats,
-    human: widget.human,
-    ghostSeat: widget.controller.ghostSeat,
-  );
+  late final List<SeatIdentity> _seats =
+      widget.seatIdentities ??
+      SeatIdentity.table(
+        widget.controller.seats,
+        human: widget.human,
+        ghostSeat: widget.controller.ghostSeat,
+      );
 
   /// The seats that appear on a score sheet: every one but the ghost's.
   late final List<SeatIdentity> _scoringSeats = _seats
@@ -231,7 +248,7 @@ class _TableScreenState extends State<TableScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text(Strings.pause),
-        content: const Text(Strings.gameIsSaved),
+        content: Text(widget.leaveWarning ?? Strings.gameIsSaved),
         actionsOverflowButtonSpacing: Tokens.space1,
         actions: [
           TextButton(
@@ -419,6 +436,25 @@ class _TableScreenState extends State<TableScreen> {
                 ),
                 child: _topBar(),
               ),
+              if (widget.banner case final banner?)
+                ValueListenableBuilder(
+                  valueListenable: banner,
+                  builder: (context, message, _) => message == null
+                      ? const SizedBox.shrink()
+                      : Container(
+                          width: double.infinity,
+                          color: Tokens.danger,
+                          padding: const EdgeInsets.all(Tokens.space2),
+                          child: Text(
+                            message,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Tokens.sea,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                ),
               Expanded(
                 child: Stack(
                   children: [
@@ -697,11 +733,13 @@ class _TableScreenState extends State<TableScreen> {
     ],
     body: Standings(scores: result.scores, seats: _scoringSeats),
     actions: [
-      FilledButton(
-        onPressed: widget.onPlayAgain,
-        child: const Text(Strings.playAgain),
-      ),
-      const SizedBox(height: Tokens.space2),
+      if (widget.onPlayAgain case final playAgain?) ...[
+        FilledButton(
+          onPressed: playAgain,
+          child: const Text(Strings.playAgain),
+        ),
+        const SizedBox(height: Tokens.space2),
+      ],
       OutlinedButton(
         onPressed: () => Navigator.of(context).pop(),
         child: const Text(Strings.home),

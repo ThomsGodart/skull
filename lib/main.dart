@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app.dart';
+import 'online/online_backend.dart';
+import 'online/supabase_room_transport.dart';
 import 'settings/app_settings.dart';
 import 'storage/app_database.dart';
 import 'storage/drift_counter_store.dart';
@@ -25,6 +27,8 @@ Future<void> main() async {
       games: DriftGameStore(database),
       counters: DriftCounterStore(database),
       settings: await AppSettings.load(DriftSettingsStore(database)),
+      // One connection for the app, opened the first time a room is joined.
+      transports: (selfId) => SupabaseRoomTransport(onlineClient(), selfId),
     ),
   );
 }

@@ -327,6 +327,44 @@ abstract final class Strings {
         Bonus.skullKingCaptured => 'Skull King capturé par une sirène',
       }} (+${bonus.points})';
 
+  static const online = 'Jouer en ligne';
+  static const onlineIntro =
+      'Chacun sur son téléphone. Celui qui crée la partie donne le code '
+      'aux autres ; son téléphone fait tourner la partie.';
+  static const onlineCreate = 'Créer une partie';
+  static const onlineJoin = 'Rejoindre';
+  static const onlineCodeLabel = 'Code de la partie';
+  static const onlineCodeHint = 'ABCD';
+  static const onlineRoomTitle = 'Salon';
+  static String onlineCode(String code) => 'Code : $code';
+  static const onlineShareCode = 'Donne ce code aux autres joueurs.';
+  static const onlineWaitingHost = 'En attente que l\'hôte lance la partie…';
+  static const onlineConnecting = 'Connexion…';
+  static String onlineSeats(int people, int seats) =>
+      '$people joueur${people > 1 ? 's' : ''} sur $seats places · les places '
+      'libres seront tenues par des bots';
+  static const onlineStart = 'Lancer la partie';
+  static const onlineNeedGuest = 'Attends qu\'un autre joueur te rejoigne.';
+  static const onlineHostTag = 'hôte';
+  static const onlineAwayTag = 'déconnecté';
+  static const onlineYouTag = 'toi';
+  static const onlineCannotConnect =
+      'Connexion impossible. Vérifie ta connexion Internet et réessaie.';
+  static String onlineRefused(String reason) => switch (reason) {
+    'full' => 'Cette partie est complète.',
+    'started' => 'Cette partie a déjà commencé.',
+    'version' => 'Vos applis n\'ont pas la même version : mettez-les à jour.',
+    _ => 'Impossible de rejoindre cette partie.',
+  };
+  static const onlineHostAway =
+      'L\'hôte est déconnecté : la partie est en pause.';
+  static const onlineClosed = 'L\'hôte a mis fin à la partie.';
+  static const onlineLeaveHost =
+      'Si tu quittes, la partie s\'arrête pour tout le monde.';
+  static const onlineLeaveGuest = 'Si tu quittes, un bot jouera à ta place.';
+  static const leave = 'Quitter';
+  static const backToHome = 'Retour à l\'accueil';
+
   static const profileTitle = 'Ton profil';
   static const playerNameLabel = 'Nom';
   static const playerColorLabel = 'Couleur';

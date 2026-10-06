@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Online games reach the rooms over the network. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="skull_kings"
+        android:label="Skull Kings"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

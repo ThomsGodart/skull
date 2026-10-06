@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'home/home_screen.dart';
+import 'online/online_screens.dart';
 import 'settings/app_settings.dart';
 import 'counter/counter_store.dart';
 import 'storage/game_store.dart';
@@ -13,10 +14,14 @@ class SkullKingsApp extends StatelessWidget {
     required this.games,
     required this.counters,
     required this.settings,
+    required this.transports,
   });
 
   final GameStore games;
   final CounterStore counters;
+
+  /// How this phone reaches the rooms of online games.
+  final TransportFactory transports;
   final AppSettings settings;
 
   @override
@@ -38,7 +43,12 @@ class SkullKingsApp extends StatelessWidget {
           child: child!,
         ),
       ),
-      home: HomeScreen(games: games, counters: counters, settings: settings),
+      home: HomeScreen(
+        games: games,
+        counters: counters,
+        settings: settings,
+        transports: transports,
+      ),
     );
   }
 }

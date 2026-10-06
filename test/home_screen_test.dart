@@ -10,6 +10,8 @@ import 'package:skull_kings/settings/app_settings.dart';
 import 'package:skull_kings/storage/game_store.dart';
 import 'package:skull_kings/ui/strings.dart';
 
+import 'package:skull_kings/online/room_transport.dart';
+
 import 'support/memory_stores.dart';
 
 /// A four-player game left during round [round], as it would be saved.
@@ -66,6 +68,7 @@ void main() {
         games: games,
         counters: MemoryCounterStore(),
         settings: settings,
+        transports: MemoryRoomHub().transport,
       ),
     );
     await tester.pumpAndSettle();

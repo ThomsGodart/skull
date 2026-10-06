@@ -140,6 +140,10 @@ class OnlineHost {
   GameConfig config;
   final List<RoomPlayer> _players = [];
   Set<String> _present = {};
+
+  /// Everyone who was connected at some point: presence lags behind a
+  /// guest's first message, and must not get them thrown out meanwhile.
+  final Set<String> _everPresent = {};
   final _lobby = StreamController<Lobby>.broadcast();
   final List<StreamSubscription<Object?>> _subscriptions = [];
 
@@ -160,7 +164,11 @@ class OnlineHost {
           id: player.id,
           name: player.name,
           color: player.color,
-          connected: player.id == self.id || _present.contains(player.id),
+          // Not seen yet is not gone: presence comes a moment after hello.
+          connected:
+              player.id == self.id ||
+              _present.contains(player.id) ||
+              !_everPresent.contains(player.id),
         ),
     ],
     config: config,
@@ -189,6 +197,7 @@ class OnlineHost {
 
   void _onPresence(Set<String> present) {
     _present = present;
+    _everPresent.addAll(present);
     for (final (seat, player) in _players.indexed) {
       if (player.id == self.id) continue;
       if (present.contains(player.id)) {
@@ -205,7 +214,10 @@ class OnlineHost {
     if (!started) {
       // Someone who left before the game started gives their place back.
       _players.removeWhere(
-        (player) => player.id != self.id && !present.contains(player.id),
+        (player) =>
+            player.id != self.id &&
+            _everPresent.contains(player.id) &&
+            !present.contains(player.id),
       );
     }
     _announce();
@@ -328,10 +340,12 @@ class OnlineHost {
     for (final timer in _absences.values) {
       timer.cancel();
     }
-    for (final subscription in _subscriptions) {
-      await subscription.cancel();
-    }
+    // First of all, and without waiting for anything: the guests must hear
+    // of it even if the rest is cut short.
     transport.send({'type': 'closed'});
+    for (final subscription in _subscriptions) {
+      unawaited(subscription.cancel());
+    }
     await transport.disconnect();
     await _lobby.close();
   }
@@ -360,7 +374,16 @@ class OnlineGuest {
   final _started = Completer<(Seating, SeatFeed)>();
   Timer? _nudge;
   String? _hostId;
+  Set<String>? _present;
   _RemoteFeed? _feed;
+
+  /// Whether the host is connected, as far as this phone knows. True until
+  /// it has been seen leaving.
+  bool get hostIsPresent {
+    final present = _present;
+    final host = _hostId;
+    return present == null || host == null || present.contains(host);
+  }
 
   Stream<Lobby> get lobby => _lobby.stream;
 
@@ -382,8 +405,8 @@ class OnlineGuest {
       ..add(transport.messages.listen(_onMessage))
       ..add(
         transport.presence.listen((present) {
-          final host = _hostId;
-          if (host != null) _hostPresent.add(present.contains(host));
+          _present = present;
+          _hostPresent.add(hostIsPresent);
         }),
       );
     await transport.connect(room);

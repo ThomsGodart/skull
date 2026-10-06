@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -24,6 +25,7 @@ class AppSettings extends ChangeNotifier {
   static const _colorKey = 'playerColor';
   static const _opponentsKey = 'opponents';
   static const _setupKey = 'lastSetup';
+  static const _onlineIdKey = 'onlineId';
   static const _knownPlayersKey = 'counterPlayers';
   static const _botSpeedKey = 'botSpeed';
   static const _botLevelKey = 'botLevel';
@@ -60,6 +62,7 @@ class AppSettings extends ChangeNotifier {
     } on Object {
       settings._knownPlayers = const [];
     }
+    settings._onlineId = values[_onlineIdKey];
     settings._botSpeed =
         BotSpeed.values.asNameMap()[values[_botSpeedKey]] ?? BotSpeed.normal;
     settings._botLevel =
@@ -79,6 +82,7 @@ class AppSettings extends ChangeNotifier {
   int _opponents = 3;
   GameConfig _lastSetup = const GameConfig(players: 4, seed: 0);
   List<String> _knownPlayers = const [];
+  String? _onlineId;
   BotSpeed _botSpeed = BotSpeed.normal;
   BotLevel _botLevel = BotLevel.normal;
   BotLevel _activeGameBotLevel = BotLevel.normal;
@@ -116,6 +120,20 @@ class AppSettings extends ChangeNotifier {
   Future<void> rememberPlayers(List<String> names) {
     _knownPlayers = {...names, ..._knownPlayers}.take(20).toList();
     return _changed(_knownPlayersKey, jsonEncode(_knownPlayers));
+  }
+
+  /// What this phone is known as in online rooms: drawn once, then kept, so
+  /// that a player who reconnects is recognised.
+  Future<String> onlineId(Random random) async {
+    final known = _onlineId;
+    if (known != null) return known;
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    final id = [
+      for (var i = 0; i < 16; i++) alphabet[random.nextInt(alphabet.length)],
+    ].join();
+    _onlineId = id;
+    await _changed(_onlineIdKey, id);
+    return id;
   }
 
   BotSpeed get botSpeed => _botSpeed;

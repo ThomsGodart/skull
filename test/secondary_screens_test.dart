@@ -11,6 +11,8 @@ import 'package:skull_kings/game/score_views.dart';
 import 'package:skull_kings/settings/app_settings.dart';
 import 'package:skull_kings/ui/strings.dart';
 
+import 'package:skull_kings/online/room_transport.dart';
+
 import 'support/memory_stores.dart';
 
 /// Plays a whole four-player game into [games], as the app would keep it.
@@ -65,6 +67,7 @@ void main() {
         games: games,
         counters: MemoryCounterStore(),
         settings: settings,
+        transports: MemoryRoomHub().transport,
       ),
     );
     await tester.pumpAndSettle();
