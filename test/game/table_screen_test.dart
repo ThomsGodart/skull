@@ -10,6 +10,7 @@ import 'package:skull_kings/game/screen_awake.dart';
 import 'package:skull_kings/game/seat_identity.dart';
 import 'package:skull_kings/game/power_dialog.dart';
 import 'package:skull_kings/game/table_screen.dart';
+import 'package:skull_kings/game/trick_area.dart';
 import 'package:skull_kings/theme/tokens.dart';
 import 'package:skull_kings/ui/strings.dart';
 
@@ -200,7 +201,7 @@ void main() {
         if (await tapIfShown('power-leader-0')) continue;
         if (await tapIfShown('power-wager-10')) continue;
         if (await tapIfShown('power-change-0')) continue;
-        if (controller.powerQuestion case DiscardQuestion(
+        if (controller.afterTrickQuestion case DiscardQuestion(
           :final hand,
           :final count,
         )) {
@@ -286,7 +287,7 @@ void main() {
         if (await tapIfShown('power-change-0')) continue;
         if (await tapIfShown('declare-14')) continue;
         if (await tapIfShown('joker-green')) continue;
-        switch (controller.powerQuestion) {
+        switch (controller.afterTrickQuestion) {
           case DiscardQuestion(:final hand, :final count):
             for (final card in hand.take(count)) {
               await tester.tap(find.byKey(Key('power-discard-${card.id}')));
@@ -325,6 +326,44 @@ void main() {
       expect(controller.result, isNotNull, reason: 'seed $seed');
     }
     expect(dialogs, containsAll(['declare-14', 'joker-green', 'power-victim']));
+  });
+
+  testWidgets('a card slides into place when it is put down, unless the '
+      'trick is only looked back at', (tester) async {
+    Widget area(List<Play> plays, {bool animate = true}) => MaterialApp(
+      theme: Tokens.theme(),
+      home: TrickArea(
+        plays: plays,
+        seats: const [
+          SeatIdentity('Anne', Tokens.gold),
+          SeatIdentity('Bob', Tokens.gold),
+        ],
+        slideFromBelow: 0,
+        animate: animate,
+      ),
+    );
+    const first = Play(seat: 1, card: Card.number(Suit.green, 3));
+    const second = Play(seat: 0, card: Card.number(Suit.green, 9));
+    double top(Play play) => tester
+        .getTopLeft(find.bySemanticsLabel(Strings.cardName(play.card)))
+        .dy;
+    final handle = tester.ensureSemantics();
+
+    await tester.pumpWidget(area([first]));
+    await tester.pumpAndSettle();
+    final rest = top(first);
+
+    await tester.pumpWidget(area([first, second]));
+    await tester.pump(const Duration(milliseconds: 40));
+    expect(top(first), rest, reason: 'the card already down stays put');
+    expect(top(second), greaterThan(rest), reason: 'it comes from below');
+    await tester.pumpAndSettle();
+    expect(top(second), rest);
+
+    await tester.pumpWidget(area(const [], animate: false));
+    await tester.pumpWidget(area([first], animate: false));
+    expect(top(first), rest);
+    handle.dispose();
   });
 
   testWidgets('the plank asks which pirate leaves the trick', (tester) async {

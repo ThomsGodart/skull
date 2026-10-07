@@ -15,7 +15,12 @@ class SetupScreen extends StatefulWidget {
     super.key,
     required this.settings,
     required this.onLaunch,
+    this.online = false,
   });
+
+  /// The game is set up for a room: who plays is only known once it starts,
+  /// so the number of players is not asked here.
+  final bool online;
 
   final AppSettings settings;
   final void Function(GameConfig setup, BotLevel level) onLaunch;
@@ -73,7 +78,9 @@ class _SetupScreenState extends State<SetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final players = _setup.players;
+    final online = widget.online;
+    // Online, any option may end up applying: the table can be of any size.
+    final players = online ? maxPlayers : _setup.players;
     return Scaffold(
       appBar: AppBar(title: const Text(Strings.setupTitle)),
       body: SafeArea(
@@ -83,39 +90,51 @@ class _SetupScreenState extends State<SetupScreen> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: Tokens.space6),
                 children: [
-                  _label(Strings.opponents),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        onPressed: players - 1 > AppSettings.minOpponents
-                            ? () =>
-                                  _change(_setup.copyWith(players: players - 1))
-                            : null,
-                        icon: const Icon(Icons.remove_circle_outline),
+                  if (online)
+                    const Padding(
+                      padding: EdgeInsets.only(top: Tokens.space4),
+                      child: Text(
+                        Strings.onlineSetupNote,
+                        style: TextStyle(color: Tokens.mutedText),
                       ),
-                      SizedBox(
-                        width: Tokens.tapTarget,
-                        child: Text(
-                          '${players - 1}',
-                          key: const Key('opponents'),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Tokens.text,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
+                    )
+                  else ...[
+                    _label(Strings.opponents),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          onPressed: players - 1 > AppSettings.minOpponents
+                              ? () => _change(
+                                  _setup.copyWith(players: players - 1),
+                                )
+                              : null,
+                          icon: const Icon(Icons.remove_circle_outline),
+                        ),
+                        SizedBox(
+                          width: Tokens.tapTarget,
+                          child: Text(
+                            '${players - 1}',
+                            key: const Key('opponents'),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Tokens.text,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: players - 1 < AppSettings.maxOpponents
-                            ? () =>
-                                  _change(_setup.copyWith(players: players + 1))
-                            : null,
-                        icon: const Icon(Icons.add_circle_outline),
-                      ),
-                    ],
-                  ),
+                        IconButton(
+                          onPressed: players - 1 < AppSettings.maxOpponents
+                              ? () => _change(
+                                  _setup.copyWith(players: players + 1),
+                                )
+                              : null,
+                          icon: const Icon(Icons.add_circle_outline),
+                        ),
+                      ],
+                    ),
+                  ],
                   _label(Strings.botLevelLabel),
                   SegmentedButton<BotLevel>(
                     showSelectedIcon: false,
@@ -202,6 +221,24 @@ class _SetupScreenState extends State<SetupScreen> {
                       _setup.secondExpansion,
                       (on) => _setup.copyWith(secondExpansion: on),
                     ),
+                  if (_setup.secondExpansion && players > minPlayers)
+                    for (final kind in GameConfig.optionalKinds)
+                      CheckboxListTile(
+                        key: Key('optional-${kind.name}'),
+                        dense: true,
+                        contentPadding: const EdgeInsets.only(
+                          left: Tokens.space4,
+                        ),
+                        title: Text(Strings.optionalCard(kind)),
+                        value: !_setup.leftOut.contains(kind),
+                        onChanged: (on) => _change(
+                          _setup.copyWith(
+                            leftOut: on ?? true
+                                ? ({..._setup.leftOut}..remove(kind))
+                                : {..._setup.leftOut, kind},
+                          ),
+                        ),
+                      ),
                   _label(Strings.scoringLabel),
                   SegmentedButton<Scoring>(
                     showSelectedIcon: false,
@@ -229,7 +266,9 @@ class _SetupScreenState extends State<SetupScreen> {
                     ),
                   const SizedBox(height: Tokens.space4),
                   Text(
-                    Strings.setupSummary(_setup),
+                    online
+                        ? Strings.modeName(_setup)
+                        : Strings.setupSummary(_setup),
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Tokens.mutedText),
                   ),
@@ -241,7 +280,7 @@ class _SetupScreenState extends State<SetupScreen> {
                       style: TextStyle(color: Tokens.mutedText),
                     ),
                   ],
-                  if (_lastRoundCards(players) < standardRounds) ...[
+                  if (!online && _lastRoundCards(players) < standardRounds) ...[
                     const SizedBox(height: Tokens.space2),
                     Text(
                       Strings.fewerCardsNote(players, _lastRoundCards(players)),

@@ -117,7 +117,7 @@ class _TableScreenState extends State<TableScreen> {
     if (_game.playQuestion == null) _selected = null;
     if (!_game.hand.contains(_inspected)) _inspected = null;
     setState(() {});
-    final power = _game.powerQuestion;
+    final power = _game.afterTrickQuestion;
     if (power != null && !identical(power, _powerShown)) {
       _powerShown = power;
       _askPower(power);
@@ -130,7 +130,7 @@ class _TableScreenState extends State<TableScreen> {
   }
 
   /// The power question and the stock a dialog was already opened for.
-  PowerQuestion? _powerShown;
+  AfterTrickQuestion? _powerShown;
   List<Card>? _stockShown;
 
   bool get _namedPirates => _game.config.piratePowers;
@@ -143,7 +143,7 @@ class _TableScreenState extends State<TableScreen> {
 
   /// A pirate just won the human a trick: a dialog asks how to use its power.
   /// It cannot be dismissed, since the game waits for the answer.
-  Future<void> _askPower(PowerQuestion question) async {
+  Future<void> _askPower(AfterTrickQuestion question) async {
     final answer = await showDialog<Answer>(
       context: context,
       barrierDismissible: false,
@@ -158,7 +158,7 @@ class _TableScreenState extends State<TableScreen> {
         ),
       ),
     );
-    if (answer != null) _game.answerPower(answer);
+    if (answer != null) _game.answerAfterTrick(answer);
   }
 
   /// Juanita's power: the cards nobody was dealt.
@@ -407,6 +407,12 @@ class _TableScreenState extends State<TableScreen> {
     }
     if (game.playQuestion case final question?) {
       if (_selected != null) return Strings.tapAgain;
+      if (game.forcedCard case final forced?
+          when question.legalCards.contains(forced)) {
+        return Strings.forcedCard(
+          Strings.cardName(forced, namedPirates: _namedPirates),
+        );
+      }
       final suit = game.leadSuit;
       // No suit to follow: either the human leads, or a character or a
       // creature already on the table lifted the obligation.
@@ -798,6 +804,8 @@ class _TableScreenState extends State<TableScreen> {
               cardWidth: width,
               namedPirates: _namedPirates,
               overboard: _game.trickOverboard,
+              slideFromBelow: _game.humanSeat,
+              animate: !(widget.settings?.reduceMotion ?? false),
             );
           },
         ),
@@ -809,6 +817,15 @@ class _TableScreenState extends State<TableScreen> {
                 _seats[alliance.lootSeat].name,
                 _seats[alliance.winnerSeat].name,
               ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Tokens.gold, fontSize: 12),
+            ),
+          ),
+        for (final (seat, bonus) in _game.trickSideBonuses)
+          Padding(
+            padding: const EdgeInsets.only(top: Tokens.space2),
+            child: Text(
+              Strings.sideBonus(_seats[seat].name, bonus),
               textAlign: TextAlign.center,
               style: const TextStyle(color: Tokens.gold, fontSize: 12),
             ),

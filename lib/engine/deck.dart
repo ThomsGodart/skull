@@ -62,7 +62,9 @@ List<Card> deckFor(GameConfig config) => [
   if (config.loot && config.players > 2) ...lootCards,
   if (config.kraken) krakenCard,
   if (config.whiteWhale) whiteWhaleCard,
-  if (config.playsSecondExpansion) ...secondExpansionCards(),
+  if (config.playsSecondExpansion)
+    for (final card in secondExpansionCards())
+      if (!config.leftOut.contains(card.kind)) card,
 ];
 
 /// Cards each player receives in [round] (numbered from 1) with [players]

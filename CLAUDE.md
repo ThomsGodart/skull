@@ -14,6 +14,10 @@ Les règles complètes du jeu (cartes, hiérarchie, scores, restrictions, modes 
 
 Vocabulaire du domaine (termes du code en anglais, de l'interface en français) : `CONTEXT.md`. Le moteur de règles est dans `lib/engine/`, en Dart pur : aucun import Flutter n'y est permis (un test le vérifie).
 
+L'icône de l'application est dessinée par `python3 tool/app_icon.py` (Pillow), qui l'écrit pour toutes les plateformes : ne pas retoucher les images à la main.
+
+Sauvegarde en ligne (`lib/cloud/`) : les magasins drift sont enveloppés par des `BackedUp…Store` qui recopient chaque changement dans la table Supabase `user_data`, sous un compte anonyme. C'est une copie, jamais une source : l'appli ne lit que la base locale, et toute erreur réseau est ignorée. Le schéma distant est dans `supabase/migrations/`.
+
 Stockage : drift (SQLite), schéma dans `lib/storage/app_database.dart`. Après toute modification du schéma, régénérer avec `dart run build_runner build` et incrémenter `schemaVersion` avec une migration.
 
 @GAME_RULES.md

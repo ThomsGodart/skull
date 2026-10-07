@@ -53,6 +53,26 @@ void main() {
       expect(cardsDealt(round: 10, players: 8), 8);
     });
 
+    test('its five additional cards may each be left out; the others always '
+        'come with it', () {
+      const config = GameConfig(
+        players: 4,
+        seed: 1,
+        secondExpansion: true,
+        leftOut: {CardKind.mat, CardKind.lastSalvo},
+      );
+      final deck = deckFor(config);
+
+      expect(deck, hasLength(87));
+      expect(deck, isNot(contains(matCard)));
+      expect(deck, isNot(contains(lastSalvoCard)));
+      expect(deck, containsAll([jokerCard, maryCard, plankCard]));
+      final back = GameConfig.fromJson(
+        jsonDecode(jsonEncode(config.toJson())) as Map<String, Object?>,
+      );
+      expect(back.leftOut, config.leftOut);
+    });
+
     test('it is left out of a two-player game, which the ghost could not '
         'play', () {
       const config = GameConfig(players: 2, seed: 1, secondExpansion: true);
@@ -416,6 +436,45 @@ void main() {
         }
       }
       expect(checked, greaterThanOrEqualTo(5));
+    });
+
+    test('the game says who plays each trick, and that is who is asked', () {
+      for (var seed = 0; seed < 25; seed++) {
+        final game = Game(everything.copyWith(players: 4, seed: seed));
+        final random = Random(seed);
+        var order = const <int>[];
+        var played = 0;
+        void drain() {
+          for (final event in game.takeEvents()) {
+            switch (event) {
+              case TurnsSet():
+                order = event.order;
+              case CardPlayed():
+                played++;
+              case TrickWon():
+                expect(played, order.length, reason: 'seed $seed');
+                played = 0;
+              default:
+            }
+          }
+        }
+
+        drain();
+        while (game.pending.isNotEmpty) {
+          final question = game.pending.first;
+          if (question is PlayQuestion) {
+            expect(question.seat, order[played], reason: 'seed $seed');
+          }
+          game.answer(
+            randomAnswer(
+              question,
+              random,
+              trick: game.viewFor(question.seat).trick,
+            ),
+          );
+          drain();
+        }
+      }
     });
 
     test('Mary\'s victim can only play the card drawn from its hand', () {

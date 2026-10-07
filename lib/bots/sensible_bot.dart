@@ -33,11 +33,7 @@ Bot sensibleBot() =>
       ),
       ChooseVictimQuestion() => ChooseVictimAnswer(
         seat: question.seat,
-        // Anyone but itself, when someone else still holds a card.
-        victim: question.seats.firstWhere(
-          (seat) => seat != question.seat,
-          orElse: () => question.seat,
-        ),
+        victim: _victim(question, view),
       ),
       DiscardQuestion() => DiscardAnswer(
         seat: question.seat,
@@ -52,6 +48,16 @@ Bot sensibleBot() =>
         change: _bidChange(question, view),
       ),
     };
+
+/// Whoever is ahead among the others: a card played blind most often spoils
+/// a bid. Itself only when nobody else holds a card.
+int _victim(ChooseVictimQuestion question, GameView view) {
+  final others = question.seats.where((seat) => seat != question.seat);
+  if (others.isEmpty) return question.seat;
+  return others.reduce(
+    (best, seat) => view.scores[seat] > view.scores[best] ? seat : best,
+  );
+}
 
 bool _needsTricks(GameView view) =>
     view.bids[view.seat]! > view.tricksWon[view.seat];

@@ -27,6 +27,7 @@ final class GameConfig {
     this.loot = false,
     this.piratePowers = false,
     this.secondExpansion = false,
+    this.leftOut = const {},
   });
 
   factory GameConfig.fromJson(Map<String, Object?> json) => GameConfig(
@@ -41,6 +42,10 @@ final class GameConfig {
     loot: json['loot'] as bool? ?? false,
     piratePowers: json['piratePowers'] as bool? ?? false,
     secondExpansion: json['secondExpansion'] as bool? ?? false,
+    leftOut: {
+      for (final kind in json['leftOut'] as List? ?? const [])
+        CardKind.values.byName(kind as String),
+    },
   );
 
   /// Seats at the table, [minPlayers] to [maxPlayers].
@@ -63,6 +68,20 @@ final class GameConfig {
   /// The 19 cards of the second expansion are shuffled into the deck.
   final bool secondExpansion;
 
+  /// The cards of the second expansion the table chose to do without, among
+  /// [optionalKinds].
+  final Set<CardKind> leftOut;
+
+  /// The cards of the second expansion that may be left out; the others
+  /// always come with it.
+  static const optionalKinds = [
+    CardKind.mat,
+    CardKind.plank,
+    CardKind.stingray,
+    CardKind.lastSalvo,
+    CardKind.davyJones,
+  ];
+
   /// The second expansion is asked for and can be played: its cards call for
   /// choices the ghost of a two-player game cannot make.
   bool get playsSecondExpansion => secondExpansion && players > 2;
@@ -76,6 +95,7 @@ final class GameConfig {
     bool? loot,
     bool? piratePowers,
     bool? secondExpansion,
+    Set<CardKind>? leftOut,
   }) => GameConfig(
     players: players ?? this.players,
     seed: seed ?? this.seed,
@@ -85,6 +105,7 @@ final class GameConfig {
     loot: loot ?? this.loot,
     piratePowers: piratePowers ?? this.piratePowers,
     secondExpansion: secondExpansion ?? this.secondExpansion,
+    leftOut: leftOut ?? this.leftOut,
   );
 
   /// Any expansion card or the pirate powers are in play.
@@ -102,6 +123,7 @@ final class GameConfig {
     'loot': loot,
     'piratePowers': piratePowers,
     if (secondExpansion) 'secondExpansion': true,
+    if (leftOut.isNotEmpty) 'leftOut': [for (final kind in leftOut) kind.name],
   };
 }
 
@@ -205,13 +227,13 @@ final class PlayQuestion extends Question {
 
 /// A decision a card calls for once the trick is played: how to use the
 /// power of the pirate that just won it, or whom the plank throws overboard.
-sealed class PowerQuestion extends Question {
-  const PowerQuestion(super.seat);
+sealed class AfterTrickQuestion extends Question {
+  const AfterTrickQuestion(super.seat);
 }
 
 /// The plank: with several named pirates in the trick, say which one of
 /// [pirates] leaves it before it is settled.
-final class WalkPlankQuestion extends PowerQuestion {
+final class WalkPlankQuestion extends AfterTrickQuestion {
   const WalkPlankQuestion({required int seat, required this.pirates})
     : super(seat);
 
@@ -220,7 +242,7 @@ final class WalkPlankQuestion extends PowerQuestion {
 
 /// Mary's power: name the seat that will have to play, in the next trick, a
 /// card drawn at random from its hand.
-final class ChooseVictimQuestion extends PowerQuestion {
+final class ChooseVictimQuestion extends AfterTrickQuestion {
   const ChooseVictimQuestion({required int seat, required this.seats})
     : super(seat);
 
@@ -229,7 +251,7 @@ final class ChooseVictimQuestion extends PowerQuestion {
 }
 
 /// Rosie's power: name the seat that leads the next trick.
-final class ChooseLeaderQuestion extends PowerQuestion {
+final class ChooseLeaderQuestion extends AfterTrickQuestion {
   const ChooseLeaderQuestion({required int seat, required this.seats})
     : super(seat);
 
@@ -238,7 +260,7 @@ final class ChooseLeaderQuestion extends PowerQuestion {
 }
 
 /// Will's power: after drawing, put [count] cards of the hand out of play.
-final class DiscardQuestion extends PowerQuestion {
+final class DiscardQuestion extends AfterTrickQuestion {
   const DiscardQuestion({
     required int seat,
     required this.hand,
@@ -251,14 +273,14 @@ final class DiscardQuestion extends PowerQuestion {
 }
 
 /// Rascal's power: stake one of [amounts] on making the bid.
-final class WagerQuestion extends PowerQuestion {
+final class WagerQuestion extends AfterTrickQuestion {
   const WagerQuestion({required int seat, required this.amounts}) : super(seat);
 
   final List<int> amounts;
 }
 
 /// Harry's power: move the bid by one of [changes], which always holds 0.
-final class AdjustBidQuestion extends PowerQuestion {
+final class AdjustBidQuestion extends AfterTrickQuestion {
   const AdjustBidQuestion({required int seat, required this.changes})
     : super(seat);
 
@@ -376,6 +398,16 @@ final class RoundStarted extends Event {
   final int leader;
 }
 
+/// Who plays the trick about to be played, or being played, and in which
+/// order. Sent again when it changes: Rosie names another leader, or the last
+/// salvo gives its player a second turn.
+final class TurnsSet extends Event {
+  const TurnsSet(this.order);
+
+  /// A seat that plays twice is in it twice.
+  final List<int> order;
+}
+
 final class HandDealt extends Event {
   const HandDealt({required this.seat, required this.cards});
 
@@ -407,12 +439,17 @@ final class TrickWon extends Event {
     this.alliances = const [],
     this.destroyed = false,
     this.overboard,
+    this.sideBonuses = const [],
   });
 
   /// The seat that leads the next trick; it won this one unless [destroyed].
   final int winner;
   final List<Play> plays;
   final List<Bonus> bonuses;
+
+  /// Bonuses the trick brings to a seat whether or not it won it: those of
+  /// Davy Jones' chest.
+  final List<(int seat, Bonus bonus)> sideBonuses;
   final List<Alliance> alliances;
 
   /// A kraken, a whale or a stingray over special cards only, or nothing but

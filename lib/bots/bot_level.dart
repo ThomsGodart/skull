@@ -30,7 +30,7 @@ Bot _easyBot(Random random) {
         return random.nextInt(3) == 0
             ? randomAnswer(question, random, trick: view.trick)
             : answer;
-      case PowerQuestion():
+      case AfterTrickQuestion():
         return answer;
     }
   };

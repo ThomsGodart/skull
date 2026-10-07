@@ -7,12 +7,12 @@ final class CounterEntry {
     required this.tricksWon,
     this.bonuses = const {},
     this.wager = 0,
-    this.bidChange = 0,
     this.manualBonus = 0,
   });
 
   factory CounterEntry.fromJson(Map<String, Object?> json) => CounterEntry(
-    bid: json['bid']! as int,
+    // Harry's change was once kept apart: it is part of the bid.
+    bid: (json['bid']! as int) + (json['bidChange'] as int? ?? 0),
     tricksWon: json['tricksWon']! as int,
     bonuses: {
       for (final MapEntry(:key, :value)
@@ -20,11 +20,10 @@ final class CounterEntry {
         Bonus.values.byName(key): value! as int,
     },
     wager: json['wager'] as int? ?? 0,
-    bidChange: json['bidChange'] as int? ?? 0,
     manualBonus: json['manualBonus'] as int? ?? 0,
   );
 
-  /// The bid as announced, before Harry.
+  /// The bid that is scored: after Harry's change, if he made one.
   final int bid;
   final int tricksWon;
 
@@ -33,9 +32,6 @@ final class CounterEntry {
 
   /// What was staked with Rascal the gambler: 0, 10 or 20.
   final int wager;
-
-  /// What Harry the giant did to the bid: -1, 0 or +1.
-  final int bidChange;
 
   /// Points the players added up themselves. Taken as they are, whatever the
   /// bid did: the app checks nothing about them.
@@ -46,14 +42,12 @@ final class CounterEntry {
     int? tricksWon,
     Map<Bonus, int>? bonuses,
     int? wager,
-    int? bidChange,
     int? manualBonus,
   }) => CounterEntry(
     bid: bid ?? this.bid,
     tricksWon: tricksWon ?? this.tricksWon,
     bonuses: bonuses ?? this.bonuses,
     wager: wager ?? this.wager,
-    bidChange: bidChange ?? this.bidChange,
     manualBonus: manualBonus ?? this.manualBonus,
   );
 
@@ -65,14 +59,17 @@ final class CounterEntry {
         for (final MapEntry(:key, :value) in bonuses.entries) key.name: value,
       },
     if (wager != 0) 'wager': wager,
-    if (bidChange != 0) 'bidChange': bidChange,
     if (manualBonus != 0) 'manualBonus': manualBonus,
   };
 }
 
 /// One round as entered: an entry per player, and the loot alliances made.
 final class CounterRound {
-  const CounterRound({required this.entries, this.alliances = const []});
+  const CounterRound({
+    required this.entries,
+    this.alliances = const [],
+    this.cards,
+  });
 
   factory CounterRound.fromJson(Map<String, Object?> json) => CounterRound(
     entries: [
@@ -83,12 +80,17 @@ final class CounterRound {
       for (final pair in json['alliances'] as List? ?? const [])
         ((pair as List)[0] as int, pair[1] as int),
     ],
+    cards: json['cards'] as int?,
   );
 
   final List<CounterEntry> entries;
 
   /// Pairs of players a loot card allied this round.
   final List<(int, int)> alliances;
+
+  /// Cards each player held, when the table dealt another number than the
+  /// rules give for the round.
+  final int? cards;
 
   /// Tricks the players say they took, to check against the cards dealt.
   int get tricksClaimed =>
@@ -100,6 +102,7 @@ final class CounterRound {
       'alliances': [
         for (final (first, second) in alliances) [first, second],
       ],
+    'cards': ?cards,
   };
 }
 
@@ -118,6 +121,7 @@ final class CounterGame {
     this.secondExpansion = false,
     List<CounterRound> rounds = const [],
     this.draftBids,
+    this.draftCards,
   }) : players = List.unmodifiable(players),
        _rounds = [] {
     if (players.length < minPlayers || players.length > maxPlayers) {
@@ -130,10 +134,14 @@ final class CounterGame {
     // Stored rounds go through the same checks as entered ones, which would
     // also forget the bids being entered: those are put back afterwards.
     final draft = draftBids;
+    final cards = draftCards;
     for (final round in rounds) {
       saveRound(nextRound, round);
     }
-    if (!isOver) draftBids = draft;
+    if (!isOver) {
+      draftBids = draft;
+      draftCards = cards;
+    }
   }
 
   factory CounterGame.fromJson(Map<String, Object?> json) => CounterGame(
@@ -151,6 +159,7 @@ final class CounterGame {
         CounterRound.fromJson(round as Map<String, Object?>),
     ],
     draftBids: (json['draftBids'] as List?)?.cast<int>(),
+    draftCards: json['draftCards'] as int?,
   );
 
   final List<String> players;
@@ -179,11 +188,22 @@ final class CounterGame {
   /// Cleared when that round is saved.
   List<int>? draftBids;
 
+  /// The cards dealt in the round being played, when not what the rules
+  /// give. Cleared with [draftBids].
+  int? draftCards;
+
   /// The round to enter next, numbered from 1.
   int get nextRound => _rounds.length + 1;
 
-  /// Cards each player holds in [round].
-  int cardsIn(int round) => secondExpansion
+  /// Cards each player holds in [round]: what the table says it dealt, or
+  /// else what the rules give.
+  int cardsIn(int round) =>
+      this.round(round)?.cards ??
+      (round == nextRound ? draftCards : null) ??
+      rulebookCardsIn(round);
+
+  /// Cards the rules deal each player in [round].
+  int rulebookCardsIn(int round) => secondExpansion
       ? (round < standardRounds ? round : standardRounds)
       : cardsDealt(round: round, players: players.length);
 
@@ -218,11 +238,15 @@ final class CounterGame {
     if (round == nextRound) {
       _rounds.add(entered);
       draftBids = null;
+      draftCards = null;
     } else {
       _rounds[round - 1] = entered;
     }
     // No further round will be played: bids entered for one are void.
-    if (isOver) draftBids = null;
+    if (isOver) {
+      draftBids = null;
+      draftCards = null;
+    }
   }
 
   /// Every round entered so far, scored, with running totals.
@@ -276,10 +300,10 @@ final class CounterGame {
     return scored;
   }
 
-  /// The bid [entry] is scored on: Harry may move it, but never out of what
-  /// a round of [cards] cards allows.
+  /// The bid [entry] is scored on: never out of what a round of [cards]
+  /// cards allows.
   static int _scoredBid(CounterEntry entry, int cards) =>
-      (entry.bid + entry.bidChange).clamp(0, cards);
+      entry.bid.clamp(0, cards);
 
   static List<Bonus> _bonusList(CounterEntry entry) => [
     for (final MapEntry(key: bonus, value: count) in entry.bonuses.entries)
@@ -308,5 +332,6 @@ final class CounterGame {
     if (secondExpansion) 'secondExpansion': true,
     'rounds': [for (final round in _rounds) round.toJson()],
     'draftBids': ?draftBids,
+    'draftCards': ?draftCards,
   };
 }

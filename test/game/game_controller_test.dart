@@ -299,7 +299,7 @@ void main() {
             controller,
             () => controller.result != null,
             onStep: () {
-              if (controller.powerQuestion case final question?) {
+              if (controller.afterTrickQuestion case final question?) {
                 asked.add(question.runtimeType);
               }
               if (controller.revealedStock != null) stocksShown++;
@@ -440,8 +440,8 @@ Future<void> playUntil(
       controller.continueAfterRound();
     } else if (controller.revealedStock != null) {
       controller.dismissStock();
-    } else if (controller.powerQuestion case final question?) {
-      controller.answerPower(randomAnswer(question, Random(step)));
+    } else if (controller.afterTrickQuestion case final question?) {
+      controller.answerAfterTrick(randomAnswer(question, Random(step)));
     } else if (controller.bidQuestion != null) {
       controller.bid(0);
     } else if (controller.playQuestion case final question?) {

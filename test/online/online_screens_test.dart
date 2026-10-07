@@ -84,7 +84,13 @@ void main() {
       isNotNull,
     );
 
+    // Two people: the host is asked whether bots should join them.
     await tester.tap(find.byKey(const Key('online-start')));
+    await settle(tester);
+    expect(find.text(Strings.onlineBotsTitle), findsOneWidget);
+    await tester.tap(find.byKey(const Key('online-bots-plus')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('online-bots-confirm')));
     await settle(tester);
 
     // The host is at the table, facing Bob.
@@ -117,7 +123,7 @@ void main() {
     expect(find.text(Strings.onlineWaitingHost), findsOneWidget);
     expect(host.currentLobby.players.map((p) => p.name), ['Zoé', 'Bob']);
 
-    host.start(Random(2)).open();
+    host.start(Random(2), bots: 1).open();
     await settle(tester);
 
     expect(find.text(Strings.roundTitle(1, 1)), findsOneWidget);
@@ -140,6 +146,7 @@ void main() {
       self: const RoomPlayer(id: 'host', name: 'Zoé', color: 2),
       config: const GameConfig(players: 2, seed: 0),
       bot: randomBot(Random(1)),
+      capacity: 2,
     );
     host.open('FULL');
     final first = OnlineGuest(

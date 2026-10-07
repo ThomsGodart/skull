@@ -66,6 +66,19 @@ abstract final class Strings {
   static const victimChosenYou =
       'Mary Thorne : tu dois jouer la carte tirée au hasard dans ta main';
   static const overboard = 'à l\'eau';
+  static String forcedCard(String card) =>
+      'À toi — Mary Thorne t\'impose de jouer : $card';
+  static String sideBonus(String name, Bonus bonus) =>
+      '${signed(bonus.points)} pour $name (${bonusName(bonus)}) si son pari '
+      'est réussi';
+  static String optionalCard(CardKind kind) => switch (kind) {
+    CardKind.mat => 'Mat le Forban',
+    CardKind.plank => 'Marcher sur la planche',
+    CardKind.stingray => 'Raie Tachetée',
+    CardKind.lastSalvo => 'La Dernière Salve',
+    CardKind.davyJones => 'Le Coffre de Davy Jones',
+    _ => throw ArgumentError.value(kind, 'kind', 'is not an optional card'),
+  };
   static const optionSecondExpansion = 'Deuxième extension (19 cartes)';
   static const optionSecondExpansionHelp =
       '7, 8 et 0/14 en plus, Joker 15, Mary Thorne, Mat le Forban, Raie '
@@ -400,6 +413,7 @@ abstract final class Strings {
   static const counterResultsPhase = 'Les résultats';
   static const counterBidsDone = 'Valider les paris';
   static const counterRoundDone = 'Valider la manche';
+  static const counterCards = 'Cartes par joueur';
   static const counterBid = 'Pari';
   static const counterTricks = 'Plis';
   static const counterBonus = 'Bonus';
@@ -455,8 +469,14 @@ abstract final class Strings {
   static const onlineWaitingHost = 'En attente que l\'hôte lance la partie…';
   static const onlineConnecting = 'Connexion…';
   static String onlineSeats(int people, int seats) =>
-      '$people joueur${people > 1 ? 's' : ''} sur $seats places · les places '
-      'libres seront tenues par des bots';
+      '$people joueur${people > 1 ? 's' : ''} · $seats au maximum';
+  static const onlineBotsTitle = 'Ajouter des bots ?';
+  static String onlineBotsBody(int people, int room) =>
+      'Vous êtes $people. Jusqu\'à $room bot${room > 1 ? 's' : ''} '
+      'peu${room > 1 ? 'vent' : 't'} compléter la table.';
+  static const onlineSetupNote =
+      'Le nombre de joueurs se décide dans le salon : tous ceux qui '
+      'rejoignent jouent, et tu pourras ajouter des bots au lancement.';
   static const onlineStart = 'Lancer la partie';
   static const onlineNeedGuest = 'Attends qu\'un autre joueur te rejoigne.';
   static const onlineHostTag = 'hôte';

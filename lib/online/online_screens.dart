@@ -83,6 +83,7 @@ class _OnlineHomeScreenState extends State<OnlineHomeScreen> {
     MaterialPageRoute<void>(
       builder: (setupContext) => SetupScreen(
         settings: widget.settings,
+        online: true,
         onLaunch: (setup, level) async {
           final self = await _self();
           if (!setupContext.mounted) return;
@@ -212,7 +213,7 @@ class _PlayerList extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.all(Tokens.space3),
           child: Text(
-            Strings.onlineSeats(lobby.players.length, lobby.config.players),
+            Strings.onlineSeats(lobby.players.length, maxPlayers),
             textAlign: TextAlign.center,
             style: const TextStyle(color: Tokens.mutedText),
           ),
@@ -319,8 +320,86 @@ class _HostRoomScreenState extends State<HostRoomScreen> {
     super.dispose();
   }
 
+  /// Asks how many bots join the table, when it has room for some. Null when
+  /// the host thinks better of starting.
+  Future<int?> _askBots() {
+    final room = widget.host.botsRoom;
+    if (room <= 0) return Future.value(0);
+    final people = _lobby.players.length;
+    var bots = 0;
+    return showDialog<int>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: Tokens.panel,
+          title: const Text(Strings.onlineBotsTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(Strings.onlineBotsBody(people, room)),
+              const SizedBox(height: Tokens.space3),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    key: const Key('online-bots-minus'),
+                    onPressed: bots > 0
+                        ? () => setDialogState(() => bots--)
+                        : null,
+                    icon: const Icon(Icons.remove_circle_outline),
+                  ),
+                  SizedBox(
+                    width: Tokens.tapTarget,
+                    child: Text(
+                      '$bots',
+                      key: const Key('online-bots'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Tokens.text,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    key: const Key('online-bots-plus'),
+                    onPressed: bots < room
+                        ? () => setDialogState(() => bots++)
+                        : null,
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                ],
+              ),
+              if (people + bots == minPlayers)
+                const Padding(
+                  padding: EdgeInsets.only(top: Tokens.space2),
+                  child: Text(
+                    Strings.twoPlayersNote,
+                    style: TextStyle(color: Tokens.mutedText, fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(Strings.cancel),
+            ),
+            FilledButton(
+              key: const Key('online-bots-confirm'),
+              onPressed: () => Navigator.pop(context, bots),
+              child: const Text(Strings.onlineStart),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _start() async {
-    final feed = widget.host.start(widget.random);
+    final bots = await _askBots();
+    if (bots == null || !mounted) return;
+    final feed = widget.host.start(widget.random, bots: bots);
     final lobby = widget.host.currentLobby;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(

@@ -398,7 +398,7 @@ Rappel historique utile pour lire d'anciens codes ou anciennes règles : dans l'
 
 Source : livret « Skull King — Règles de l'extension » (10 pages), lu sur des captures d'écran fournies par Thomas le 2026-10-07. Le livret ne lui donne pas d'autre nom que « l'extension » ; le projet l'appelle « deuxième extension » pour la distinguer des cartes des modes avancés ([§10](#10-modes-avancés)).
 
-**État dans le projet** : c'est une option unique (`secondExpansion`), qui ajoute les 19 cartes d'un coup, dans le jeu complet comme dans le compteur de points. Les lectures de [§14.7](#147-points-non-tranchés-par-le-livret) ont été validées par Thomas le 2026-10-07.
+**État dans le projet** : c'est une option (`secondExpansion`), dans le jeu complet comme dans le compteur de points. Dans le jeu, les cinq cartes additionnelles de §14.5 peuvent être retirées une à une (`GameConfig.leftOut`), comme le livret le permet ; les cartes numérotées, le Joker et Mary Thorne viennent toujours avec. Les lectures de [§14.7](#147-points-non-tranchés-par-le-livret) ont été validées par Thomas le 2026-10-07.
 
 ### 14.1 Contenu — 19 cartes à jouer
 

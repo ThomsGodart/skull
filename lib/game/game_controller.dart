@@ -81,14 +81,19 @@ class GameController extends ChangeNotifier {
   int cardsDealt = 0;
   int dealer = 0;
   int _leader = 0;
-  int _roundStarter = 0;
 
-  /// The seat that sits out the next trick it does not lead, having fired
-  /// the last salvo.
-  int? _sitsOut;
+  /// The seats in the order they play the trick on the table, as the game
+  /// last said.
+  List<int> _order = const [];
 
   /// The pirate the plank threw out of the trick held on the table.
   Card? trickOverboard;
+
+  /// What the trick held on the table brings to seats that did not win it.
+  List<(int seat, Bonus bonus)> trickSideBonuses = const [];
+
+  /// The card Mary makes the human play at their next turn.
+  Card? forcedCard;
 
   /// The human's cards, sorted for reading.
   List<Card> hand = const [];
@@ -120,7 +125,7 @@ class GameController extends ChangeNotifier {
   PlayQuestion? playQuestion;
 
   /// Set when the human must decide how to use a pirate's power.
-  PowerQuestion? powerQuestion;
+  AfterTrickQuestion? afterTrickQuestion;
 
   /// What a pirate's power is doing right now, for the table to announce: one
   /// of [PowerUsed], [LeaderChosen], [CardsDiscarded], [WagerPlaced] and
@@ -167,36 +172,8 @@ class GameController extends ChangeNotifier {
     if (bids.isEmpty || !bidsAreIn || trickWinner != null) return null;
     if (_revealingBids) return null;
     if (roundSummary != null || result != null) return null;
-    return _orderOf(trick).elementAtOrNull(trick.length);
+    return _order.elementAtOrNull(trick.length);
   }
-
-  /// The seats in the order they play [plays], the trick on the table:
-  /// whoever held a card when it began, but for the seat that sits out, and
-  /// once more whoever fired the last salvo with a card left to follow it.
-  List<int> _orderOf(List<Play> plays) {
-    int heldAtStart(int seat) =>
-        handSizes[seat] + plays.where((play) => play.seat == seat).length;
-    final sitsOut = _sitsOut == _leader ? null : _sitsOut;
-    final salvo = plays
-        .where((play) => play.card.kind == CardKind.lastSalvo)
-        .firstOrNull;
-    return [
-      for (final seat in playOrder(
-        leader: _leader,
-        seats: seats,
-        ghost: ghostSeat,
-        roundStarter: _roundStarter,
-      ))
-        if (heldAtStart(seat) > 0 && seat != sitsOut) seat,
-      if (salvo != null && _repliesToSalvo(salvo, plays)) salvo.seat,
-    ];
-  }
-
-  /// Whether whoever played [salvo] has a second card to play in [plays]:
-  /// always, unless the salvo was their last card.
-  bool _repliesToSalvo(Play salvo, List<Play> plays) =>
-      handSizes[salvo.seat] > 0 ||
-      plays.where((play) => play.seat == salvo.seat).length > 1;
 
   /// The suit to follow in the trick on the table, if any.
   Suit? get leadSuit => engine.leadSuit(trick);
@@ -244,8 +221,8 @@ class GameController extends ChangeNotifier {
 
   /// Answers the pirate power the human is asked about. Ignored when there
   /// is none.
-  void answerPower(Answer answer) {
-    if (powerQuestion == null) return;
+  void answerAfterTrick(Answer answer) {
+    if (afterTrickQuestion == null) return;
     _answer(answer);
   }
 
@@ -307,16 +284,16 @@ class GameController extends ChangeNotifier {
   /// since the game may come back with the next thing to show at once; it is
   /// put back if the answer is refused.
   void _answer(Answer answer) {
-    final asked = (bidQuestion, playQuestion, powerQuestion);
+    final asked = (bidQuestion, playQuestion, afterTrickQuestion);
     bidQuestion = null;
     playQuestion = null;
-    powerQuestion = null;
+    afterTrickQuestion = null;
     try {
       _feed.answer(answer);
     } on Object {
       bidQuestion = asked.$1;
       playQuestion = asked.$2;
-      powerQuestion = asked.$3;
+      afterTrickQuestion = asked.$3;
       rethrow;
     }
     unawaited(_run());
@@ -328,8 +305,8 @@ class GameController extends ChangeNotifier {
         bidQuestion = question;
       case PlayQuestion():
         playQuestion = question;
-      case PowerQuestion():
-        powerQuestion = question;
+      case AfterTrickQuestion():
+        afterTrickQuestion = question;
     }
     _notify();
   }
@@ -341,7 +318,6 @@ class GameController extends ChangeNotifier {
         cardsDealt = event.cardsDealt;
         dealer = event.dealer;
         _leader = event.leader;
-        _roundStarter = event.leader;
         handSizes = List.filled(seats, event.cardsDealt);
         bids = List.filled(seats, null);
         tricksWon = List.filled(seats, 0);
@@ -350,7 +326,10 @@ class GameController extends ChangeNotifier {
         lastTrick = null;
         lastTrickWinner = null;
         lastTrickOverboard = null;
-        _sitsOut = null;
+        forcedCard = null;
+        _order = const [];
+      case TurnsSet():
+        _order = event.order;
       case HandDealt():
         hand = sortedHand(event.cards);
       case BidsRevealed():
@@ -371,6 +350,7 @@ class GameController extends ChangeNotifier {
             handSizes[seat] - (seat == play.seat ? 1 : 0),
         ];
         if (play.seat == humanSeat) {
+          if (play.card == forcedCard) forcedCard = null;
           hand = [
             for (final card in hand)
               if (card != play.card) card,
@@ -382,11 +362,7 @@ class GameController extends ChangeNotifier {
         trickDestroyed = event.destroyed;
         trickAlliances = event.alliances;
         trickOverboard = event.overboard;
-        // Whoever sat this trick out is back; whoever fired the salvo in it
-        // sits out next.
-        final order = _orderOf(event.plays);
-        if (!order.contains(_sitsOut)) _sitsOut = null;
-        if (order.length > order.toSet().length) _sitsOut = order.last;
+        trickSideBonuses = event.sideBonuses;
         if (!event.destroyed) {
           tricksWon = [
             for (var seat = 0; seat < seats; seat++)
@@ -399,6 +375,7 @@ class GameController extends ChangeNotifier {
         lastTrickWinner = event.winner;
         lastTrickOverboard = event.overboard;
         trickOverboard = null;
+        trickSideBonuses = const [];
         trick = const [];
         trickWinner = null;
         trickBonuses = const [];
@@ -418,10 +395,11 @@ class GameController extends ChangeNotifier {
       case VictimChosen():
         await _announce(event);
       case CardForced():
-        break;
+        forcedCard = event.card;
       case CardsDrawn():
         hand = sortedHand([...hand, ...event.cards]);
       case OwnCardsDiscarded():
+        if (event.cards.contains(forcedCard)) forcedCard = null;
         hand = [
           for (final card in hand)
             if (!event.cards.contains(card)) card,

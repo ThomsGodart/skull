@@ -100,7 +100,8 @@ class MemoryGameStore implements GameStore {
   }
 
   @override
-  Future<SavedGame?> loadGame(int id) async => kept[id];
+  Future<SavedGame?> loadGame(int id) async =>
+      kept[id] ?? (active?.id == id ? active : null);
 
   @override
   Future<void> deleteFinished(int id) async {

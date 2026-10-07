@@ -2,8 +2,12 @@
 /// from GAME_RULES.md.
 ///
 /// Kept apart from `strings.dart` because of its length; like it, this file
-/// holds nothing but text.
+/// holds nothing but text. A line that starts with [cardsMark] is no text to
+/// read: it lists, by their identifiers, the cards to draw beside the line
+/// that follows.
 abstract final class RulesContent {
+  static const cardsMark = '[cartes] ';
+
   static const sections = [
     (
       title: 'Le but',
@@ -25,6 +29,7 @@ abstract final class RulesContent {
     (
       title: 'Les cartes Couleur',
       body:
+          '[cartes] green-14 yellow-14 purple-14 black-14\n'
           'Quatre couleurs, numérotées de 1 à 14 : vert, jaune, violet, et '
           'noir. Le noir est l\'atout : il bat les trois autres couleurs, '
           'quelle que soit sa valeur.\n\n'
@@ -40,13 +45,18 @@ abstract final class RulesContent {
       body:
           'Elles se jouent à tout moment, même si tu as la couleur '
           'demandée.\n\n'
+          '[cartes] escape-1\n'
           '• Fuite : perd toujours. Si tout le monde joue une fuite, la '
           'première l\'emporte.\n'
+          '[cartes] pirate-1\n'
           '• Pirate : bat toutes les cartes Couleur. Entre pirates, le '
           'premier joué gagne.\n'
+          '[cartes] tigress-1\n'
           '• Tigresse : tu choisis en la jouant si elle vaut un pirate ou '
           'une fuite.\n'
+          '[cartes] skullKing-1\n'
           '• Skull King : bat les pirates et toutes les cartes Couleur.\n'
+          '[cartes] mermaid-1\n'
           '• Sirène : bat toutes les cartes Couleur et le Skull King, mais '
           'perd contre les pirates. Entre sirènes, la première jouée '
           'gagne.\n\n'
@@ -75,7 +85,9 @@ abstract final class RulesContent {
       title: 'Les bonus',
       body:
           'Ils ne comptent que si ton pari est réussi.\n\n'
+          '[cartes] green-14\n'
           '• Un 14 vert, jaune ou violet dans un pli gagné : +10\n'
+          '[cartes] black-14\n'
           '• Le 14 noir dans un pli gagné : +20\n'
           '• Une sirène capturée par ton pirate : +20\n'
           '• Un pirate capturé par ton Skull King : +30\n'
@@ -107,13 +119,16 @@ abstract final class RulesContent {
       body:
           'Ces cartes s\'ajoutent au choix à la création de la partie. '
           'Comme toute carte spéciale, elles se jouent à tout moment.\n\n'
+          '[cartes] kraken-1\n'
           '• Kraken : le pli est détruit, personne ne le remporte et ses '
           'bonus sont perdus. Celui qui l\'aurait gagné entame le suivant.\n'
+          '[cartes] whiteWhale-1\n'
           '• Baleine blanche : toutes les cartes spéciales du pli sont '
           'détruites et les couleurs ne comptent plus ; la plus haute valeur '
           'gagne, la première jouée en cas d\'égalité. S\'il ne reste que '
           'des cartes spéciales, le pli est détruit.\n'
           '• Les deux dans le même pli : seule la dernière jouée agit.\n'
+          '[cartes] loot-1\n'
           '• Butin : perd comme une fuite, mais allie son joueur au gagnant '
           'du pli. Si tous deux réussissent leur pari, chacun marque +20. '
           'Pas d\'alliance si le pli est détruit, ni si c\'est le Butin qui '
@@ -129,14 +144,19 @@ abstract final class RulesContent {
           'son pouvoir, tout de suite. La Tigresse n\'en a pas, et un pli '
           'détruit n\'en déclenche aucun. Tu peux toujours choisir de ne '
           'rien changer.\n\n'
+          '[cartes] pirate-1\n'
           '• Rosie la Douce : choisis qui entame le prochain pli.\n'
+          '[cartes] pirate-2\n'
           '• Will le Bandit : pioche 2 cartes, puis défausse-en 2 (celles '
           'que tu viens de piocher si tu veux). S\'il reste moins de 2 '
           'cartes dans la pioche, tu prends ce qu\'il y a.\n'
+          '[cartes] pirate-3\n'
           '• Rascal le Flambeur : mise 0, 10 ou 20 points, gagnés si ton '
           'pari est réussi, perdus sinon.\n'
+          '[cartes] pirate-4\n'
           '• Juanita Jade : regarde les cartes qui n\'ont pas été '
           'distribuées.\n'
+          '[cartes] pirate-5\n'
           '• Harry le Géant : à la fin de la manche, une fois tous les plis '
           'joués, modifie ton pari de plus ou moins 1.\n\n'
           'Les autres pouvoirs s\'utilisent tout de suite, et ne servent '
@@ -148,29 +168,38 @@ abstract final class RulesContent {
           'Une option à part, à la création de la partie (à partir de 3 '
           'joueurs). Elle ajoute 19 cartes, et permet de distribuer 10 '
           'cartes même à 8 joueurs.\n\n'
+          '[cartes] green-7-extra yellow-8-extra\n'
           '• 7 et 8 en double dans chaque couleur : de deux cartes égales, '
           'la première jouée l\'emporte. Remporter le 8 de l\'extension '
           'vaut +5, le 7 coûte −5, si ton pari est réussi.\n'
+          '[cartes] purple-0or14\n'
           '• 0/14 dans chaque couleur : tu dis en la jouant si c\'est un 0 '
           'ou un 14. Elle ne rapporte pas de bonus.\n'
+          '[cartes] joker-1\n'
           '• Joker 15 : un 15 de la couleur demandée (verte, jaune ou '
           'violette). S\'il fixe la couleur, tu la choisis. Jamais atout : '
           'il perd si le noir est demandé. Tu peux toujours le jouer.\n'
+          '[cartes] pirate-6\n'
           '• Mary Thorne : un pirate de plus. Son pouvoir : tu désignes un '
           'joueur, qui devra jouer au pli suivant une carte tirée au hasard '
           'dans sa main.\n'
+          '[cartes] mat-1\n'
           '• Mat le Forban : bat les pirates et les couleurs, perd contre '
           'le Skull King et les sirènes, qui gagnent alors +30. Il utilise '
           'les pouvoirs des pirates qu\'il capture.\n'
+          '[cartes] plank-1\n'
           '• Marcher sur la planche : ne gagne pas de pli, mais élimine un '
           'pirate du pli (ni Mat ni la Tigresse). S\'il y en a plusieurs, '
           'son joueur choisit.\n'
+          '[cartes] stingray-1\n'
           '• Raie Tachetée : comme la Baleine blanche, mais la plus basse '
           'valeur gagne. De plusieurs monstres marins, le dernier joué '
           'décide.\n'
+          '[cartes] lastSalvo-1\n'
           '• Dernière Salve : ne gagne pas de pli. Son joueur rejoue une '
           'carte après tous les autres, puis saute le prochain pli qu\'il '
           'n\'entame pas.\n'
+          '[cartes] davyJones-1\n'
           '• Coffre de Davy Jones : ne gagne pas de pli. Il détruit les '
           'monstres marins du pli, qui se joue alors sans eux : +20 par '
           'monstre pour son joueur, si son pari est réussi.\n\n'

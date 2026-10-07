@@ -101,7 +101,7 @@ final class Game {
   int? _harrySeat;
 
   /// A pirate power, or the plank, waiting for its player's decision.
-  PowerQuestion? _power;
+  AfterTrickQuestion? _power;
 
   /// The powers still to be used for the trick just won: Mat hands his
   /// player those of every pirate he captured.
@@ -209,6 +209,7 @@ final class Game {
         _leader = answer.leader;
         _startTrick();
         _events.add(LeaderChosen(seat: answer.seat, leader: answer.leader));
+        _announceTurns();
         _powerDone();
       case (final WalkPlankQuestion question, final WalkPlankAnswer answer):
         if (!question.pirates.contains(answer.pirate)) {
@@ -311,6 +312,7 @@ final class Game {
     if (play.card.kind == CardKind.lastSalvo && hand.isNotEmpty) {
       _order = [..._order, play.seat];
       _salvoSeat = play.seat;
+      _announceTurns();
     }
     if (_trick.length == _order.length) _finishTrick();
   }
@@ -350,6 +352,11 @@ final class Game {
       ))
         if (_hands[seat].isNotEmpty && seat != sitsOut) seat,
     ];
+  }
+
+  /// Tells the table who plays the trick, once there is one to play.
+  void _announceTurns() {
+    if (_order.isNotEmpty) _events.add(TurnsSet(List.unmodifiable(_order)));
   }
 
   void _discard(DiscardQuestion question, DiscardAnswer answer) {
@@ -406,6 +413,7 @@ final class Game {
         alliances: result.alliances,
         destroyed: result.destroyed,
         overboard: overboard,
+        sideBonuses: result.sideBonuses,
       ),
     );
     // Whoever sat this trick out is back; whoever fired the salvo in it
@@ -418,6 +426,7 @@ final class Game {
     _leader = result.winner;
     _trick = [];
     _startTrick();
+    _announceTurns();
     // The ghost decides nothing: a pirate it wins with has no power.
     final winning = result.winningPlay;
     if (config.piratePowers && winning != null && result.winner != ghostSeat) {
@@ -591,6 +600,7 @@ final class Game {
         leader: _leader,
       ),
     );
+    _announceTurns();
     for (var seat = 0; seat < _players; seat++) {
       _events.add(
         HandDealt(seat: seat, cards: List.unmodifiable(_hands[seat])),

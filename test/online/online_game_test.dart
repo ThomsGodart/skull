@@ -34,7 +34,9 @@ class Player {
       // Not from inside the feed's own callback.
       scheduleMicrotask(() {
         if (identical(feed.question, question)) {
-          feed.answer(randomAnswer(question, _random));
+          feed.answer(
+            randomAnswer(question, _random, trick: trickAfter(events)),
+          );
         }
       });
     }
@@ -46,14 +48,18 @@ void main() {
   const config = GameConfig(players: 4, seed: 0);
   const fast = Duration(milliseconds: 5);
 
-  OnlineHost host({GameConfig config = config, Duration grace = fast}) =>
-      OnlineHost(
-        transport: hub.transport('host'),
-        self: const RoomPlayer(id: 'host', name: 'Anne', color: 0),
-        config: config,
-        bot: randomBot(Random(1)),
-        grace: grace,
-      );
+  OnlineHost host({
+    GameConfig config = config,
+    Duration grace = fast,
+    int capacity = maxPlayers,
+  }) => OnlineHost(
+    transport: hub.transport('host'),
+    self: const RoomPlayer(id: 'host', name: 'Anne', color: 0),
+    config: config,
+    bot: randomBot(Random(1)),
+    grace: grace,
+    capacity: capacity,
+  );
 
   OnlineGuest guest(String id, {String? name}) => OnlineGuest(
     transport: hub.transport(id),
@@ -75,7 +81,11 @@ void main() {
       await guest.join('ROOM');
     }
     await pause(fast * 3);
-    final hostFeed = theHost.start(Random(7));
+    // Bots take the seats the configuration counts beyond the people.
+    final hostFeed = theHost.start(
+      Random(7),
+      bots: max(0, config.players - guests - 1),
+    );
     final players = [Player(hostFeed, 100)];
     for (final (index, guest) in theGuests.indexed) {
       final (_, feed) = await guest.started;
@@ -133,8 +143,23 @@ void main() {
       },
     );
 
-    test('a full room turns the next guest away', () async {
+    test('whoever comes plays: the game has as many seats as people in the '
+        'room, plus the bots the host asks for', () async {
       final theHost = host(config: const GameConfig(players: 2, seed: 0));
+      await theHost.open('ROOM');
+      for (final id in ['g1', 'g2', 'g3']) {
+        await guest(id).join('ROOM');
+      }
+      await pause(fast * 3);
+
+      expect(theHost.currentLobby.players, hasLength(4));
+      expect(theHost.botsRoom, 4);
+      final feed = theHost.start(Random(7), bots: 2);
+      expect(feed.config.players, 6);
+    });
+
+    test('a full room turns the next guest away', () async {
+      final theHost = host(capacity: 2);
       await theHost.open('ROOM');
       await guest('g1').join('ROOM');
       await pause(fast * 3);
@@ -204,6 +229,7 @@ void main() {
           whiteWhale: true,
           loot: true,
           piratePowers: true,
+          secondExpansion: true,
           scoring: Scoring.rascal,
         ),
       );
@@ -211,6 +237,13 @@ void main() {
       await untilOver(players);
 
       expect(players.first.result!.scores, hasLength(5));
+      // The cards of the second expansion crossed the network too.
+      final kinds = {
+        for (final player in players)
+          for (final event in player.events.whereType<CardPlayed>())
+            event.play.card.kind,
+      };
+      expect(kinds, containsAll([CardKind.joker, CardKind.lastSalvo]));
     });
 
     test('two phones alone play with the ghost', () async {

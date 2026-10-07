@@ -201,36 +201,6 @@ void main() {
     expect(store.active!.game.totals, [60, 30, 10]);
   });
 
-  testWidgets('a change by Harry stored apart shows in the bid when the '
-      'round is corrected', (tester) async {
-    final game = CounterGame(
-      players: ['Anne', 'Bob', 'Chloé'],
-      piratePowers: true,
-      rounds: [
-        const CounterRound(
-          entries: [
-            CounterEntry(bid: 0, tricksWon: 1, bidChange: 1),
-            CounterEntry(bid: 0, tricksWon: 0),
-            CounterEntry(bid: 0, tricksWon: 0),
-          ],
-        ),
-      ],
-    );
-    store.active = SavedCounterGame(id: 1, game: game);
-    await openCounter(tester);
-    await tap(tester, 'counter-resume');
-    await tester.pumpAndSettle();
-    await tap(tester, 'sheet-round-1');
-    await tester.pumpAndSettle();
-
-    expect(tester.widget<Text>(find.byKey(const Key('bid-0-value'))).data, '1');
-    await tap(tester, 'counter-round-done');
-    await tester.pumpAndSettle();
-    final entry = store.active!.game.round(1)!.entries[0];
-    expect((entry.bid, entry.bidChange), (1, 0));
-    expect(store.active!.game.totals, [20, 10, 10]);
-  });
-
   testWidgets('once ten rounds give a single leader, the game can be '
       'finished and joins the counted games', (tester) async {
     final game = CounterGame(players: ['Anne', 'Bob']);
@@ -307,7 +277,9 @@ void main() {
 
     await tap(tester, 'tricks-0-plus');
     await tap(tester, 'manual-bonus-0-plus', times: 3);
+    // Bob took no trick: he has no bonus to enter.
     await tap(tester, 'manual-bonus-1-minus');
+    await tap(tester, 'manual-bonus-1-plus');
     expect(
       tester.widget<Text>(find.byKey(const Key('counter-preview-0'))).data,
       '+50',
@@ -315,7 +287,62 @@ void main() {
     await tap(tester, 'counter-round-done');
     await tester.pumpAndSettle();
 
-    expect(store.active!.game.totals, [50, 0, 10]);
+    expect(store.active!.game.totals, [50, 10, 10]);
+  });
+
+  testWidgets('a bonus counted by hand goes with a trick: taking the trick '
+      'back takes it back, and it moves by five with the second expansion', (
+    tester,
+  ) async {
+    store.active = SavedCounterGame(
+      id: 1,
+      game: CounterGame(
+        players: ['Anne', 'Bob', 'Chloé'],
+        manualBonuses: true,
+        secondExpansion: true,
+        draftBids: [1, 0, 0],
+      ),
+    );
+    await openCounter(tester);
+    await tap(tester, 'counter-resume');
+    await tester.pumpAndSettle();
+    await tap(tester, 'counter-enter');
+    await tester.pumpAndSettle();
+
+    await tap(tester, 'tricks-0-plus');
+    await tap(tester, 'manual-bonus-0-plus');
+    Text bonus() =>
+        tester.widget<Text>(find.byKey(const Key('manual-bonus-0-value')));
+    expect(bonus().data, '5');
+
+    await tap(tester, 'tricks-0-minus');
+    expect(bonus().data, '0');
+  });
+
+  testWidgets('the cards dealt in a round can be changed, and the round is '
+      'scored on them', (tester) async {
+    await openCounter(tester);
+    await startGame(tester, ['Anne', 'Bob', 'Chloé']);
+    await tap(tester, 'counter-enter');
+    await tester.pumpAndSettle();
+    expect(find.text(Strings.counterRoundTitle(1, 1)), findsOneWidget);
+
+    await tap(tester, 'cards-plus', times: 2);
+    expect(find.text(Strings.counterRoundTitle(1, 3)), findsOneWidget);
+    await tap(tester, 'bid-0-plus', times: 3);
+    await tap(tester, 'counter-bids-done');
+    await tester.pumpAndSettle();
+    expect(store.active!.game.draftCards, 3);
+
+    await tap(tester, 'tricks-0-plus', times: 3);
+    await tap(tester, 'counter-round-done');
+    await tester.pumpAndSettle();
+
+    final game = store.active!.game;
+    expect(game.cardsIn(1), 3);
+    // Three tricks bid and taken; a zero made with three cards is worth 30.
+    expect(game.totals, [60, 30, 30]);
+    expect(game.cardsIn(2), 2, reason: 'the next round is by the rules again');
   });
 
   testWidgets('the second expansion is an option, and brings its bonuses '

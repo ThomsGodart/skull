@@ -53,10 +53,10 @@ def _glyph(char, width, colour):
     return glyph
 
 
-def emblem(side, skull_fraction):
+def emblem(side, skull_fraction, colours=(PARCHMENT, GOLD)):
     """The crowned skull, centred on a transparent square of `side` pixels."""
-    skull = _glyph("☠", round(side * skull_fraction), PARCHMENT)
-    crown = _glyph("\U0001F451", round(skull.width * CROWN_WIDTH), GOLD)
+    skull = _glyph("☠", round(side * skull_fraction), colours[0])
+    crown = _glyph("\U0001F451", round(skull.width * CROWN_WIDTH), colours[1])
     rise = round(skull.width * CROWN_RISE)
     layer = Image.new("RGBA", (side, side), (0, 0, 0, 0))
     left = (side - skull.width) // 2
@@ -137,6 +137,9 @@ def save(image, path, side):
 def android(framed_icon):
     res = "android/app/src/main/res"
     foreground = emblem(MASTER, SKULL_ADAPTIVE)
+    # Android 13 tints this one itself, for themed icons: only its shape counts.
+    white = (255, 255, 255)
+    monochrome = emblem(MASTER, SKULL_ADAPTIVE, (white, white))
     densities = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
     for density, scale in densities.items():
         folder = f"{res}/mipmap-{density}"
@@ -144,6 +147,11 @@ def android(framed_icon):
         save(
             foreground,
             f"{folder}/ic_launcher_foreground.png",
+            round(108 * scale),
+        )
+        save(
+            monochrome,
+            f"{folder}/ic_launcher_monochrome.png",
             round(108 * scale),
         )
 

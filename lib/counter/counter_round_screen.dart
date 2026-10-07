@@ -21,8 +21,9 @@ class CounterRoundScreen extends StatefulWidget {
   /// The round to enter, or a past one to correct.
   final int round;
 
-  /// Called with the bids once they are all in.
-  final ValueChanged<List<int>> onDraft;
+  /// Called with the bids once they are all in, and the cards dealt when
+  /// not what the rules give.
+  final void Function(List<int> bids, int? cards) onDraft;
 
   /// Called with the whole round once it is entered.
   final ValueChanged<CounterRound> onSave;
@@ -39,7 +40,26 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
   late bool _results;
 
   CounterGame get _game => widget.game;
-  int get _cards => _game.cardsIn(widget.round);
+
+  /// Cards each player held this round: the table may have dealt another
+  /// number than the rules give.
+  late int _cards = _game.cardsIn(widget.round);
+
+  /// [_cards], when it is not what the rules give.
+  int? get _otherCards =>
+      _cards == _game.rulebookCardsIn(widget.round) ? null : _cards;
+
+  void _setCards(int cards) => setState(() {
+    _cards = cards;
+    // Nobody bids or takes more than there are cards.
+    _entries = [
+      for (final entry in _entries)
+        entry.copyWith(
+          bid: entry.bid.clamp(0, cards),
+          tricksWon: entry.tricksWon.clamp(0, cards),
+        ),
+    ];
+  });
 
   @override
   void initState() {
@@ -49,19 +69,12 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
     _results = past != null || draft != null;
     _alliances = List.of(past?.alliances ?? const []);
     _entries =
-        past?.entries.map(_withHarryInTheBid).toList() ??
+        past?.entries.toList() ??
         [
           for (var player = 0; player < _game.players.length; player++)
             CounterEntry(bid: draft?[player] ?? 0, tricksWon: 0),
         ];
   }
-
-  /// Harry's change is entered by correcting the bid itself: one stored apart
-  /// by an earlier version joins the bid, where it can be seen and edited.
-  CounterEntry _withHarryInTheBid(CounterEntry entry) => entry.copyWith(
-    bid: (entry.bid + entry.bidChange).clamp(0, _cards),
-    bidChange: 0,
-  );
 
   /// The most tricks [player] may still be given: the round has only so many.
   int _tricksLeftFor(int player) {
@@ -74,6 +87,7 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
   CounterRound get _round => CounterRound(
     entries: List.unmodifiable(_entries),
     alliances: List.unmodifiable(_alliances),
+    cards: _otherCards,
   );
 
   /// What [player] would score if the round were saved as it stands.
@@ -257,6 +271,16 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+                  _line(
+                    Strings.counterCards,
+                    _Stepper(
+                      name: 'cards',
+                      value: _cards,
+                      min: 1,
+                      max: standardRounds,
+                      onChanged: _setCards,
+                    ),
+                  ),
                   if (_byHand)
                     for (final (player, name) in _game.players.indexed)
                       _manualCard(player, name)
@@ -293,7 +317,7 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
                         onPressed: () {
                           widget.onDraft([
                             for (final entry in _entries) entry.bid,
-                          ]);
+                          ], _otherCards);
                           setState(() => _results = true);
                         },
                         child: const Text(Strings.counterBidsDone),
@@ -309,9 +333,14 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
   /// The results are entered with a bonus total the players worked out.
   bool get _byHand => _results && _game.manualBonuses;
 
-  /// What a hand-counted bonus moves by, and how far it may go either way.
-  static const _bonusStep = 10;
+  /// What a hand-counted bonus moves by: the second expansion has cards
+  /// worth five points. And how far it may go either way.
+  int get _bonusStep => _game.secondExpansion ? 5 : 10;
   static const _bonusLimit = 500;
+
+  /// While only the bids are entered, their numbers have the whole line.
+  double get _bidWidth => _results ? _stepperWidth : _largeStepperWidth;
+  static const _largeStepperWidth = 160.0;
 
   static const _stepperWidth = 96.0;
   static const _bonusWidth = 40.0;
@@ -329,9 +358,9 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
     child: Row(
       children: [
         const Spacer(),
-        const SizedBox(
-          width: _stepperWidth,
-          child: Text(
+        SizedBox(
+          width: _bidWidth,
+          child: const Text(
             Strings.counterBid,
             textAlign: TextAlign.center,
             style: _heading,
@@ -355,8 +384,7 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
   /// One line a player, so that the whole table is in view at once.
   Widget _playerCard(int player, String name) {
     final entry = _entries[player];
-    final hasExtras =
-        entry.bonuses.isNotEmpty || entry.wager != 0 || entry.bidChange != 0;
+    final hasExtras = entry.bonuses.isNotEmpty || entry.wager != 0;
     return Container(
       margin: const EdgeInsets.only(top: Tokens.space1),
       padding: const EdgeInsets.only(left: Tokens.space2),
@@ -379,11 +407,12 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
             ),
           ),
           SizedBox(
-            width: _stepperWidth,
+            width: _bidWidth,
             child: _Stepper(
               name: 'bid-$player',
               value: entry.bid,
               max: _cards,
+              large: !_results,
               onChanged: (bid) => _edit(player, entry.copyWith(bid: bid)),
             ),
           ),
@@ -504,8 +533,14 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
                   name: 'tricks-$player',
                   value: entry.tricksWon,
                   max: _tricksLeftFor(player),
-                  onChanged: (won) =>
-                      _edit(player, entry.copyWith(tricksWon: won)),
+                  // A bonus comes with a trick: none taken, none kept.
+                  onChanged: (won) => _edit(
+                    player,
+                    entry.copyWith(
+                      tricksWon: won,
+                      manualBonus: won == 0 ? 0 : null,
+                    ),
+                  ),
                 ),
               ),
               labelled(
@@ -517,6 +552,7 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
                   max: _bonusLimit,
                   step: _bonusStep,
                   valueWidth: 40,
+                  enabled: entry.tricksWon > 0,
                   onChanged: (points) =>
                       _edit(player, entry.copyWith(manualBonus: points)),
                 ),
@@ -573,6 +609,8 @@ class _Stepper extends StatelessWidget {
     this.min = 0,
     this.step = 1,
     this.valueWidth = 26,
+    this.enabled = true,
+    this.large = false,
   });
 
   /// Names the two buttons for tests: `<name>-minus` and `<name>-plus`.
@@ -586,17 +624,26 @@ class _Stepper extends StatelessWidget {
   final int step;
   final double valueWidth;
 
+  /// When false, the value shows but cannot be changed.
+  final bool enabled;
+
+  /// Bigger buttons and figure, when the line has room for them.
+  final bool large;
+
   @override
   Widget build(BuildContext context) {
     Widget button(String side, IconData icon, int? next) => IconButton(
       key: Key('$name-$side'),
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
-      constraints: const BoxConstraints(minWidth: 34, minHeight: 40),
+      iconSize: large ? 34 : 24,
+      constraints: large
+          ? const BoxConstraints(minWidth: 52, minHeight: 60)
+          : const BoxConstraints(minWidth: 34, minHeight: 40),
       style: IconButton.styleFrom(
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
-      onPressed: next == null ? null : () => onChanged(next),
+      onPressed: next == null || !enabled ? null : () => onChanged(next),
       icon: Icon(icon),
     );
     return Row(
@@ -609,16 +656,16 @@ class _Stepper extends StatelessWidget {
           value - step >= min ? value - step : null,
         ),
         SizedBox(
-          width: valueWidth,
+          width: large ? 48 : valueWidth,
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
               '$value',
               key: Key('$name-value'),
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Tokens.text,
-                fontSize: 18,
+                fontSize: large ? 30 : 18,
                 fontWeight: FontWeight.w800,
               ),
             ),

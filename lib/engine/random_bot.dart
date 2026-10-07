@@ -64,3 +64,19 @@ PlayAnswer _randomPlay(int seat, Card card, Random random, List<Play> trick) =>
           ? jokerSuits[random.nextInt(jokerSuits.length)]
           : null,
     );
+
+/// The cards on the table after [events]: what a seat that only receives
+/// events needs to know to play a joker.
+List<Play> trickAfter(Iterable<Event> events) {
+  var trick = <Play>[];
+  for (final event in events) {
+    switch (event) {
+      case CardPlayed(:final play):
+        trick.add(play);
+      case TrickWon() || RoundStarted():
+        trick = [];
+      default:
+    }
+  }
+  return trick;
+}

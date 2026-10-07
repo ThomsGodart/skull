@@ -42,7 +42,7 @@ void main() {
         check();
       }
     }
-    expect(kinds, hasLength(15), reason: 'every kind of event was seen');
+    expect(kinds, hasLength(16), reason: 'every kind of event was seen');
   });
 
   test('every question comes back the same from JSON', () {

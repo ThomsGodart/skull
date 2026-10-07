@@ -39,8 +39,8 @@ Le code, les identifiants et les tests sont en anglais ; tout ce que voit le jou
 | `Wager` | mise | Les 0, 10 ou 20 points que Rascal le Flambeur fait miser. |
 | `Ghost` | fantôme, Barbe Grise | Le troisième paquet d'une partie à 2 : ni pari ni score (`Game.ghostSeat`). |
 | `Counter` | compteur de points | La feuille de score d'une partie jouée avec le vrai paquet (`CounterGame`). |
-| `CounterEntry` | saisie | Ce qu'un joueur a fait dans une manche comptée : pari, plis, bonus, mise, changement de Harry, ou un total de bonus compté à la main (`manualBonus`). |
-| `secondExpansion` | deuxième extension | Le paquet séparé de 19 cartes (7, 8 et 0/14 en double, Joker 15, Mary Thorne, Mat le Forban, Planche, Raie Tachetée, Dernière Salve, Coffre de Davy Jones). Une seule option, dans le jeu comme dans le compteur. Règles : `GAME_RULES.md` §14. |
+| `CounterEntry` | saisie | Ce qu'un joueur a fait dans une manche comptée : pari (après Harry), plis, bonus, mise, ou un total de bonus compté à la main (`manualBonus`). |
+| `secondExpansion` | deuxième extension | Le paquet séparé de 19 cartes (7, 8 et 0/14 en double, Joker 15, Mary Thorne, Mat le Forban, Planche, Raie Tachetée, Dernière Salve, Coffre de Davy Jones). Une option, dans le jeu comme dans le compteur ; dans le jeu, ses cinq cartes additionnelles se retirent une à une. Règles : `GAME_RULES.md` §14. |
 | `sea monster` | monstre marin | Kraken, Baleine blanche ou Raie Tachetée (`Play.isCreature`). |
 | `Draft bids` | — | Les paris d'une manche comptée, saisis avant que ses plis soient connus. |
 | `Seat feed` | — | Ce qu'un siège reçoit d'une partie (événements, question) et sa façon d'y répondre, que la partie tourne sur ce téléphone ou chez l'hôte (`SeatFeed`). |

@@ -19,7 +19,7 @@ class PowerDialog extends StatefulWidget {
     this.namedPirates = true,
   });
 
-  final PowerQuestion question;
+  final AfterTrickQuestion question;
   final List<SeatIdentity> seats;
 
   /// The human's current bid, to show what Harry would make of it.

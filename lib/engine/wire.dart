@@ -79,6 +79,7 @@ Map<String, Object?> eventToJson(Event event) => switch (event) {
     'dealer': event.dealer,
     'leader': event.leader,
   },
+  TurnsSet() => {'type': 'turnsSet', 'order': event.order},
   HandDealt() => {
     'type': 'handDealt',
     'seat': event.seat,
@@ -97,6 +98,10 @@ Map<String, Object?> eventToJson(Event event) => switch (event) {
     ],
     'destroyed': event.destroyed,
     if (event.overboard case final card?) 'overboard': card.id,
+    if (event.sideBonuses.isNotEmpty)
+      'sideBonuses': [
+        for (final (seat, bonus) in event.sideBonuses) [seat, bonus.name],
+      ],
   },
   VictimChosen() => {
     'type': 'victimChosen',
@@ -166,6 +171,7 @@ Event eventFromJson(Map<String, Object?> json) => _decode(json, 'event', () {
       dealer: field('dealer'),
       leader: field('leader'),
     ),
+    'turnsSet' => TurnsSet(_ints(json['order'])),
     'handDealt' => HandDealt(seat: field('seat'), cards: _cards(json['cards'])),
     'bidsRevealed' => BidsRevealed(_ints(json['bids'])),
     'cardPlayed' => CardPlayed(_playFromJson(json['play'])),
@@ -185,6 +191,10 @@ Event eventFromJson(Map<String, Object?> json) => _decode(json, 'event', () {
         null => null,
         final id => Card.fromId(id as String),
       },
+      sideBonuses: [
+        for (final pair in json['sideBonuses'] as List? ?? const [])
+          ((pair as List)[0] as int, Bonus.values.byName(pair[1] as String)),
+      ],
     ),
     'victimChosen' => VictimChosen(
       seat: field('seat'),

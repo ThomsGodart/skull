@@ -9,7 +9,7 @@ import 'room_transport.dart';
 
 /// Bumped whenever phones of different versions could no longer play the
 /// same game together.
-const onlineProtocol = 1;
+const onlineProtocol = 2;
 
 /// How long an absent player is waited for before a bot plays in their place.
 const absenceGrace = Duration(seconds: 30);
@@ -127,6 +127,7 @@ class OnlineHost {
     required this.config,
     required this.bot,
     this.grace = absenceGrace,
+    this.capacity = maxPlayers,
   }) {
     _players.add(self);
   }
@@ -136,7 +137,11 @@ class OnlineHost {
   final Bot bot;
   final Duration grace;
 
-  /// What is played. Its seed is drawn when the game starts.
+  /// How many people the room takes, the host included.
+  final int capacity;
+
+  /// What is played. Its seed is drawn when the game starts, and its number
+  /// of players is then whoever is in the room, plus the bots asked for.
   GameConfig config;
   final List<RoomPlayer> _players = [];
   Set<String> _present = {};
@@ -244,7 +249,7 @@ class OnlineHost {
     }
     final known = _players.any((player) => player.id == id);
     if (!known) {
-      if (started || _players.length >= config.players) {
+      if (started || _players.length >= capacity) {
         transport.send({
           'type': 'refused',
           'reason': started ? 'started' : 'full',
@@ -271,13 +276,15 @@ class OnlineHost {
     return seat > 0 ? seat : null;
   }
 
-  /// Starts the game with whoever is in the room, and returns the host's own
-  /// seat feed. Empty seats are played by bots.
-  SeatFeed start(Random random) {
+  /// How many bots may join the people of the room at most.
+  int get botsRoom => maxPlayers - _players.length;
+
+  /// Starts the game with whoever is in the room and [bots] bots more, and
+  /// returns the host's own seat feed.
+  SeatFeed start(Random random, {int bots = 0}) {
     final config = this.config = this.config.copyWith(
       seed: random.nextInt(1 << 32),
-      // Never fewer seats than people.
-      players: max(this.config.players, max(_players.length, minPlayers)),
+      players: (_players.length + bots).clamp(minPlayers, maxPlayers),
     );
     final table = _table = LocalTable(
       config: config,

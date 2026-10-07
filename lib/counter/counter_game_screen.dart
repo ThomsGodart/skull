@@ -41,8 +41,9 @@ class _CounterGameScreenState extends State<CounterGameScreen> {
         builder: (context) => CounterRoundScreen(
           game: _game,
           round: round,
-          onDraft: (bids) {
+          onDraft: (bids, cards) {
             _game.draftBids = bids;
+            _game.draftCards = cards;
             widget.store.save(_id, _game);
           },
           onSave: (entered) {

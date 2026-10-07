@@ -19,15 +19,19 @@ SupabaseClient client() =>
 
 GameFinished? drive(SeatFeed feed, int seed, void Function(GameFinished) done) {
   final random = Random(seed);
+  final events = <Event>[];
   feed.onUpdate = () {
     for (final event in feed.takeEvents()) {
+      events.add(event);
       if (event is GameFinished) done(event);
     }
     final question = feed.question;
     if (question != null) {
       scheduleMicrotask(() {
         if (identical(feed.question, question)) {
-          feed.answer(randomAnswer(question, random));
+          feed.answer(
+            randomAnswer(question, random, trick: trickAfter(events)),
+          );
         }
       });
     }
@@ -43,7 +47,12 @@ Future<void> main() async {
   final host = OnlineHost(
     transport: SupabaseRoomTransport(clients[0], 'host'),
     self: const RoomPlayer(id: 'host', name: 'Host', color: 0),
-    config: const GameConfig(players: 4, seed: 0, piratePowers: true),
+    config: const GameConfig(
+      players: 4,
+      seed: 0,
+      piratePowers: true,
+      secondExpansion: true,
+    ),
     bot: randomBot(Random(1)),
   );
   await host.open(room);

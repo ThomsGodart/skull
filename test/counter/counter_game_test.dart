@@ -189,14 +189,15 @@ void main() {
     expect(one[1].score.alliancePoints, 0);
   });
 
-  test('Harry moves the bid that is scored, and Rascal\'s wager follows', () {
+  test('the bid as Harry left it is the one scored, and Rascal\'s wager '
+      'follows', () {
     final game = newGame()
       ..saveRound(1, round([(0, 0), (0, 0), (0, 0)]))
       ..saveRound(
         2,
         CounterRound(
           entries: [
-            const CounterEntry(bid: 1, tricksWon: 2, bidChange: 1, wager: 20),
+            const CounterEntry(bid: 2, tricksWon: 2, wager: 20),
             const CounterEntry(bid: 1, tricksWon: 0, wager: 10),
             const CounterEntry(bid: 0, tricksWon: 0),
           ],
@@ -314,7 +315,6 @@ void main() {
                 tricksWon: 1,
                 bonuses: {Bonus.skullKingCaptured: 1},
                 wager: 10,
-                bidChange: -1,
               ),
               const CounterEntry(bid: 0, tricksWon: 0),
             ],
@@ -384,18 +384,20 @@ void main() {
       expect(() => CounterGame.fromJson(json), throwsA(anything));
     });
 
-    test('Harry cannot push a bid below zero or above the cards dealt', () {
-      final game = newGame()
-        ..saveRound(
-          1,
-          CounterRound(
-            entries: [
-              const CounterEntry(bid: 0, tricksWon: 0, bidChange: -1),
-              const CounterEntry(bid: 1, tricksWon: 1, bidChange: 1),
-              const CounterEntry(bid: 0, tricksWon: 0),
+    test('a change by Harry stored apart by an earlier version joins the '
+        'bid, which stays within the cards dealt', () {
+      final game = CounterGame.fromJson({
+        'players': ['Anne', 'Bob', 'Chloé'],
+        'rounds': [
+          {
+            'entries': [
+              {'bid': 0, 'tricksWon': 0, 'bidChange': -1},
+              {'bid': 1, 'tricksWon': 1, 'bidChange': 1},
+              {'bid': 0, 'tricksWon': 0},
             ],
-          ),
-        );
+          },
+        ],
+      });
 
       final results = game.scoredRounds.single.results;
       expect(results[0].bid, 0);

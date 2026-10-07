@@ -9,6 +9,7 @@ import 'package:skull_kings/game/game_controller.dart';
 import 'package:skull_kings/game/game_saver.dart';
 import 'package:skull_kings/game/score_views.dart';
 import 'package:skull_kings/settings/app_settings.dart';
+import 'package:skull_kings/ui/cards/card_view.dart';
 import 'package:skull_kings/ui/strings.dart';
 
 import 'package:skull_kings/online/room_transport.dart';
@@ -259,8 +260,14 @@ void main() {
     expect(find.text(Strings.rulesTitle), findsOneWidget);
     expect(find.textContaining('parie le nombre exact'), findsOneWidget);
 
-    await tester.scrollUntilVisible(find.text('Les bonus'), 300);
+    // The cards the rules speak of are drawn beside them.
+    await tester.scrollUntilVisible(find.textContaining('• Fuite'), 300);
+    expect(find.byType(CardView), findsWidgets);
 
+    await tester.scrollUntilVisible(
+      find.textContaining('Skull King capturé'),
+      300,
+    );
     expect(find.textContaining('Skull King capturé'), findsOneWidget);
   });
 }
