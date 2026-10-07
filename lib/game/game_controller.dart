@@ -303,6 +303,10 @@ class GameController extends ChangeNotifier {
         if (question != null && !identical(question, _asked)) {
           _asked = question;
           _ask(question);
+          // Whoever listens may have answered on the spot — Harry left to
+          // himself does — and the game then moved on while this loop was
+          // still the one running: look again rather than stop here.
+          continue;
         }
         break;
       }
