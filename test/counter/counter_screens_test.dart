@@ -102,6 +102,9 @@ void main() {
 
     await tap(tester, 'tricks-2-plus');
     expect(find.text(Strings.counterTricksMismatch(0, 1)), findsNothing);
+    // The only trick is taken: nobody else can be given one.
+    await tap(tester, 'tricks-0-plus');
+    expect(find.text(Strings.counterTricksMismatch(2, 1)), findsNothing);
     await tap(tester, 'counter-bonus-2');
     await tester.pumpAndSettle();
     await tap(tester, 'bonus-standardFourteen-plus');
@@ -147,8 +150,8 @@ void main() {
     expect(store.active!.game.nextRound, 2);
   });
 
-  testWidgets('with loot and pirate powers, alliances, wagers and Harry '
-      'can be entered', (tester) async {
+  testWidgets('with loot and pirate powers, alliances and wagers can be '
+      'entered', (tester) async {
     final game = CounterGame(
       players: ['Anne', 'Bob', 'Chloé'],
       loot: true,
@@ -192,8 +195,40 @@ void main() {
     final entered = store.active!.game.round(1)!;
     expect(entered.alliances, [(0, 1)]);
     expect(entered.entries[0].wager, 20);
+    // Harry's change is made on the bid itself.
+    expect(find.text('Harry le Géant'), findsNothing);
     // Anne made her bid of one, Bob his zero: 20 + alliance 20 + wager 20.
     expect(store.active!.game.totals, [60, 30, 10]);
+  });
+
+  testWidgets('a change by Harry stored apart shows in the bid when the '
+      'round is corrected', (tester) async {
+    final game = CounterGame(
+      players: ['Anne', 'Bob', 'Chloé'],
+      piratePowers: true,
+      rounds: [
+        const CounterRound(
+          entries: [
+            CounterEntry(bid: 0, tricksWon: 1, bidChange: 1),
+            CounterEntry(bid: 0, tricksWon: 0),
+            CounterEntry(bid: 0, tricksWon: 0),
+          ],
+        ),
+      ],
+    );
+    store.active = SavedCounterGame(id: 1, game: game);
+    await openCounter(tester);
+    await tap(tester, 'counter-resume');
+    await tester.pumpAndSettle();
+    await tap(tester, 'sheet-round-1');
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Text>(find.byKey(const Key('bid-0-value'))).data, '1');
+    await tap(tester, 'counter-round-done');
+    await tester.pumpAndSettle();
+    final entry = store.active!.game.round(1)!.entries[0];
+    expect((entry.bid, entry.bidChange), (1, 0));
+    expect(store.active!.game.totals, [20, 10, 10]);
   });
 
   testWidgets('once ten rounds give a single leader, the game can be '
@@ -251,6 +286,11 @@ void main() {
     for (final (index, name) in ['Anne', 'Bob', 'Chloé'].indexed) {
       await tester.enterText(find.byKey(Key('counter-name-$index')), name);
     }
+    await tester.dragUntilVisible(
+      find.byKey(const Key('counter-manual-bonuses')),
+      find.byType(ListView),
+      const Offset(0, -200),
+    );
     await tap(tester, 'counter-manual-bonuses');
     // Alliances and wagers are part of the total the players work out.
     expect(find.text(Strings.optionLoot), findsNothing);
@@ -276,6 +316,50 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(store.active!.game.totals, [50, 0, 10]);
+  });
+
+  testWidgets('the second expansion is an option, and brings its bonuses '
+      'to the entry of a round', (tester) async {
+    await openCounter(tester);
+    await tap(tester, 'counter-new');
+    await tester.pumpAndSettle();
+    for (final (index, name) in ['Anne', 'Bob', 'Chloé'].indexed) {
+      await tester.enterText(find.byKey(Key('counter-name-$index')), name);
+    }
+    await tap(tester, 'counter-second-expansion');
+    await tap(tester, 'counter-start');
+    await tester.pumpAndSettle();
+    expect(store.active!.game.secondExpansion, isTrue);
+
+    await tap(tester, 'counter-enter');
+    await tester.pumpAndSettle();
+    await tap(tester, 'counter-bids-done');
+    await tester.pumpAndSettle();
+    await tap(tester, 'counter-bonus-0');
+    await tester.pumpAndSettle();
+    await tap(tester, 'bonus-extraSeven-plus');
+    await tap(tester, 'counter-bonus-close');
+    await tester.pumpAndSettle();
+    await tap(tester, 'counter-round-done');
+    await tester.pumpAndSettle();
+
+    expect(store.active!.game.totals, [5, 10, 10]);
+  });
+
+  testWidgets('without the second expansion, its bonuses are not offered', (
+    tester,
+  ) async {
+    await openCounter(tester);
+    await startGame(tester, ['Anne', 'Bob', 'Chloé']);
+    await tap(tester, 'counter-enter');
+    await tester.pumpAndSettle();
+    await tap(tester, 'counter-bids-done');
+    await tester.pumpAndSettle();
+    await tap(tester, 'counter-bonus-0');
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('bonus-blackFourteen-plus')), findsOneWidget);
+    expect(find.byKey(const Key('bonus-extraSeven-plus')), findsNothing);
   });
 
   testWidgets('two players cannot bear the same name', (tester) async {

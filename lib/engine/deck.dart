@@ -22,12 +22,36 @@ const krakenCard = Card.special(CardKind.kraken);
 const whiteWhaleCard = Card.special(CardKind.whiteWhale);
 const lootCards = [Card.special(CardKind.loot), Card.special(CardKind.loot, 2)];
 
-/// Every card that exists, expansion included.
+/// The 19 cards of the second expansion, in a fixed order.
+const maryCard = Card.special(CardKind.pirate, 6);
+const jokerCard = Card.special(CardKind.joker);
+const matCard = Card.special(CardKind.mat);
+const plankCard = Card.special(CardKind.plank);
+const stingrayCard = Card.special(CardKind.stingray);
+const lastSalvoCard = Card.special(CardKind.lastSalvo);
+const davyJonesCard = Card.special(CardKind.davyJones);
+List<Card> secondExpansionCards() => [
+  for (final suit in Suit.values) ...[
+    Card.extraNumber(suit, 7),
+    Card.extraNumber(suit, 8),
+    Card.zeroFourteen(suit),
+  ],
+  jokerCard,
+  maryCard,
+  matCard,
+  plankCard,
+  stingrayCard,
+  lastSalvoCard,
+  davyJonesCard,
+];
+
+/// Every card that exists, expansions included.
 List<Card> allCards() => [
   ...baseDeck(),
   ...lootCards,
   krakenCard,
   whiteWhaleCard,
+  ...secondExpansionCards(),
 ];
 
 /// The deck a game with [config] is played with, in a fixed order: the base
@@ -38,15 +62,24 @@ List<Card> deckFor(GameConfig config) => [
   if (config.loot && config.players > 2) ...lootCards,
   if (config.kraken) krakenCard,
   if (config.whiteWhale) whiteWhaleCard,
+  if (config.playsSecondExpansion) ...secondExpansionCards(),
 ];
 
 /// Cards each player receives in [round] (numbered from 1) with [players]
 /// at the table. Tie-break rounds deal as many cards as round ten.
 ///
-/// The base deck bounds it, expansion or not: eight players never get more
-/// than eight cards.
-int cardsDealt({required int round, required int players}) =>
-    min(min(round, standardRounds), baseDeck().length ~/ tableHands(players));
+/// The base deck bounds it, whatever the first expansion adds: eight players
+/// never get more than eight cards. The [secondExpansion] makes the deck
+/// large enough for ten cards each at any table.
+int cardsDealt({
+  required int round,
+  required int players,
+  bool secondExpansion = false,
+}) => min(
+  min(round, standardRounds),
+  (baseDeck().length + (secondExpansion ? secondExpansionCards().length : 0)) ~/
+      tableHands(players),
+);
 
 /// Hands dealt for [players]: one each, plus the ghost's packet when only
 /// two play.

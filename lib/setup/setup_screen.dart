@@ -33,8 +33,11 @@ class _SetupScreenState extends State<SetupScreen> {
       ? _Preset.custom
       : _Preset.classic;
 
-  static int _lastRoundCards(int players) =>
-      cardsDealt(round: standardRounds, players: players);
+  int _lastRoundCards(int players) => cardsDealt(
+    round: standardRounds,
+    players: players,
+    secondExpansion: _setup.playsSecondExpansion,
+  );
 
   void _choosePreset(_Preset preset) => setState(() {
     _preset = preset;
@@ -192,6 +195,13 @@ class _SetupScreenState extends State<SetupScreen> {
                       (on) => _setup.copyWith(piratePowers: on),
                     ),
                   ],
+                  if (players > minPlayers)
+                    _option(
+                      Strings.optionSecondExpansion,
+                      Strings.optionSecondExpansionHelp,
+                      _setup.secondExpansion,
+                      (on) => _setup.copyWith(secondExpansion: on),
+                    ),
                   _label(Strings.scoringLabel),
                   SegmentedButton<Scoring>(
                     showSelectedIcon: false,

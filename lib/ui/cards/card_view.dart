@@ -73,10 +73,10 @@ class CardView extends StatelessWidget {
 
   Widget _number(CardLook look) {
     final value = Text(
-      '${card.value}',
+      card.value == null ? Strings.zeroFourteen : '${card.value}',
       style: TextStyle(
         color: look.color,
-        fontSize: width * 0.32,
+        fontSize: width * (card.value == null ? 0.22 : 0.32),
         fontWeight: FontWeight.w800,
         height: 1,
       ),
@@ -86,7 +86,9 @@ class CardView extends StatelessWidget {
       child: Stack(
         children: [
           Align(alignment: Alignment.topLeft, child: value),
-          Align(alignment: Alignment.bottomRight, child: value),
+          // A black 0/14 leaves the corner to the trump mark.
+          if (card.value != null || card.suit != Suit.black)
+            Align(alignment: Alignment.bottomRight, child: value),
           Center(
             child: Pictogram(
               look.emblem,
@@ -94,6 +96,22 @@ class CardView extends StatelessWidget {
               color: look.color,
             ),
           ),
+          // What taking the extra 7 or 8 is worth.
+          if (card.isExtraNumber)
+            Align(
+              alignment: Alignment.topRight,
+              child: Text(
+                Strings.signed(
+                  (card.value == 8 ? Bonus.extraEight : Bonus.extraSeven)
+                      .points,
+                ),
+                style: TextStyle(
+                  color: look.color,
+                  fontSize: width * 0.16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
           if (card.suit == Suit.black)
             Align(
               alignment: Alignment.bottomLeft,

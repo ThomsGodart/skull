@@ -23,19 +23,36 @@ Bot sharpBot() {
 /// Stands for "some opponent" when a trick is tried out.
 const _someone = -1;
 
-/// Every way [card] can be put down.
-List<Play> _ways(Card card, int seat) => card.kind == CardKind.tigress
-    ? [
+/// Every way [card] can be put down on [trick], the strongest first.
+List<Play> _ways(Card card, int seat, [List<Play> trick = const []]) =>
+    switch (card.kind) {
+      CardKind.tigress => [
         Play(seat: seat, card: card, tigressAs: TigressMode.pirate),
         Play(seat: seat, card: card, tigressAs: TigressMode.escape),
-      ]
-    : [Play(seat: seat, card: card)];
+      ],
+      CardKind.zeroFourteen => [
+        Play(seat: seat, card: card, declaredValue: 14),
+        Play(seat: seat, card: card, declaredValue: 0),
+      ],
+      CardKind.joker => [
+        Play(
+          seat: seat,
+          card: card,
+          // Led, it names a suit; any will do to try a trick out.
+          jokerSuit: suitIsOpen(trick)
+              ? jokerSuits.first
+              : inheritedJokerSuit(trick),
+        ),
+      ],
+      _ => [Play(seat: seat, card: card)],
+    };
 
 /// Whether [mine], led, still takes the trick once [other] follows it.
-bool _survives(Play mine, Card other) => _ways(other, _someone).every((theirs) {
-  final result = resolveTrick([mine, theirs]);
-  return !result.destroyed && result.winner == mine.seat;
-});
+bool _survives(Play mine, Card other) =>
+    _ways(other, _someone, [mine]).every((theirs) {
+      final result = resolveTrick([mine, theirs]);
+      return !result.destroyed && result.winner == mine.seat;
+    });
 
 /// How many tricks the hand should take: for each card led, the chance that
 /// no card able to beat it is both held by someone and played on it.
@@ -53,7 +70,7 @@ int _countedBid(GameView view) {
   var expected = 0.0;
   for (final card in view.hand) {
     final mine = _ways(card, view.seat).first;
-    if (!card.isNumber && !mine.isCharacter) continue;
+    if (!mine.isNumber && !mine.isCharacter) continue;
     var wins = 1.0;
     for (final other in unseen) {
       // A card that beats it is in someone's hand, and is spent on this very
@@ -61,7 +78,7 @@ int _countedBid(GameView view) {
       if (!_survives(mine, other)) wins *= 1 - held * 0.35;
     }
     // A base-suit card does not always get to be led.
-    final leads = card.isNumber && card.suit != Suit.black ? 0.75 : 1.0;
+    final leads = mine.isNumber && mine.suit != Suit.black ? 0.75 : 1.0;
     expected += wins * leads;
   }
   return expected.round();

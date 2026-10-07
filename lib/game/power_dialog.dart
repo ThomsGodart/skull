@@ -55,9 +55,46 @@ class _PowerDialogState extends State<PowerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final (pirate, body, choices, actions) = switch (widget.question) {
+    final (title, body, choices, actions) = switch (widget.question) {
+      WalkPlankQuestion(:final pirates) => (
+        Strings.plankTitle,
+        Strings.plankBody,
+        [
+          Wrap(
+            spacing: Tokens.space2,
+            runSpacing: Tokens.space2,
+            children: [
+              for (final card in pirates)
+                GestureDetector(
+                  key: Key('power-overboard-${card.id}'),
+                  onTap: () =>
+                      _answer(WalkPlankAnswer(seat: _seat, pirate: card)),
+                  child: CardView(
+                    card,
+                    width: 64,
+                    namedPirates: widget.namedPirates,
+                  ),
+                ),
+            ],
+          ),
+        ],
+        const <Widget>[],
+      ),
+      ChooseVictimQuestion(:final seats) => (
+        Strings.pirateName(Pirate.mary),
+        Strings.victimBody,
+        [
+          for (final seat in seats)
+            _choice(
+              Key('power-victim-$seat'),
+              widget.seats[seat].name,
+              ChooseVictimAnswer(seat: _seat, victim: seat),
+            ),
+        ],
+        const <Widget>[],
+      ),
       ChooseLeaderQuestion(:final seats) => (
-        Pirate.rosie,
+        Strings.pirateName(Pirate.rosie),
         Strings.chooseLeaderBody,
         [
           for (final seat in seats)
@@ -70,7 +107,7 @@ class _PowerDialogState extends State<PowerDialog> {
         const <Widget>[],
       ),
       WagerQuestion(:final amounts) => (
-        Pirate.rascal,
+        Strings.pirateName(Pirate.rascal),
         Strings.wagerBody,
         [
           for (final amount in amounts)
@@ -83,7 +120,7 @@ class _PowerDialogState extends State<PowerDialog> {
         const <Widget>[],
       ),
       AdjustBidQuestion(:final changes) => (
-        Pirate.harry,
+        Strings.pirateName(Pirate.harry),
         Strings.adjustBidBody(widget.tricksWon),
         [
           for (final change in changes)
@@ -96,7 +133,7 @@ class _PowerDialogState extends State<PowerDialog> {
         const <Widget>[],
       ),
       DiscardQuestion(:final hand, :final count) => (
-        Pirate.will,
+        Strings.pirateName(Pirate.will),
         Strings.discardBody(count),
         [
           Wrap(
@@ -140,7 +177,7 @@ class _PowerDialogState extends State<PowerDialog> {
         horizontal: Tokens.space3,
         vertical: Tokens.space6,
       ),
-      title: Text(Strings.pirateName(pirate)),
+      title: Text(title),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,

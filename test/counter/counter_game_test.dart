@@ -126,6 +126,45 @@ void main() {
     expect(back.totals, [50, -30, 10]);
   });
 
+  test('with the second expansion, its bonuses and penalties count on a '
+      'made bid and eight players get ten cards', () {
+    final game = CounterGame(
+      players: const ['Anne', 'Bob', 'Chloé'],
+      secondExpansion: true,
+      rounds: [
+        const CounterRound(
+          entries: [
+            CounterEntry(
+              bid: 1,
+              tricksWon: 1,
+              bonuses: {
+                Bonus.extraEight: 2,
+                Bonus.extraSeven: 1,
+                Bonus.matCaptured: 1,
+                Bonus.seaMonsterCaptured: 2,
+              },
+            ),
+            CounterEntry(bid: 0, tricksWon: 0, bonuses: {Bonus.extraSeven: 1}),
+            CounterEntry(bid: 1, tricksWon: 0, bonuses: {Bonus.extraSeven: 1}),
+          ],
+        ),
+      ],
+    );
+
+    // 20 + 10 - 5 + 30 + 40; 10 - 5; a missed bid loses no more for a 7.
+    expect(game.totals, [95, 5, -10]);
+
+    final eight = [for (var i = 0; i < 8; i++) 'J$i'];
+    expect(CounterGame(players: eight).cardsIn(10), 8);
+    expect(CounterGame(players: eight, secondExpansion: true).cardsIn(10), 10);
+
+    final back = CounterGame.fromJson(
+      jsonDecode(jsonEncode(game.toJson())) as Map<String, Object?>,
+    );
+    expect(back.secondExpansion, isTrue);
+    expect(back.totals, [95, 5, -10]);
+  });
+
   test('a loot alliance pays both members only when both made their bid', () {
     CounterGame withAlliance(int bobTricks) => newGame()
       ..saveRound(

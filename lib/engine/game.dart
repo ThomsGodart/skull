@@ -100,8 +100,23 @@ final class Game {
   /// bid once the round is played out.
   int? _harrySeat;
 
-  /// A pirate power waiting for its player's decision.
+  /// A pirate power, or the plank, waiting for its player's decision.
   PowerQuestion? _power;
+
+  /// The powers still to be used for the trick just won: Mat hands his
+  /// player those of every pirate he captured.
+  final List<Pirate> _powersLeft = [];
+  int _powerSeat = 0;
+
+  /// The card each seat must play at its next turn, by Mary's doing.
+  late List<Card?> _forced;
+
+  /// The seat that fired the last salvo in the trick on the table.
+  int? _salvoSeat;
+
+  /// The seat that sits out the next trick it does not lead, having played
+  /// two cards in an earlier one.
+  int? _sitsOut;
   late final List<int> _scores = List.filled(config.players, 0);
 
   /// The players who bid and score.
@@ -137,8 +152,15 @@ final class Game {
       ];
     }
     final seat = _order[_trick.length];
+    final forced = _forced[seat];
     return [
-      PlayQuestion(seat: seat, legalCards: legalCards(_hands[seat], _trick)),
+      PlayQuestion(
+        seat: seat,
+        // Mary's victim has no choice, whatever was led.
+        legalCards: forced != null && _hands[seat].contains(forced)
+            ? [forced]
+            : legalCards(_hands[seat], _trick),
+      ),
     ];
   }
 
@@ -188,6 +210,26 @@ final class Game {
         _startTrick();
         _events.add(LeaderChosen(seat: answer.seat, leader: answer.leader));
         _powerDone();
+      case (final WalkPlankQuestion question, final WalkPlankAnswer answer):
+        if (!question.pirates.contains(answer.pirate)) {
+          throw IllegalAnswer('${answer.pirate} cannot walk the plank');
+        }
+        _power = null;
+        _settleTrick(overboard: answer.pirate);
+      case (
+        final ChooseVictimQuestion question,
+        final ChooseVictimAnswer answer,
+      ):
+        if (!question.seats.contains(answer.victim)) {
+          throw IllegalAnswer('seat ${answer.victim} holds no card');
+        }
+        final hand = _hands[answer.victim];
+        final card = hand[_random.nextInt(hand.length)];
+        _forced[answer.victim] = card;
+        _events
+          ..add(VictimChosen(seat: answer.seat, victim: answer.victim))
+          ..add(CardForced(seat: answer.victim, card: card));
+        _powerDone();
       case (final DiscardQuestion question, final DiscardAnswer answer):
         _discard(question, answer);
       case (final WagerQuestion question, final WagerAnswer answer):
@@ -233,15 +275,44 @@ final class Game {
     if ((card.kind == CardKind.tigress) != (answer.tigressAs != null)) {
       throw const IllegalAnswer('a tigress mode goes with the tigress only');
     }
-    _put(Play(seat: answer.seat, card: card, tigressAs: answer.tigressAs));
+    final declared = answer.declaredValue;
+    if ((card.kind == CardKind.zeroFourteen) != (declared != null) ||
+        (declared != null && declared != 0 && declared != 14)) {
+      throw const IllegalAnswer('a 0/14, and only it, is played as 0 or 14');
+    }
+    // The joker names its suit only while the trick has none.
+    final namesSuit = card.kind == CardKind.joker && suitIsOpen(_trick);
+    final named = answer.jokerSuit;
+    if (namesSuit != (named != null) ||
+        (named != null && !jokerSuits.contains(named))) {
+      throw const IllegalAnswer('the joker names a base suit when none is led');
+    }
+    _put(
+      Play(
+        seat: answer.seat,
+        card: card,
+        tigressAs: answer.tigressAs,
+        declaredValue: declared,
+        jokerSuit: card.kind == CardKind.joker
+            ? named ?? inheritedJokerSuit(_trick)
+            : null,
+      ),
+    );
     _ghostPlays();
   }
 
   void _put(Play play) {
-    _hands[play.seat].remove(play.card);
+    final hand = _hands[play.seat]..remove(play.card);
+    if (_forced[play.seat] == play.card) _forced[play.seat] = null;
     _trick.add(play);
     _events.add(CardPlayed(play));
-    if (_trick.length == seats) _finishTrick();
+    // The last salvo: one more card from the same seat, once all have played
+    // — unless it was that seat's last card.
+    if (play.card.kind == CardKind.lastSalvo && hand.isNotEmpty) {
+      _order = [..._order, play.seat];
+      _salvoSeat = play.seat;
+    }
+    if (_trick.length == _order.length) _finishTrick();
   }
 
   /// Plays for the ghost for as long as it is its turn: the top card of its
@@ -265,13 +336,21 @@ final class Game {
     }
   }
 
-  /// Sets who plays in which order, now that [_leader] is known.
-  void _startTrick() => _order = playOrder(
-    leader: _leader,
-    seats: seats,
-    ghost: ghostSeat,
-    roundStarter: _roundStarter,
-  );
+  /// Sets who plays in which order, now that [_leader] is known: everyone
+  /// who still holds a card, but for the seat that sits this trick out. A
+  /// seat that leads does not sit out: it will the trick after.
+  void _startTrick() {
+    final sitsOut = _sitsOut == _leader ? null : _sitsOut;
+    _order = [
+      for (final seat in playOrder(
+        leader: _leader,
+        seats: seats,
+        ghost: ghostSeat,
+        roundStarter: _roundStarter,
+      ))
+        if (_hands[seat].isNotEmpty && seat != sitsOut) seat,
+    ];
+  }
 
   void _discard(DiscardQuestion question, DiscardAnswer answer) {
     final hand = _hands[answer.seat];
@@ -282,19 +361,42 @@ final class Game {
       throw IllegalAnswer('${question.count} cards of the hand must go');
     }
     cards.forEach(hand.remove);
+    if (cards.contains(_forced[answer.seat])) _forced[answer.seat] = null;
     _events
       ..add(CardsDiscarded(seat: answer.seat, count: cards.length))
       ..add(OwnCardsDiscarded(seat: answer.seat, cards: List.of(cards)));
     _powerDone();
   }
 
+  /// The trick is played. The plank comes first: its player throws a named
+  /// pirate out of it, and chooses which when there are several.
   void _finishTrick() {
+    final plank = _trick
+        .where((play) => play.card.kind == CardKind.plank)
+        .firstOrNull;
+    final pirates = [
+      for (final play in _trick)
+        if (play.isStandardPirate) play.card,
+    ];
+    if (plank == null || pirates.isEmpty) {
+      _settleTrick();
+    } else if (pirates.length == 1) {
+      _settleTrick(overboard: pirates.single);
+    } else {
+      _power = WalkPlankQuestion(seat: plank.seat, pirates: pirates);
+    }
+  }
+
+  void _settleTrick({Card? overboard}) {
     final plays = _trick;
-    final result = resolveTrick(plays);
+    final result = resolveTrick(plays, overboard: overboard);
     if (!result.destroyed) {
       _tricksWon[result.winner]++;
       _bonuses[result.winner].addAll(result.bonuses);
       _alliances.addAll(result.alliances);
+    }
+    for (final (seat, bonus) in result.sideBonuses) {
+      _bonuses[seat].add(bonus);
     }
     _events.add(
       TrickWon(
@@ -303,17 +405,38 @@ final class Game {
         bonuses: result.bonuses,
         alliances: result.alliances,
         destroyed: result.destroyed,
+        overboard: overboard,
       ),
     );
+    // Whoever sat this trick out is back; whoever fired the salvo in it
+    // sits out next.
+    if (_sitsOut != null && !_order.contains(_sitsOut)) _sitsOut = null;
+    if (_salvoSeat case final seat?) {
+      _sitsOut = seat;
+      _salvoSeat = null;
+    }
     _leader = result.winner;
     _trick = [];
     _startTrick();
     // The ghost decides nothing: a pirate it wins with has no power.
-    if (config.piratePowers &&
-        !result.destroyed &&
-        result.winner != ghostSeat) {
-      final card = plays.firstWhere((p) => p.seat == result.winner).card;
-      if (Pirate.of(card) case final pirate?) _usePower(pirate, result.winner);
+    final winning = result.winningPlay;
+    if (config.piratePowers && winning != null && result.winner != ghostSeat) {
+      _powerSeat = result.winner;
+      _powersLeft.addAll([
+        ?Pirate.of(winning.card),
+        // Mat uses the power of every pirate he captured.
+        if (winning.isMat)
+          for (final play in plays)
+            if (play.card != overboard) ?Pirate.of(play.card),
+      ]);
+    }
+    _nextPower();
+  }
+
+  /// Uses the powers the trick left to use, one at a time, then goes on.
+  void _nextPower() {
+    while (_power == null && _powersLeft.isNotEmpty) {
+      _usePower(_powersLeft.removeAt(0), _powerSeat);
     }
     if (_power == null) _afterTrick();
   }
@@ -360,13 +483,21 @@ final class Game {
         // His power is kept for the end of the round, when its player knows
         // how many tricks they took.
         _harrySeat = seat;
+      case Pirate.mary:
+        _power = ChooseVictimQuestion(
+          seat: seat,
+          seats: [
+            for (var other = 0; other < _players; other++)
+              if (_hands[other].isNotEmpty) other,
+          ],
+        );
     }
     _events.add(PowerUsed(seat: seat, pirate: pirate));
   }
 
   void _powerDone() {
     _power = null;
-    _afterTrick();
+    _nextPower();
   }
 
   void _afterTrick() {
@@ -426,7 +557,11 @@ final class Game {
 
   void _startRound() {
     _round++;
-    _cardsDealt = cardsDealt(round: _round, players: _players);
+    _cardsDealt = cardsDealt(
+      round: _round,
+      players: _players,
+      secondExpansion: config.playsSecondExpansion,
+    );
     _leader = (_dealer + 1) % _players;
     _roundStarter = _leader;
     _bidsRevealed = false;
@@ -436,6 +571,9 @@ final class Game {
     _wagers = List.filled(seats, 0);
     _alliances.clear();
     _harrySeat = null;
+    _forced = List.filled(seats, null);
+    _salvoSeat = null;
+    _sitsOut = null;
     _trick = [];
     final deck = deckFor(config);
     _random.shuffle(deck);

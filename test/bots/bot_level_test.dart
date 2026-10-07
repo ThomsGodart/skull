@@ -44,6 +44,7 @@ void main() {
               whiteWhale: true,
               loot: true,
               piratePowers: true,
+              secondExpansion: seed % 3 != 0,
               scoring: seed.isEven ? Scoring.classic : Scoring.rascal,
             ),
           );

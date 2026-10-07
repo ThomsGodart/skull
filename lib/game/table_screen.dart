@@ -208,13 +208,52 @@ class _TableScreenState extends State<TableScreen> {
       return;
     }
     TigressMode? mode;
+    int? value;
+    Suit? suit;
     if (card.kind == CardKind.tigress) {
       mode = await _askTigressMode();
       if (mode == null || !mounted) return;
+    } else if (card.kind == CardKind.zeroFourteen) {
+      value = await _askChoice(Strings.zeroFourteenTitle, {
+        for (final value in const [14, 0])
+          value: (key: 'declare-$value', label: Text(Strings.asValue(value))),
+      });
+      if (value == null || !mounted) return;
+    } else if (card.kind == CardKind.joker && suitIsOpen(_game.trick)) {
+      suit = await _askChoice(Strings.jokerTitle, {
+        for (final suit in jokerSuits)
+          suit: (
+            key: 'joker-${suit.name}',
+            label: _emblemChoice(
+              CardLook.of(Card.number(suit, 1)),
+              Strings.jokerAs(suit),
+            ),
+          ),
+      });
+      if (suit == null || !mounted) return;
     }
     _vibrate(HapticFeedback.lightImpact);
-    _game.play(card, tigressAs: mode);
+    _game.play(card, tigressAs: mode, declaredValue: value, jokerSuit: suit);
   }
+
+  /// Asks how a card that can be played several ways is played.
+  Future<T?> _askChoice<T>(
+    String title,
+    Map<T, ({String key, Widget label})> choices,
+  ) => showDialog<T>(
+    context: context,
+    builder: (context) => SimpleDialog(
+      title: Text(title),
+      children: [
+        for (final MapEntry(key: choice, value: option) in choices.entries)
+          SimpleDialogOption(
+            key: Key(option.key),
+            onPressed: () => Navigator.pop(context, choice),
+            child: option.label,
+          ),
+      ],
+    ),
+  );
 
   Future<TigressMode?> _askTigressMode() => showDialog<TigressMode>(
     context: context,
@@ -237,8 +276,10 @@ class _TableScreenState extends State<TableScreen> {
 
   /// One of the two ways to play the tigress, under the emblem of the card
   /// she then stands for.
-  static Widget _tigressChoice(CardKind kind, String label) {
-    final look = CardLook.of(Card.special(kind));
+  static Widget _tigressChoice(CardKind kind, String label) =>
+      _emblemChoice(CardLook.of(Card.special(kind)), label);
+
+  static Widget _emblemChoice(CardLook look, String label) {
     return Row(
       children: [
         Pictogram(look.emblem, size: 24, color: look.color),
@@ -332,6 +373,7 @@ class _TableScreenState extends State<TableScreen> {
                   winner: _game.lastTrickWinner,
                   cardWidth: 78,
                   namedPirates: _namedPirates,
+                  overboard: _game.lastTrickOverboard,
                 ),
               ),
             ),
@@ -538,6 +580,10 @@ class _TableScreenState extends State<TableScreen> {
         pirate,
       ),
       LeaderChosen(:final leader) => Strings.leaderChosen(name(leader)),
+      VictimChosen(:final victim) =>
+        victim == _game.humanSeat
+            ? Strings.victimChosenYou
+            : Strings.victimChosen(name(victim)),
       CardsDiscarded(:final seat, :final count) => Strings.cardsDiscarded(
         name(seat),
         count,
@@ -751,6 +797,7 @@ class _TableScreenState extends State<TableScreen> {
               winner: _game.trickDestroyed ? null : _game.trickWinner,
               cardWidth: width,
               namedPirates: _namedPirates,
+              overboard: _game.trickOverboard,
             );
           },
         ),

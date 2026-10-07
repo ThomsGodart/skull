@@ -6,7 +6,14 @@ import 'trick.dart';
 
 /// A legal answer to [question] picked at random: the weakest possible bot,
 /// and what the engine's own tests are played with.
-Answer randomAnswer(Question question, Random random) => switch (question) {
+///
+/// [trick] is what lies on the table: the joker needs it to know whether it
+/// has a suit to name.
+Answer randomAnswer(
+  Question question,
+  Random random, {
+  List<Play> trick = const [],
+}) => switch (question) {
   BidQuestion(:final seat, :final maxBid) => BidAnswer(
     seat: seat,
     bid: random.nextInt(maxBid + 1),
@@ -15,10 +22,19 @@ Answer randomAnswer(Question question, Random random) => switch (question) {
     seat,
     legalCards[random.nextInt(legalCards.length)],
     random,
+    trick,
   ),
   ChooseLeaderQuestion(:final seat, :final seats) => ChooseLeaderAnswer(
     seat: seat,
     leader: seats[random.nextInt(seats.length)],
+  ),
+  WalkPlankQuestion(:final seat, :final pirates) => WalkPlankAnswer(
+    seat: seat,
+    pirate: pirates[random.nextInt(pirates.length)],
+  ),
+  ChooseVictimQuestion(:final seat, :final seats) => ChooseVictimAnswer(
+    seat: seat,
+    victim: seats[random.nextInt(seats.length)],
   ),
   DiscardQuestion(:final seat, :final hand, :final count) => DiscardAnswer(
     seat: seat,
@@ -34,10 +50,17 @@ Answer randomAnswer(Question question, Random random) => switch (question) {
   ),
 };
 
-PlayAnswer _randomPlay(int seat, Card card, Random random) => PlayAnswer(
-  seat: seat,
-  card: card,
-  tigressAs: card.kind == CardKind.tigress
-      ? TigressMode.values[random.nextInt(TigressMode.values.length)]
-      : null,
-);
+PlayAnswer _randomPlay(int seat, Card card, Random random, List<Play> trick) =>
+    PlayAnswer(
+      seat: seat,
+      card: card,
+      tigressAs: card.kind == CardKind.tigress
+          ? TigressMode.values[random.nextInt(TigressMode.values.length)]
+          : null,
+      declaredValue: card.kind == CardKind.zeroFourteen
+          ? (random.nextBool() ? 0 : 14)
+          : null,
+      jokerSuit: card.kind == CardKind.joker && suitIsOpen(trick)
+          ? jokerSuits[random.nextInt(jokerSuits.length)]
+          : null,
+    );

@@ -7,4 +7,4 @@ typedef Bot = Answer Function(Question question, GameView view);
 
 /// The weakest bot: any legal answer.
 Bot randomBot(Random random) =>
-    (question, view) => randomAnswer(question, random);
+    (question, view) => randomAnswer(question, random, trick: view.trick);

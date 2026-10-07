@@ -49,11 +49,24 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
     _results = past != null || draft != null;
     _alliances = List.of(past?.alliances ?? const []);
     _entries =
-        past?.entries.toList() ??
+        past?.entries.map(_withHarryInTheBid).toList() ??
         [
           for (var player = 0; player < _game.players.length; player++)
             CounterEntry(bid: draft?[player] ?? 0, tricksWon: 0),
         ];
+  }
+
+  /// Harry's change is entered by correcting the bid itself: one stored apart
+  /// by an earlier version joins the bid, where it can be seen and edited.
+  CounterEntry _withHarryInTheBid(CounterEntry entry) => entry.copyWith(
+    bid: (entry.bid + entry.bidChange).clamp(0, _cards),
+    bidChange: 0,
+  );
+
+  /// The most tricks [player] may still be given: the round has only so many.
+  int _tricksLeftFor(int player) {
+    final others = _round.tricksClaimed - _entries[player].tricksWon;
+    return (_cards - others).clamp(_entries[player].tricksWon, _cards);
   }
 
   /// What is entered so far, as a round of its own: later edits on screen
@@ -108,20 +121,21 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
                   ),
                 ),
                 for (final bonus in Bonus.values)
-                  _line(
-                    Strings.bonusLabel(bonus),
-                    _Stepper(
-                      name: 'bonus-${bonus.name}',
-                      value: entry.bonuses[bonus] ?? 0,
-                      max: 5,
-                      onChanged: (count) => change(
-                        entry.copyWith(
-                          bonuses: {...entry.bonuses, bonus: count}
-                            ..removeWhere((_, count) => count == 0),
+                  if (_game.secondExpansion || !bonus.isSecondExpansion)
+                    _line(
+                      Strings.bonusLabel(bonus),
+                      _Stepper(
+                        name: 'bonus-${bonus.name}',
+                        value: entry.bonuses[bonus] ?? 0,
+                        max: 5,
+                        onChanged: (count) => change(
+                          entry.copyWith(
+                            bonuses: {...entry.bonuses, bonus: count}
+                              ..removeWhere((_, count) => count == 0),
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 if (_game.piratePowers) ...[
                   _line(
                     Strings.counterWager,
@@ -134,30 +148,6 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
                       selected: {entry.wager},
                       onSelectionChanged: (choice) =>
                           change(entry.copyWith(wager: choice.single)),
-                    ),
-                  ),
-                  _line(
-                    Strings.counterBidChange,
-                    SegmentedButton<int>(
-                      showSelectedIcon: false,
-                      segments: [
-                        // Only the changes that leave a possible bid.
-                        for (final change in bidChangesFor(entry.bid, _cards))
-                          ButtonSegment(
-                            value: change,
-                            label: Text(Strings.signedOrZero(change)),
-                          ),
-                      ],
-                      selected: {
-                        bidChangesFor(
-                              entry.bid,
-                              _cards,
-                            ).contains(entry.bidChange)
-                            ? entry.bidChange
-                            : 0,
-                      },
-                      onSelectionChanged: (choice) =>
-                          change(entry.copyWith(bidChange: choice.single)),
                     ),
                   ),
                 ],
@@ -403,7 +393,7 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
               child: _Stepper(
                 name: 'tricks-$player',
                 value: entry.tricksWon,
-                max: _cards,
+                max: _tricksLeftFor(player),
                 onChanged: (won) =>
                     _edit(player, entry.copyWith(tricksWon: won)),
               ),
@@ -513,7 +503,7 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
                 _Stepper(
                   name: 'tricks-$player',
                   value: entry.tricksWon,
-                  max: _cards,
+                  max: _tricksLeftFor(player),
                   onChanged: (won) =>
                       _edit(player, entry.copyWith(tricksWon: won)),
                 ),

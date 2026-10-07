@@ -13,8 +13,8 @@ abstract final class Strings {
   static const ghostName = 'Barbe Grise';
   static const twoPlayersNote =
       'À 2 joueurs, le fantôme de Barbe Grise joue un troisième paquet : il '
-      'ne parie pas, ne marque pas, mais prend des plis. Le Butin n\'est '
-      'pas utilisé.';
+      'ne parie pas, ne marque pas, mais prend des plis. Le Butin et la '
+      'deuxième extension ne sont pas utilisés.';
 
   /// Names of the bots, in seat order.
   static const botNames = [
@@ -51,6 +51,27 @@ abstract final class Strings {
         'si le pari est réussi';
   }
 
+  static const zeroFourteen = '0/14';
+  static const zeroFourteenTitle = 'Jouer cette carte comme…';
+  static String asValue(int value) => 'Un $value';
+  static const jokerTitle = 'Le Joker fixe la couleur…';
+  static String jokerAs(Suit suit) => 'en ${suitName(suit)}';
+  static const plankTitle = 'Marcher sur la planche';
+  static const plankBody = 'Quel pirate quitte le pli ?';
+  static const victimBody =
+      'Qui devra jouer, au prochain pli, une carte tirée au hasard dans sa '
+      'main ?';
+  static String victimChosen(String victim) =>
+      'Mary Thorne : $victim jouera une carte tirée au hasard';
+  static const victimChosenYou =
+      'Mary Thorne : tu dois jouer la carte tirée au hasard dans ta main';
+  static const overboard = 'à l\'eau';
+  static const optionSecondExpansion = 'Deuxième extension (19 cartes)';
+  static const optionSecondExpansionHelp =
+      '7, 8 et 0/14 en plus, Joker 15, Mary Thorne, Mat le Forban, Raie '
+      'Tachetée, Dernière Salve, Coffre de Davy Jones, Marcher sur la '
+      'planche.';
+  static const secondExpansionShort = '2ᵉ extension';
   static const tigressTitle = 'Jouer la Tigresse comme…';
   static const asPirate = 'Pirate';
   static const asEscape = 'Fuite';
@@ -70,10 +91,38 @@ abstract final class Strings {
   /// Null for a plain number card. With [powers], a pirate tells its power.
   static String? cardHint(Card card, {required bool powers}) =>
       switch (card.kind) {
+        CardKind.number when card.isExtraNumber =>
+          card.value == 8
+              ? '8 de l\'extension : +5 pour qui remporte le pli, si son '
+                    'pari est réussi.'
+              : '7 de l\'extension : −5 pour qui remporte le pli, si son '
+                    'pari est réussi.',
         CardKind.number =>
           card.suit == Suit.black
               ? 'Atout : bat les trois autres couleurs.'
               : null,
+        CardKind.zeroFourteen =>
+          '0 ou 14 : tu choisis en la jouant. Jouée comme 14, elle ne '
+              'rapporte pas de bonus.',
+        CardKind.joker =>
+          'Un 15 de la couleur demandée, ou de celle que tu choisis si tu '
+              'fixes la couleur. Jamais atout : perd si le noir est demandé.',
+        CardKind.mat =>
+          'Bat les pirates et les couleurs. Perd contre le Skull King et '
+              'les sirènes, qui gagnent alors +30.'
+              '${powers ? ' Utilise les pouvoirs des pirates capturés.' : ''}',
+        CardKind.plank =>
+          'Ne gagne pas de pli. Élimine un pirate du pli : tu choisis '
+              'lequel s\'il y en a plusieurs.',
+        CardKind.stingray =>
+          'Détruit les cartes spéciales : la plus basse valeur gagne, '
+              'quelle que soit sa couleur.',
+        CardKind.lastSalvo =>
+          'Ne gagne pas de pli. Tu rejoues une carte après tous les '
+              'autres, puis tu sautes le pli suivant.',
+        CardKind.davyJones =>
+          'Ne gagne pas de pli. Détruit les monstres marins du pli : +20 '
+              'chacun si ton pari est réussi.',
         CardKind.escape => 'Perd toujours.',
         CardKind.pirate => switch (Pirate.of(card)) {
           final pirate? when powers =>
@@ -112,6 +161,9 @@ abstract final class Strings {
     Pirate.harry =>
       'S\'il gagne le pli : à la fin de la manche, tu peux modifier ton '
           'pari de 1.',
+    Pirate.mary =>
+      'Si elle gagne le pli : tu désignes un joueur, qui devra jouer au '
+          'pli suivant une carte tirée au hasard dans sa main.',
   };
   static const ghostLabel = 'fantôme';
   static String leadsRound(String name) => '$name entame la manche';
@@ -255,6 +307,7 @@ abstract final class Strings {
         : config.usesExpansion
         ? 'Extension partielle'
         : 'Jeu de base',
+    if (config.playsSecondExpansion) secondExpansionShort,
     config.scoring == Scoring.rascal ? 'score Rascal' : 'score classique',
   ].join(' · ');
 
@@ -264,6 +317,7 @@ abstract final class Strings {
     Pirate.rascal => 'Rascal le Flambeur',
     Pirate.juanita => 'Juanita Jade',
     Pirate.harry => 'Harry le Géant',
+    Pirate.mary => 'Mary Thorne',
   };
 
   /// The short name written on a pirate card.
@@ -273,6 +327,7 @@ abstract final class Strings {
     Pirate.rascal => 'Rascal',
     Pirate.juanita => 'Juanita',
     Pirate.harry => 'Harry',
+    Pirate.mary => 'Mary',
   };
 
   static String usesPower(String name, Pirate pirate) =>
@@ -348,6 +403,9 @@ abstract final class Strings {
   static const counterBid = 'Pari';
   static const counterTricks = 'Plis';
   static const counterBonus = 'Bonus';
+  static const counterSecondExpansion = 'Deuxième extension';
+  static const counterSecondExpansionHelp =
+      '$optionSecondExpansionHelp Ajoute leurs bonus à la saisie.';
   static const counterManualBonuses = 'Bonus comptés à la main';
   static const counterManualBonusesHelp =
       'Tu additionnes toi-même les bonus de chaque joueur et tu saisis le '
@@ -355,15 +413,14 @@ abstract final class Strings {
   static String counterBonusFor(String name) => 'Bonus de $name';
   static String counterTricksMismatch(int claimed, int cards) =>
       '$claimed pli${claimed > 1 ? 's' : ''} saisi${claimed > 1 ? 's' : ''} '
-      'pour $cards carte${cards > 1 ? 's' : ''} : vérifie, sauf si un pli a '
-      'été détruit.';
+      'pour $cards carte${cards > 1 ? 's' : ''} : '
+      '${claimed > cards ? 'c\'est trop, corrige les plis.' : 'vérifie, sauf si un pli a été détruit.'}';
   static const counterAlliances = 'Alliances (Butin)';
   static const counterAddAlliance = 'Ajouter une alliance';
   static String counterAlliance(String first, String second) =>
       '$first et $second';
   static const counterAllianceTitle = 'Qui s\'allie ?';
   static const counterWager = 'Mise de Rascal';
-  static const counterBidChange = 'Harry le Géant';
   static const counterCorrectHint =
       'Touche le numéro d\'une manche pour la corriger.';
   static const counterFinish = 'Terminer la partie';
@@ -378,7 +435,11 @@ abstract final class Strings {
         Bonus.mermaidCaptured => 'Sirène capturée par un pirate',
         Bonus.pirateCaptured => 'Pirate capturé par le Skull King',
         Bonus.skullKingCaptured => 'Skull King capturé par une sirène',
-      }} (+${bonus.points})';
+        Bonus.extraEight => '8 de l\'extension',
+        Bonus.extraSeven => '7 de l\'extension',
+        Bonus.matCaptured => 'Mat le Forban capturé par le Skull King ou une sirène',
+        Bonus.seaMonsterCaptured => 'Monstre marin détruit par le Coffre de Davy Jones',
+      }} (${signed(bonus.points)})';
 
   static const online = 'Jouer en ligne';
   static const onlineIntro =
@@ -466,6 +527,13 @@ abstract final class Strings {
 
   static String _kindName(Card card) => switch (card.kind) {
     CardKind.number => '${card.value} ${suitName(card.suit!)}',
+    CardKind.zeroFourteen => '$zeroFourteen ${suitName(card.suit!)}',
+    CardKind.joker => 'Joker 15',
+    CardKind.mat => 'Mat',
+    CardKind.plank => 'Planche',
+    CardKind.stingray => 'Raie',
+    CardKind.lastSalvo => 'Salve',
+    CardKind.davyJones => 'Coffre',
     CardKind.escape => 'Fuite',
     CardKind.pirate => 'Pirate',
     CardKind.tigress => 'Tigresse',
@@ -482,6 +550,10 @@ abstract final class Strings {
     Bonus.mermaidCaptured => 'sirène capturée',
     Bonus.pirateCaptured => 'pirate capturé',
     Bonus.skullKingCaptured => 'Skull King capturé',
+    Bonus.extraEight => '8 de l\'extension',
+    Bonus.extraSeven => '7 de l\'extension',
+    Bonus.matCaptured => 'Mat le Forban capturé',
+    Bonus.seaMonsterCaptured => 'monstre marin détruit',
   };
 
   static String signed(int points) => points > 0 ? '+$points' : '$points';

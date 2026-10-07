@@ -115,6 +115,7 @@ final class CounterGame {
     this.loot = false,
     this.piratePowers = false,
     this.manualBonuses = false,
+    this.secondExpansion = false,
     List<CounterRound> rounds = const [],
     this.draftBids,
   }) : players = List.unmodifiable(players),
@@ -144,6 +145,7 @@ final class CounterGame {
     loot: json['loot'] as bool? ?? false,
     piratePowers: json['piratePowers'] as bool? ?? false,
     manualBonuses: json['manualBonuses'] as bool? ?? false,
+    secondExpansion: json['secondExpansion'] as bool? ?? false,
     rounds: [
       for (final round in json['rounds'] as List? ?? const [])
         CounterRound.fromJson(round as Map<String, Object?>),
@@ -167,6 +169,10 @@ final class CounterGame {
   /// than say which cards they took.
   final bool manualBonuses;
 
+  /// The cards of the second expansion are in the deck: their bonuses may be
+  /// entered, and the deck is large enough for ten cards each at any table.
+  final bool secondExpansion;
+
   final List<CounterRound> _rounds;
 
   /// The bids of the round being played, entered before its tricks are known.
@@ -177,7 +183,9 @@ final class CounterGame {
   int get nextRound => _rounds.length + 1;
 
   /// Cards each player holds in [round].
-  int cardsIn(int round) => cardsDealt(round: round, players: players.length);
+  int cardsIn(int round) => secondExpansion
+      ? (round < standardRounds ? round : standardRounds)
+      : cardsDealt(round: round, players: players.length);
 
   /// The player who leads [round].
   int leaderOf(int round) => (firstLeader + round - 1) % players.length;
@@ -297,6 +305,7 @@ final class CounterGame {
     'loot': loot,
     'piratePowers': piratePowers,
     if (manualBonuses) 'manualBonuses': true,
+    if (secondExpansion) 'secondExpansion': true,
     'rounds': [for (final round in _rounds) round.toJson()],
     'draftBids': ?draftBids,
   };

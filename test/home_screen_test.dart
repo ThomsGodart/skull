@@ -107,6 +107,12 @@ void main() {
 
     await tester.tap(find.text(Strings.presetFull));
     await tester.pumpAndSettle();
+    await tester.dragUntilVisible(
+      find.text(Strings.scoringRascal),
+      find.byType(ListView),
+      const Offset(0, -200),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text(Strings.scoringRascal));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('launch')));

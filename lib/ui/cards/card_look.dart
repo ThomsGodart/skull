@@ -14,7 +14,7 @@ final class CardLook {
   final String emblem;
 
   static CardLook of(Card card) => switch (card.kind) {
-    CardKind.number => switch (card.suit!) {
+    CardKind.number || CardKind.zeroFourteen => switch (card.suit!) {
       Suit.green => const CardLook(Color(0xFF2E8B57), '\u{1F99C}'),
       Suit.yellow => const CardLook(Color(0xFFB98600), '\u{1F4B0}'),
       Suit.purple => const CardLook(Color(0xFF7B4BC2), '\u{1F5FA}'),
@@ -28,5 +28,11 @@ final class CardLook {
     CardKind.loot => const CardLook(Color(0xFF9A7B1F), '\u{1F48E}'),
     CardKind.kraken => const CardLook(Color(0xFF8E2A4F), '\u{1F419}'),
     CardKind.whiteWhale => const CardLook(Color(0xFF3F7FB5), '\u{1F433}'),
+    CardKind.joker => const CardLook(Color(0xFF8A5A2B), '\u{1F412}'),
+    CardKind.mat => const CardLook(Color(0xFF8E2B6B), '\u{1FA9D}'),
+    CardKind.plank => const CardLook(Color(0xFFC7662B), '\u{1F988}'),
+    CardKind.stingray => const CardLook(Color(0xFF2B5C8E), '\u{1F41F}'),
+    CardKind.lastSalvo => const CardLook(Color(0xFF8E3B2B), '\u{1F4A5}'),
+    CardKind.davyJones => const CardLook(Color(0xFF2B7F78), '\u{1F5DD}'),
   };
 }

@@ -27,7 +27,9 @@ Bot _easyBot(Random random) {
         final off = (answer as BidAnswer).bid + (random.nextBool() ? 1 : -1);
         return BidAnswer(seat: seat, bid: off.clamp(0, maxBid));
       case PlayQuestion():
-        return random.nextInt(3) == 0 ? randomAnswer(question, random) : answer;
+        return random.nextInt(3) == 0
+            ? randomAnswer(question, random, trick: view.trick)
+            : answer;
       case PowerQuestion():
         return answer;
     }

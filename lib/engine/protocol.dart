@@ -26,6 +26,7 @@ final class GameConfig {
     this.whiteWhale = false,
     this.loot = false,
     this.piratePowers = false,
+    this.secondExpansion = false,
   });
 
   factory GameConfig.fromJson(Map<String, Object?> json) => GameConfig(
@@ -39,6 +40,7 @@ final class GameConfig {
     whiteWhale: json['whiteWhale'] as bool? ?? false,
     loot: json['loot'] as bool? ?? false,
     piratePowers: json['piratePowers'] as bool? ?? false,
+    secondExpansion: json['secondExpansion'] as bool? ?? false,
   );
 
   /// Seats at the table, [minPlayers] to [maxPlayers].
@@ -58,6 +60,13 @@ final class GameConfig {
   /// A pirate that wins a trick lets its player use that pirate's power.
   final bool piratePowers;
 
+  /// The 19 cards of the second expansion are shuffled into the deck.
+  final bool secondExpansion;
+
+  /// The second expansion is asked for and can be played: its cards call for
+  /// choices the ghost of a two-player game cannot make.
+  bool get playsSecondExpansion => secondExpansion && players > 2;
+
   GameConfig copyWith({
     int? players,
     int? seed,
@@ -66,6 +75,7 @@ final class GameConfig {
     bool? whiteWhale,
     bool? loot,
     bool? piratePowers,
+    bool? secondExpansion,
   }) => GameConfig(
     players: players ?? this.players,
     seed: seed ?? this.seed,
@@ -74,6 +84,7 @@ final class GameConfig {
     whiteWhale: whiteWhale ?? this.whiteWhale,
     loot: loot ?? this.loot,
     piratePowers: piratePowers ?? this.piratePowers,
+    secondExpansion: secondExpansion ?? this.secondExpansion,
   );
 
   /// Any expansion card or the pirate powers are in play.
@@ -90,6 +101,7 @@ final class GameConfig {
     'whiteWhale': whiteWhale,
     'loot': loot,
     'piratePowers': piratePowers,
+    if (secondExpansion) 'secondExpansion': true,
   };
 }
 
@@ -102,7 +114,11 @@ Map<String, Object?> answerToJson(Answer answer) => {
     PlayAnswer() => {
       'card': answer.card.id,
       if (answer.tigressAs case final mode?) 'tigressAs': mode.name,
+      'declaredValue': ?answer.declaredValue,
+      if (answer.jokerSuit case final suit?) 'jokerSuit': suit.name,
     },
+    WalkPlankAnswer() => {'overboard': answer.pirate.id},
+    ChooseVictimAnswer() => {'victim': answer.victim},
     ChooseLeaderAnswer() => {'leader': answer.leader},
     DiscardAnswer() => {
       'discard': [for (final card in answer.cards) card.id],
@@ -131,9 +147,23 @@ Answer answerFromJson(Map<String, Object?> json) {
         seat: seat,
         change: change,
       ),
+      {'overboard': final String id} => WalkPlankAnswer(
+        seat: seat,
+        pirate: Card.fromId(id),
+      ),
+      {'victim': final int victim} => ChooseVictimAnswer(
+        seat: seat,
+        victim: victim,
+      ),
       {'card': final String id} => PlayAnswer(
         seat: seat,
         card: Card.fromId(id),
+        declaredValue: json['declaredValue'] as int?,
+        jokerSuit: switch (json['jokerSuit']) {
+          null => null,
+          final String suit => Suit.values.byName(suit),
+          _ => throw const FormatException('bad joker suit'),
+        },
         tigressAs: switch (json['tigressAs']) {
           null => null,
           final String mode => TigressMode.values.byName(mode),
@@ -167,13 +197,35 @@ final class PlayQuestion extends Question {
   const PlayQuestion({required int seat, required this.legalCards})
     : super(seat);
 
-  /// Never empty. Playing the tigress also requires a [TigressMode].
+  /// Never empty. Playing the tigress also requires a [TigressMode], a 0/14
+  /// its value, and the joker a suit while the trick has none
+  /// ([suitIsOpen]).
   final List<Card> legalCards;
 }
 
-/// How to use the power of the pirate that just won its player a trick.
+/// A decision a card calls for once the trick is played: how to use the
+/// power of the pirate that just won it, or whom the plank throws overboard.
 sealed class PowerQuestion extends Question {
   const PowerQuestion(super.seat);
+}
+
+/// The plank: with several named pirates in the trick, say which one of
+/// [pirates] leaves it before it is settled.
+final class WalkPlankQuestion extends PowerQuestion {
+  const WalkPlankQuestion({required int seat, required this.pirates})
+    : super(seat);
+
+  final List<Card> pirates;
+}
+
+/// Mary's power: name the seat that will have to play, in the next trick, a
+/// card drawn at random from its hand.
+final class ChooseVictimQuestion extends PowerQuestion {
+  const ChooseVictimQuestion({required int seat, required this.seats})
+    : super(seat);
+
+  /// Every seat that still holds a card, the asking one included.
+  final List<int> seats;
 }
 
 /// Rosie's power: name the seat that leads the next trick.
@@ -227,13 +279,39 @@ final class BidAnswer extends Answer {
 }
 
 final class PlayAnswer extends Answer {
-  const PlayAnswer({required int seat, required this.card, this.tigressAs})
-    : super(seat);
+  const PlayAnswer({
+    required int seat,
+    required this.card,
+    this.tigressAs,
+    this.declaredValue,
+    this.jokerSuit,
+  }) : super(seat);
 
   final Card card;
 
   /// Required for the tigress, forbidden for any other card.
   final TigressMode? tigressAs;
+
+  /// 0 or 14: required for a 0/14, forbidden for any other card.
+  final int? declaredValue;
+
+  /// One of [jokerSuits]: required for the joker while the trick has no suit
+  /// yet, forbidden otherwise.
+  final Suit? jokerSuit;
+}
+
+final class WalkPlankAnswer extends Answer {
+  const WalkPlankAnswer({required int seat, required this.pirate})
+    : super(seat);
+
+  final Card pirate;
+}
+
+final class ChooseVictimAnswer extends Answer {
+  const ChooseVictimAnswer({required int seat, required this.victim})
+    : super(seat);
+
+  final int victim;
 }
 
 final class ChooseLeaderAnswer extends Answer {
@@ -328,6 +406,7 @@ final class TrickWon extends Event {
     required this.bonuses,
     this.alliances = const [],
     this.destroyed = false,
+    this.overboard,
   });
 
   /// The seat that leads the next trick; it won this one unless [destroyed].
@@ -336,8 +415,32 @@ final class TrickWon extends Event {
   final List<Bonus> bonuses;
   final List<Alliance> alliances;
 
-  /// A kraken, or a white whale over special cards only: nobody wins.
+  /// A kraken, a whale or a stingray over special cards only, or nothing but
+  /// cards that take no trick: nobody wins.
   final bool destroyed;
+
+  /// The pirate the plank threw out of the trick before it was settled.
+  final Card? overboard;
+}
+
+/// Mary: [victim] will have to play a card drawn from its hand.
+final class VictimChosen extends Event {
+  const VictimChosen({required this.seat, required this.victim});
+
+  final int seat;
+  final int victim;
+}
+
+/// Mary: the card [seat] has to play at its next turn. Only that seat sees
+/// which.
+final class CardForced extends Event {
+  const CardForced({required this.seat, required this.card});
+
+  final int seat;
+  final Card card;
+
+  @override
+  int get audience => seat;
 }
 
 /// A seat won a trick with [pirate] and gets to use its power.

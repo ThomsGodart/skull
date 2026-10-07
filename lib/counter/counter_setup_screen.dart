@@ -33,6 +33,7 @@ class _CounterSetupScreenState extends State<CounterSetupScreen> {
   bool _loot = false;
   bool _powers = false;
   bool _manualBonuses = false;
+  bool _secondExpansion = false;
 
   @override
   void dispose() {
@@ -82,6 +83,7 @@ class _CounterSetupScreenState extends State<CounterSetupScreen> {
         loot: _loot && !_manualBonuses,
         piratePowers: _powers && !_manualBonuses,
         manualBonuses: _manualBonuses,
+        secondExpansion: _secondExpansion,
       ),
     );
   }
@@ -198,6 +200,14 @@ class _CounterSetupScreenState extends State<CounterSetupScreen> {
                     selected: {_scoring},
                     onSelectionChanged: (choice) =>
                         setState(() => _scoring = choice.single),
+                  ),
+                  SwitchListTile(
+                    key: const Key('counter-second-expansion'),
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(Strings.counterSecondExpansion),
+                    subtitle: const Text(Strings.counterSecondExpansionHelp),
+                    value: _secondExpansion,
+                    onChanged: (on) => setState(() => _secondExpansion = on),
                   ),
                   SwitchListTile(
                     key: const Key('counter-manual-bonuses'),

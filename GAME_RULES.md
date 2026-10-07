@@ -393,3 +393,86 @@ Source : FAQ de https://www.grandpabecksgames.com/pages/skull-king (en anglais, 
 | Kraken : qui entame le pli suivant ? | Le joueur qui aurait gagné le pli sans le Kraken. (Un tirage avait une aide de jeu erronée.) |
 
 Rappel historique utile pour lire d'anciens codes ou anciennes règles : dans l'édition précédente, la sirène capturant le Skull King rapportait +50 (aujourd'hui +40). Source : article The Board Game Family, « The new Skull King » (2021).
+
+## 14. Deuxième extension (paquet séparé)
+
+Source : livret « Skull King — Règles de l'extension » (10 pages), lu sur des captures d'écran fournies par Thomas le 2026-10-07. Le livret ne lui donne pas d'autre nom que « l'extension » ; le projet l'appelle « deuxième extension » pour la distinguer des cartes des modes avancés ([§10](#10-modes-avancés)).
+
+**État dans le projet** : c'est une option unique (`secondExpansion`), qui ajoute les 19 cartes d'un coup, dans le jeu complet comme dans le compteur de points. Les lectures de [§14.7](#147-points-non-tranchés-par-le-livret) ont été validées par Thomas le 2026-10-07.
+
+### 14.1 Contenu — 19 cartes à jouer
+
+| Carte | Quantité |
+|---|---|
+| 7, 8 et 0/14 | 1 de chaque couleur (12 cartes) |
+| 15 Joker (Singe Joker) | 1 |
+| Mary Thorne (pirate) | 1 |
+| La Dernière Salve | 1 |
+| Mat le Forban | 1 |
+| Raie Tachetée | 1 |
+| Le Coffre de Davy Jones | 1 |
+| Marcher sur la planche | 1 |
+
+Plus 3 cartes de référence et 4 cartes vierges.
+
+### 14.2 Mise en place
+
+- Ajouter au jeu de base les cartes numérotées supplémentaires, le 15 Joker et Mary Thorne. Ajouter ensuite **les autres cartes d'extension de son choix**.
+- Ces cartes suivent en grande partie les règles du jeu de base ; seules les différences sont décrites.
+- Avec toutes les cartes d'extension, on peut jouer 10 manches complètes à **9 joueurs**. Au-delà de 9 joueurs : jouer autant de manches que possible pour que tous reçoivent le même nombre de cartes, puis distribuer ce maximum à chaque manche restante jusqu'à la 10ᵉ.
+
+### 14.3 Nouvelles cartes numérotées
+
+- **7 et 8** : se jouent comme des cartes normales de leur couleur. Si plusieurs 7 ou 8 sont à égalité pour prendre un pli, **la première carte jouée l'emporte**. Exemple : 8 jaune (Kevin), 12 violet (sans jaune), 8 jaune de l'extension, fuite → Kevin gagne.
+- **Capturer un 7 ou un 8 de l'extension** : **+5 points** (8) ou **−5 points** (7), seulement si le pari de la manche est réussi.
+- **0/14** : quand elle est jouée, le joueur déclare immédiatement si c'est un **0** ou un **14**. Elle ne rapporte **aucun bonus** quand elle est capturée, contrairement au 14 standard. Plusieurs 14 à égalité : la première carte jouée l'emporte.
+- **15 Singe Joker** : carte de couleur joker, jaune, violette ou verte, **jamais noire**.
+  - Si le pli a déjà une couleur d'entame jaune, violette ou verte : elle joue comme cette couleur, valeur 15.
+  - S'il n'y a pas encore de couleur d'entame : le joueur choisit jaune, violet ou vert en la jouant.
+  - Si le noir est la couleur d'entame : le 15 Joker perd contre l'atout, aucune déclaration de couleur n'est nécessaire.
+  - Avec la Baleine blanche dans le même pli : règles du jeu de base, le 15 est la plus haute valeur et remporte le pli.
+
+### 14.4 Nouveau pirate
+
+**Mary Thorne** : se joue comme un pirate normal (perd contre le Skull King, bat les sirènes).
+
+Pouvoir (si les pouvoirs sont utilisés) : si elle gagne un pli, le joueur **choisit une carte au hasard dans la main de n'importe quel joueur** (la sienne comprise), sans la regarder. Ce joueur doit jouer cette carte au pli suivant, quelles que soient les règles de la couleur d'entame et les effets des autres cartes.
+
+### 14.5 Cartes additionnelles
+
+- **Mat le Forban** : bat tous les pirates, perd contre les sirènes et le Skull King. Le joueur qui remporte un pli avec lui peut utiliser **tous les pouvoirs des pirates qu'il capture**. Il ne gagne pas de bonus en capturant des pirates. Si le Skull King ou une sirène le prend : **+30 points**.
+- **Marcher sur la planche** : ne permet pas de gagner un pli. Le joueur doit **éliminer un pirate standard à la fin du pli**, s'il y en a. S'il y en a plusieurs, il choisit lequel, ce qui peut changer le pirate gagnant. Si le Skull King remporte un pli où un pirate a été ainsi éliminé, aucun bonus pour ce pirate : il n'est plus dans le pli.
+- **Raie Tachetée** : se joue comme la Baleine blanche, mais **la carte la plus basse** remporte le pli. Quand plusieurs Monstres Marins (Kraken, Baleine blanche, Raie Tachetée) sont joués dans un pli, **le dernier joué** détermine l'action appliquée.
+- **La Dernière Salve** : ne remporte pas de pli. Le joueur qui la joue doit jouer **une carte supplémentaire après que tous les autres ont joué**, puis **saute son tour au pli suivant**. Seule exception : si elle est jouée au dernier pli de la manche.
+- **Le Coffre de Davy Jones** : ne gagne pas de pli. Il **détruit tous les Monstres Marins du pli**, même s'il y en a plusieurs. Monstres Marins et Coffre sont retirés à la fin du pli, et la carte restante de plus haute valeur remporte le pli, dans l'ordre joué. **+20 points par Monstre Marin capturé**, pour le joueur qui a joué le Coffre.
+
+### 14.6 Points de règle du livret
+
+- Les points bonus ou de pénalité sont toujours attribués à la fin de la manche, **uniquement si le joueur réussit son pari**.
+- Le Coffre de Davy Jones, la Dernière Salve, la Raie Tachetée et la Planche **ne sont pas des cartes Fuite**. Si le reste du pli n'est fait que de fuites, la première fuite jouée remporte le pli.
+- Quand l'une de ces quatre cartes entame un pli, **le choix de la couleur revient au joueur suivant**.
+- Un pli fait uniquement de cartes spéciales non gagnantes, sans carte numérotée, est **défaussé** ; le joueur qui l'a commencé lance le pli suivant. Exemple : Coffre, Raie Tachetée, Planche → pli défaussé, le joueur 1 relance.
+
+### 14.7 Points non tranchés par le livret
+
+**Lectures validées par Thomas le 2026-10-07** : elles font foi pour le projet. E13 à E17 ont été ajoutées en codant le moteur et n'ont pas été relues une à une.
+
+| # | Question | Décision retenue |
+|---|---|---|
+| E1 | Le 0 du 0/14 : que vaut-il ? | La plus basse valeur de sa couleur ; elle suit sa couleur comme une carte numérotée et ne gagne que si tout le reste perd. |
+| E2 | 15 Joker : compte-t-il comme une carte de la couleur demandée dans la main (obligation de suivre) ? Peut-on le jouer quand on a la couleur demandée, ou quand le noir est demandé et qu'on a du noir ? | Il est toujours jouable et ne compte pour aucune couleur dans la main ; il n'oblige ni n'empêche rien. |
+| E3 | 15 Joker joué après une entame noire, puis une carte de couleur : quelle est sa couleur ? | Aucune : il perd, comme une couleur non demandée. |
+| E4 | Mat le Forban bat-il les cartes numérotées et les atouts ? Que se passe-t-il face à une sirène et un pirate dans le même pli ? | Il se place comme un pirate au-dessus des pirates : bat les couleurs et les pirates, perd contre le Skull King et contre une sirène, même si un pirate est aussi dans le pli. |
+| E5 | Le +30 de Mat le Forban : la Tigresse jouée comme pirate est-elle un « pirate capturé » par lui pour ses pouvoirs ? | Non, la Tigresse n'a pas de pouvoir (§12 n° 16). |
+| E6 | Marcher sur la planche : « pirate standard » inclut-il Mary Thorne, Mat le Forban, la Tigresse comme pirate ? | Les 5 pirates nommés et Mary Thorne ; ni Mat le Forban ni la Tigresse. |
+| E7 | Raie Tachetée : égalité sur la plus basse valeur, et bonus des cartes du pli | Comme la Baleine blanche : la première jouée l'emporte, les numérotées gardent leur bonus. |
+| E8 | Dernière Salve : la carte supplémentaire doit-elle suivre la couleur ? Qui entame le pli suivant si ce joueur gagne le pli ? | Elle suit les règles normales ; s'il gagne le pli, il entame quand même, et saute le pli d'après. |
+| E9 | Davy Jones : « la carte restante de plus haute valeur, dans l'ordre joué » | Le pli est résolu normalement sans les Monstres Marins ni le Coffre. |
+| E10 | Davy Jones sans Monstre Marin dans le pli | Il perd simplement, comme une carte non gagnante. |
+| E11 | Compteur en score Rascal : moitié d'un bonus de ±5 | Arrondi vers zéro (±2). C'est ce que fait le compteur aujourd'hui. |
+| E12 | Nombre de cartes à 8 joueurs avec cette extension | 10 cartes aux manches 9 et 10 : le paquet compte au moins 84 cartes. Appliqué dans le compteur. Le jeu à 9 joueurs n'est pas proposé. |
+| E13 | À 2 joueurs, Barbe Grise ne peut ni déclarer un 0/14, ni choisir une couleur, ni rejouer une carte | La deuxième extension n'est pas utilisée à 2 joueurs, comme le Butin. |
+| E14 | 15 Joker joué alors qu'un personnage a déjà été joué, ou après une entame noire | Il ne prend aucune couleur et ne choisit rien ; il garde sa valeur de 15 pour la Baleine blanche et la Raie Tachetée. |
+| E15 | Mary Thorne : la carte imposée quand le joueur visé saute le pli suivant, ou la défausse avec Will le Bandit | Elle reste imposée jusqu'à son prochain tour de jeu ; défaussée, elle n'impose plus rien. Le pouvoir ne sert à rien après le dernier pli. |
+| E16 | Raie Tachetée en entame : le livret la dit « comme la Baleine blanche » (pas de couleur à suivre) mais aussi que le joueur suivant choisit la couleur | En entame, la carte Couleur suivante fixe la couleur à suivre ; jouée en cours de pli, elle lève l'obligation de suivre, comme la Baleine blanche. |
+| E17 | Dernière Salve : un joueur qui n'a plus de carte alors que d'autres en ont encore | Il ne joue pas le pli ; s'il devait l'entamer, c'est le joueur suivant qui entame. |

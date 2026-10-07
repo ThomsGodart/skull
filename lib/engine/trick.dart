@@ -5,7 +5,13 @@ enum TigressMode { pirate, escape }
 
 /// A card put down in a trick by a seat.
 final class Play {
-  const Play({required this.seat, required this.card, this.tigressAs});
+  const Play({
+    required this.seat,
+    required this.card,
+    this.tigressAs,
+    this.declaredValue,
+    this.jokerSuit,
+  });
 
   final int seat;
   final Card card;
@@ -13,19 +19,56 @@ final class Play {
   /// Set if and only if [card] is the tigress.
   final TigressMode? tigressAs;
 
-  /// Pirate, tigress played as a pirate, skull king or mermaid.
-  bool get isCharacter => isPirate || isSkullKing || isMermaid;
+  /// 0 or 14: set if and only if [card] is a 0/14.
+  final int? declaredValue;
+
+  /// The base suit the joker stands for: the one already led, or the one its
+  /// player named when none was. Null when it stands for none — after a trump
+  /// lead or a character — and for any other card.
+  final Suit? jokerSuit;
+
+  /// What the card counts for among number cards; null for a special card.
+  int? get value => switch (card.kind) {
+    CardKind.joker => jokerValue,
+    CardKind.zeroFourteen => declaredValue,
+    _ => card.value,
+  };
+
+  /// The suit the card counts for in this trick.
+  Suit? get suit => card.kind == CardKind.joker ? jokerSuit : card.suit;
+
+  /// Ranks by its value: a number card, a 0/14 or the joker.
+  bool get isNumber => value != null;
+
+  /// Pirate, tigress played as a pirate, Mat, skull king or mermaid.
+  bool get isCharacter => isPirate || isMat || isSkullKing || isMermaid;
 
   bool get isPirate =>
       card.kind == CardKind.pirate || tigressAs == TigressMode.pirate;
+
+  /// One of the named pirates, which the plank can throw overboard.
+  bool get isStandardPirate => card.kind == CardKind.pirate;
+  bool get isMat => card.kind == CardKind.mat;
   bool get isSkullKing => card.kind == CardKind.skullKing;
   bool get isMermaid => card.kind == CardKind.mermaid;
 
-  /// The kraken or the white whale.
+  /// A sea monster: the kraken, the white whale or the stingray.
   bool get isCreature =>
-      card.kind == CardKind.kraken || card.kind == CardKind.whiteWhale;
+      card.kind == CardKind.kraken ||
+      card.kind == CardKind.whiteWhale ||
+      card.kind == CardKind.stingray;
   bool get isLoot => card.kind == CardKind.loot;
+
+  /// Loses like an escape, and takes a trick made of such cards only.
+  bool get isEscapeLike =>
+      card.kind == CardKind.escape || tigressAs == TigressMode.escape || isLoot;
 }
+
+/// What the joker is worth among the cards of its suit.
+const jokerValue = 15;
+
+/// The suits the joker may stand for: any but the trump suit.
+const jokerSuits = [Suit.green, Suit.yellow, Suit.purple];
 
 /// The seats in the order they play a trick led by [leader].
 ///
@@ -45,18 +88,40 @@ List<int> playOrder({
   return [leader, ghost, 1 - leader];
 }
 
-/// The suit that must be followed in [trick], if any.
-///
-/// The first number card sets it, unless a character was played before: then
-/// nobody has to follow anything for the whole trick. A kraken or a white
-/// whale lifts it for everyone who plays after.
-Suit? leadSuit(List<Play> trick) {
-  if (trick.any((play) => play.isCreature)) return null;
+/// The suit [trick] is played in: that of its first number card, unless a
+/// character came before. Sea monsters change nothing to it.
+Suit? _suitOf(List<Play> trick) {
   for (final play in trick) {
-    if (play.card.isNumber) return play.card.suit;
+    if (play.isNumber) return play.suit;
     if (play.isCharacter) return null;
   }
   return null;
+}
+
+/// Whether the next card of [trick] may still set its suit: no number card
+/// and no character was played yet. A joker played now names its suit.
+bool suitIsOpen(List<Play> trick) =>
+    trick.every((play) => !play.isNumber && !play.isCharacter);
+
+/// The suit that must be followed in [trick], if any.
+///
+/// The first number card sets it, unless a character was played before: then
+/// nobody has to follow anything for the whole trick. A sea monster lifts it
+/// for everyone who plays after — except a stingray that leads, after which
+/// the next player sets the suit.
+Suit? leadSuit(List<Play> trick) {
+  for (final (index, play) in trick.indexed) {
+    final leadingStingray = index == 0 && play.card.kind == CardKind.stingray;
+    if (play.isCreature && !leadingStingray) return null;
+  }
+  return _suitOf(trick);
+}
+
+/// The suit a joker played next in [trick] stands for when it has none to
+/// name: the base suit the trick is played in, if any.
+Suit? inheritedJokerSuit(List<Play> trick) {
+  final suit = _suitOf(trick);
+  return suit == Suit.black ? null : suit;
 }
 
 /// The cards of [hand] that may be played next in [trick].
@@ -80,11 +145,20 @@ enum Bonus {
   blackFourteen(20),
   mermaidCaptured(20),
   pirateCaptured(30),
-  skullKingCaptured(40);
+  skullKingCaptured(40),
+
+  // Second expansion.
+  extraEight(5),
+  extraSeven(-5),
+  matCaptured(30),
+  seaMonsterCaptured(20);
 
   const Bonus(this.points);
 
   final int points;
+
+  /// Comes with the cards of the second expansion.
+  bool get isSecondExpansion => index >= extraEight.index;
 }
 
 /// The pact a loot card makes between its player and whoever wins the trick:
@@ -117,7 +191,9 @@ int alliancesMadeBy(
 final class TrickResult {
   const TrickResult({
     required this.winner,
+    this.winningPlay,
     this.bonuses = const [],
+    this.sideBonuses = const [],
     this.alliances = const [],
     this.destroyed = false,
   });
@@ -126,8 +202,15 @@ final class TrickResult {
   /// trick is [destroyed].
   final int winner;
 
+  /// The card that took the trick; null when it is [destroyed].
+  final Play? winningPlay;
+
   /// One entry per bonus earned, so the same bonus may appear several times.
   final List<Bonus> bonuses;
+
+  /// Bonuses that go to a seat whether or not it wins the trick: those of
+  /// Davy Jones' chest, per sea monster it destroyed.
+  final List<(int seat, Bonus bonus)> sideBonuses;
   final List<Alliance> alliances;
 
   /// Nobody wins the trick: its cards and bonuses are lost.
@@ -137,51 +220,100 @@ final class TrickResult {
 /// Who wins [trick], and the bonuses it carries.
 ///
 /// Meant for a complete trick; on a trick still being played it gives the seat
-/// that is winning so far. [trick] must hold at least one card.
-TrickResult resolveTrick(List<Play> trick) {
+/// that is winning so far. [trick] must hold at least one card. [overboard]
+/// is the pirate the plank threw out: it is no longer part of the trick.
+TrickResult resolveTrick(List<Play> trick, {Card? overboard}) {
   if (trick.isEmpty) throw ArgumentError.value(trick, 'trick', 'is empty');
-  // Of a kraken and a white whale, only the last one played takes effect.
-  final creature = trick.where((play) => play.isCreature).lastOrNull;
-  if (creature == null) return _resolvePlain(trick);
-
-  final others = [
+  final leader = trick.first.seat;
+  final plays = [
     for (final play in trick)
+      if (play.card != overboard) play,
+  ];
+  final creatures = plays.where((play) => play.isCreature).toList();
+  final others = [
+    for (final play in plays)
       if (!play.isCreature) play,
   ];
-  // Whoever would have won had no creature been played.
-  final wouldHaveWon = others.isEmpty
-      ? trick.first.seat
-      : _winningPlay(others).seat;
-  if (creature.card.kind == CardKind.kraken) {
+  // Davy Jones' chest destroys every sea monster: the trick is then played
+  // out as if none had been there.
+  final chest = plays
+      .where((play) => play.card.kind == CardKind.davyJones)
+      .firstOrNull;
+  if (chest != null || creatures.isEmpty) {
+    return _resolvePlain(
+      others,
+      leader: leader,
+      sideBonuses: [
+        if (chest != null)
+          for (var i = 0; i < creatures.length; i++)
+            (chest.seat, Bonus.seaMonsterCaptured),
+      ],
+    );
+  }
+
+  // Of several sea monsters, only the last one played takes effect.
+  final creature = creatures.last.card.kind;
+  // Whoever would have won had no sea monster been played.
+  final wouldHaveWon = _winningPlay(others)?.seat ?? leader;
+  if (creature == CardKind.kraken) {
     return TrickResult(winner: wouldHaveWon, destroyed: true);
   }
 
-  // White whale: special cards are destroyed, number cards lose their suit.
-  final numbers = others.where((play) => play.card.isNumber).toList();
+  // White whale or stingray: special cards are destroyed, number cards lose
+  // their suit. The whale gives the trick to the highest, the stingray to
+  // the lowest.
+  final numbers = others.where((play) => play.isNumber).toList();
   if (numbers.isEmpty) {
     return TrickResult(winner: wouldHaveWon, destroyed: true);
   }
-  final highest = numbers.reduce(
+  final lowestWins = creature == CardKind.stingray;
+  final best = numbers.reduce(
     // On equal values the earlier card stays ahead.
-    (best, play) => play.card.value! > best.card.value! ? play : best,
+    (best, play) =>
+        (lowestWins ? play.value! < best.value! : play.value! > best.value!)
+        ? play
+        : best,
   );
-  return TrickResult(winner: highest.seat, bonuses: _fourteens(numbers));
+  return TrickResult(
+    winner: best.seat,
+    winningPlay: best,
+    bonuses: _cardBonuses(numbers),
+  );
 }
 
-List<Bonus> _fourteens(List<Play> plays) => [
+/// The bonuses and penalties the number cards of [plays] carry by themselves.
+List<Bonus> _cardBonuses(List<Play> plays) => [
   for (final play in plays)
-    if (play.card.value == 14)
-      play.card.suit == Suit.black
-          ? Bonus.blackFourteen
-          : Bonus.standardFourteen,
+    // A 0/14 played as a 14 is worth nothing.
+    if (play.card.kind == CardKind.number)
+      if (play.card.value == 14)
+        play.card.suit == Suit.black
+            ? Bonus.blackFourteen
+            : Bonus.standardFourteen
+      else if (play.card.isExtraNumber)
+        play.card.value == 8 ? Bonus.extraEight : Bonus.extraSeven,
 ];
 
-TrickResult _resolvePlain(List<Play> trick) {
+TrickResult _resolvePlain(
+  List<Play> trick, {
+  required int leader,
+  List<(int, Bonus)> sideBonuses = const [],
+}) {
   final winner = _winningPlay(trick);
+  // Nothing but special cards that take no trick: it is thrown away, and
+  // whoever led it leads again.
+  if (winner == null) {
+    return TrickResult(
+      winner: leader,
+      sideBonuses: sideBonuses,
+      destroyed: true,
+    );
+  }
   int count(bool Function(Play) test) => trick.where(test).length;
+  final matTaken = trick.any((play) => play.isMat) && !winner.isMat;
 
   final bonuses = [
-    ..._fourteens(trick),
+    ..._cardBonuses(trick),
     // Only the winning character captures: a beaten one earns nothing.
     if (winner.isPirate)
       for (var i = 0; i < count((play) => play.isMermaid); i++)
@@ -191,10 +323,13 @@ TrickResult _resolvePlain(List<Play> trick) {
         Bonus.pirateCaptured,
     if (winner.isMermaid && trick.any((play) => play.isSkullKing))
       Bonus.skullKingCaptured,
+    if (matTaken && (winner.isSkullKing || winner.isMermaid)) Bonus.matCaptured,
   ];
   return TrickResult(
     winner: winner.seat,
+    winningPlay: winner,
     bonuses: bonuses,
+    sideBonuses: sideBonuses,
     alliances: [
       // A loot that takes a trick of escapes allies nobody, as the rulebook
       // has it: "aucune alliance n'aura été formée".
@@ -206,7 +341,8 @@ TrickResult _resolvePlain(List<Play> trick) {
   );
 }
 
-Play _winningPlay(List<Play> trick) {
+/// The card that takes [trick], or null when it holds nothing that can.
+Play? _winningPlay(List<Play> trick) {
   Play? first(bool Function(Play) test) {
     for (final play in trick) {
       if (test(play)) return play;
@@ -216,23 +352,28 @@ Play _winningPlay(List<Play> trick) {
 
   final skullKing = first((play) => play.isSkullKing);
   final mermaid = first((play) => play.isMermaid);
+  final mat = first((play) => play.isMat);
   final pirate = first((play) => play.isPirate);
 
   // The three characters beat each other in a cycle; with all three in the
   // trick the mermaid wins, so she is checked first.
   if (mermaid != null && skullKing != null) return mermaid;
   if (skullKing != null) return skullKing;
+  // Mat beats every pirate, but a mermaid takes him even with pirates around.
+  if (mat != null) return mermaid ?? mat;
   if (pirate != null) return pirate;
   if (mermaid != null) return mermaid;
 
   Play? highest(Suit? suit) {
     Play? best;
     for (final play in trick) {
-      if (play.card.suit != suit || suit == null) continue;
-      if (best == null || play.card.value! > best.card.value!) best = play;
+      if (!play.isNumber || play.suit != suit || suit == null) continue;
+      if (best == null || play.value! > best.value!) best = play;
     }
     return best;
   }
 
-  return highest(Suit.black) ?? highest(leadSuit(trick)) ?? trick.first;
+  return highest(Suit.black) ??
+      highest(_suitOf(trick)) ??
+      first((play) => play.isEscapeLike);
 }

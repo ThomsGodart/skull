@@ -8,6 +8,7 @@ import 'package:skull_kings/game/game_controller.dart';
 import 'package:skull_kings/game/score_views.dart';
 import 'package:skull_kings/game/screen_awake.dart';
 import 'package:skull_kings/game/seat_identity.dart';
+import 'package:skull_kings/game/power_dialog.dart';
 import 'package:skull_kings/game/table_screen.dart';
 import 'package:skull_kings/theme/tokens.dart';
 import 'package:skull_kings/ui/strings.dart';
@@ -236,6 +237,128 @@ void main() {
         'power-confirm',
       ]),
     );
+  });
+
+  testWidgets('a whole game with the second expansion runs to the end, each '
+      'of its cards played through its own dialog', (tester) async {
+    tester.view.physicalSize = const Size(360, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final dialogs = <String>{};
+    for (var seed = 0; seed < 8; seed++) {
+      final controller = GameController(
+        config: GameConfig(
+          players: 4,
+          seed: seed,
+          kraken: true,
+          whiteWhale: true,
+          piratePowers: true,
+          secondExpansion: true,
+        ),
+        bot: randomBot(Random(seed)),
+        speed: TableSpeed.instant,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: Tokens.theme(),
+          home: TableScreen(
+            key: ValueKey('second-$seed'),
+            controller: controller,
+            onPlayAgain: () {},
+          ),
+        ),
+      );
+      Future<bool> tapIfShown(String key) async {
+        final finder = find.byKey(Key(key));
+        if (finder.evaluate().isEmpty) return false;
+        await tester.tap(finder);
+        await tester.pumpAndSettle();
+        dialogs.add(key.split('-').take(2).join('-'));
+        return true;
+      }
+
+      for (var step = 0; step < 3000; step++) {
+        await tester.pumpAndSettle();
+        if (controller.result != null && controller.roundSummary == null) break;
+        if (await tapIfShown('stock-close')) continue;
+        if (await tapIfShown('power-leader-0')) continue;
+        if (await tapIfShown('power-wager-10')) continue;
+        if (await tapIfShown('power-change-0')) continue;
+        if (await tapIfShown('declare-14')) continue;
+        if (await tapIfShown('joker-green')) continue;
+        switch (controller.powerQuestion) {
+          case DiscardQuestion(:final hand, :final count):
+            for (final card in hand.take(count)) {
+              await tester.tap(find.byKey(Key('power-discard-${card.id}')));
+              await tester.pump();
+            }
+            await tapIfShown('power-confirm');
+            continue;
+          case WalkPlankQuestion(:final pirates):
+            await tapIfShown('power-overboard-${pirates.first.id}');
+            continue;
+          case ChooseVictimQuestion(:final seats):
+            await tapIfShown('power-victim-${seats.last}');
+            continue;
+          default:
+        }
+        if (controller.roundSummary != null) {
+          await tester.tap(find.byKey(const Key('continue')));
+        } else if (controller.bidQuestion != null) {
+          await tester.tap(find.byKey(const Key('bid-0')));
+          await tester.pump();
+          await tester.tap(find.byKey(const Key('place-bid')));
+        } else if (controller.playQuestion case final question?) {
+          // The joker as soon as it may name its suit.
+          final card = question.legalCards.firstWhere(
+            (card) =>
+                card.kind == CardKind.joker && suitIsOpen(controller.trick),
+            orElse: () => question.legalCards.first,
+          );
+          await tapCard(tester, card);
+          await tapCard(tester, card);
+          if (card.kind == CardKind.tigress) {
+            await tester.tap(find.byKey(const Key('tigress-escape')));
+          }
+        }
+      }
+      expect(controller.result, isNotNull, reason: 'seed $seed');
+    }
+    expect(dialogs, containsAll(['declare-14', 'joker-green', 'power-victim']));
+  });
+
+  testWidgets('the plank asks which pirate leaves the trick', (tester) async {
+    Answer? answer;
+    const rosie = Card.special(CardKind.pirate);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: Tokens.theme(),
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async => answer = await showDialog<Answer>(
+              context: context,
+              builder: (context) => const PowerDialog(
+                question: WalkPlankQuestion(
+                  seat: 0,
+                  pirates: [rosie, maryCard],
+                ),
+                seats: [],
+                bid: 0,
+              ),
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(Strings.plankTitle), findsOneWidget);
+    await tester.tap(find.byKey(Key('power-overboard-${maryCard.id}')));
+    await tester.pumpAndSettle();
+
+    expect((answer! as WalkPlankAnswer).pirate, maryCard);
   });
 
   testWidgets('with two players the ghost sits at the table, and only the '

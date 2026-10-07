@@ -19,6 +19,26 @@ Bot sensibleBot() =>
             : question.seats[(question.seats.indexOf(question.seat) + 1) %
                   question.seats.length],
       ),
+      WalkPlankQuestion() => WalkPlankAnswer(
+        seat: question.seat,
+        // Someone else's pirate, when there is one.
+        pirate: view.trick
+            .where(
+              (play) =>
+                  play.seat != question.seat &&
+                  question.pirates.contains(play.card),
+            )
+            .map((play) => play.card)
+            .firstWhere((_) => true, orElse: () => question.pirates.first),
+      ),
+      ChooseVictimQuestion() => ChooseVictimAnswer(
+        seat: question.seat,
+        // Anyone but itself, when someone else still holds a card.
+        victim: question.seats.firstWhere(
+          (seat) => seat != question.seat,
+          orElse: () => question.seat,
+        ),
+      ),
       DiscardQuestion() => DiscardAnswer(
         seat: question.seat,
         cards: _discards(question, view),
@@ -40,11 +60,8 @@ bool _needsTricks(GameView view) =>
 /// ones once there are enough.
 List<Card> _discards(DiscardQuestion question, GameView view) {
   final options = [
-    for (final card in question.hand)
-      (
-        card: card,
-        tigressAs: card.kind == CardKind.tigress ? TigressMode.pirate : null,
-      ),
+    // Each card for the most it can be worth.
+    for (final card in question.hand) _strongest(_ways(card, const [])),
   ]..sort((a, b) => _strength(a).compareTo(_strength(b)));
   final ordered = _needsTricks(view) ? options : options.reversed.toList();
   return [for (final option in ordered.take(question.count)) option.card];
@@ -83,6 +100,14 @@ int _bid(GameView view) {
       CardKind.escape || CardKind.loot => 0.0,
       // Whatever they do to a trick, they never take one.
       CardKind.kraken || CardKind.whiteWhale => 0.0,
+      CardKind.plank ||
+      CardKind.stingray ||
+      CardKind.lastSalvo ||
+      CardKind.davyJones => 0.0,
+      CardKind.mat => 0.85,
+      CardKind.joker => crowd * 0.6,
+      // A 14 when it serves, a 0 when it does not.
+      CardKind.zeroFourteen => card.suit == Suit.black ? 0.6 : crowd * 0.4,
       CardKind.number when card.suit == Suit.black => switch (card.value!) {
         >= 10 => 0.5 + (card.value! - 10) * 0.1,
         >= 6 => 0.3,
@@ -103,20 +128,49 @@ int _bid(GameView view) {
 }
 
 /// One way of putting a card down.
-typedef _Option = ({Card card, TigressMode? tigressAs});
+typedef _Option = ({
+  Card card,
+  TigressMode? tigressAs,
+  int? declaredValue,
+  Suit? jokerSuit,
+});
+
+/// Every way [card] can be put down on [trick].
+List<_Option> _ways(Card card, List<Play> trick) {
+  _Option way({TigressMode? tigressAs, int? declaredValue, Suit? jokerSuit}) =>
+      (
+        card: card,
+        tigressAs: tigressAs,
+        declaredValue: declaredValue,
+        jokerSuit: jokerSuit,
+      );
+  return switch (card.kind) {
+    CardKind.tigress => [
+      way(tigressAs: TigressMode.pirate),
+      way(tigressAs: TigressMode.escape),
+    ],
+    CardKind.zeroFourteen => [way(declaredValue: 14), way(declaredValue: 0)],
+    CardKind.joker when suitIsOpen(trick) => [
+      for (final suit in jokerSuits) way(jokerSuit: suit),
+    ],
+    _ => [way()],
+  };
+}
 
 PlayAnswer _play(PlayQuestion question, GameView view) {
   final seat = question.seat;
   final options = <_Option>[
-    for (final card in question.legalCards)
-      if (card.kind == CardKind.tigress) ...[
-        (card: card, tigressAs: TigressMode.pirate),
-        (card: card, tigressAs: TigressMode.escape),
-      ] else
-        (card: card, tigressAs: null),
+    for (final card in question.legalCards) ..._ways(card, view.trick),
   ];
-  Play played(_Option option) =>
-      Play(seat: seat, card: option.card, tigressAs: option.tigressAs);
+  Play played(_Option option) => Play(
+    seat: seat,
+    card: option.card,
+    tigressAs: option.tigressAs,
+    declaredValue: option.declaredValue,
+    jokerSuit: option.card.kind == CardKind.joker
+        ? option.jokerSuit ?? inheritedJokerSuit(view.trick)
+        : null,
+  );
   bool winsSoFar(_Option option) {
     final result = resolveTrick([...view.trick, played(option)]);
     // A destroyed trick is taken by nobody.
@@ -138,7 +192,7 @@ PlayAnswer _play(PlayQuestion question, GameView view) {
     } else {
       // Others still play: a high number card is tried first, the characters
       // are kept for a trick they are sure to take.
-      final numbers = winning.where((o) => o.card.isNumber).toList();
+      final numbers = winning.where((o) => played(o).isNumber).toList();
       choice = numbers.isEmpty ? _weakest(winning) : _strongest(numbers);
     }
   } else if (losing.isNotEmpty) {
@@ -147,7 +201,13 @@ PlayAnswer _play(PlayQuestion question, GameView view) {
   } else {
     choice = _weakest(winning);
   }
-  return PlayAnswer(seat: seat, card: choice.card, tigressAs: choice.tigressAs);
+  return PlayAnswer(
+    seat: seat,
+    card: choice.card,
+    tigressAs: choice.tigressAs,
+    declaredValue: choice.declaredValue,
+    jokerSuit: choice.jokerSuit,
+  );
 }
 
 /// [losing] without the plays that hand a capture bonus to whoever wins the
@@ -155,8 +215,10 @@ PlayAnswer _play(PlayQuestion question, GameView view) {
 List<_Option> _withoutGifts(List<_Option> losing, List<Play> trick) {
   final skullKingPlayed = trick.any((play) => play.isSkullKing);
   final piratePlayed = trick.any((play) => play.isPirate);
+  final mermaidPlayed = trick.any((play) => play.isMermaid);
   bool isGift(_Option option) => switch (option.card.kind) {
     CardKind.pirate => skullKingPlayed,
+    CardKind.mat => skullKingPlayed || mermaidPlayed,
     // As an escape she loses just as surely, and gives nothing away.
     CardKind.tigress => option.tigressAs == TigressMode.pirate,
     CardKind.mermaid => piratePlayed && !skullKingPlayed,
@@ -176,10 +238,18 @@ _Option _strongest(List<_Option> options) =>
 int _strength(_Option option) => switch (option.card.kind) {
   CardKind.escape || CardKind.loot => 0,
   CardKind.kraken || CardKind.whiteWhale => 1,
+  CardKind.plank ||
+  CardKind.stingray ||
+  CardKind.lastSalvo ||
+  CardKind.davyJones => 1,
   CardKind.number =>
     option.card.value! + (option.card.suit == Suit.black ? 20 : 0),
+  CardKind.zeroFourteen =>
+    option.declaredValue! + (option.card.suit == Suit.black ? 20 : 0),
+  CardKind.joker => jokerValue,
   CardKind.mermaid => 40,
   CardKind.pirate => 50,
   CardKind.tigress => option.tigressAs == TigressMode.pirate ? 50 : 0,
+  CardKind.mat => 55,
   CardKind.skullKing => 60,
 };

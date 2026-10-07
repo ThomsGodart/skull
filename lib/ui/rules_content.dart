@@ -143,6 +143,42 @@ abstract final class RulesContent {
           'plus à rien après le dernier pli.',
     ),
     (
+      title: 'Deuxième extension',
+      body:
+          'Une option à part, à la création de la partie (à partir de 3 '
+          'joueurs). Elle ajoute 19 cartes, et permet de distribuer 10 '
+          'cartes même à 8 joueurs.\n\n'
+          '• 7 et 8 en double dans chaque couleur : de deux cartes égales, '
+          'la première jouée l\'emporte. Remporter le 8 de l\'extension '
+          'vaut +5, le 7 coûte −5, si ton pari est réussi.\n'
+          '• 0/14 dans chaque couleur : tu dis en la jouant si c\'est un 0 '
+          'ou un 14. Elle ne rapporte pas de bonus.\n'
+          '• Joker 15 : un 15 de la couleur demandée (verte, jaune ou '
+          'violette). S\'il fixe la couleur, tu la choisis. Jamais atout : '
+          'il perd si le noir est demandé. Tu peux toujours le jouer.\n'
+          '• Mary Thorne : un pirate de plus. Son pouvoir : tu désignes un '
+          'joueur, qui devra jouer au pli suivant une carte tirée au hasard '
+          'dans sa main.\n'
+          '• Mat le Forban : bat les pirates et les couleurs, perd contre '
+          'le Skull King et les sirènes, qui gagnent alors +30. Il utilise '
+          'les pouvoirs des pirates qu\'il capture.\n'
+          '• Marcher sur la planche : ne gagne pas de pli, mais élimine un '
+          'pirate du pli (ni Mat ni la Tigresse). S\'il y en a plusieurs, '
+          'son joueur choisit.\n'
+          '• Raie Tachetée : comme la Baleine blanche, mais la plus basse '
+          'valeur gagne. De plusieurs monstres marins, le dernier joué '
+          'décide.\n'
+          '• Dernière Salve : ne gagne pas de pli. Son joueur rejoue une '
+          'carte après tous les autres, puis saute le prochain pli qu\'il '
+          'n\'entame pas.\n'
+          '• Coffre de Davy Jones : ne gagne pas de pli. Il détruit les '
+          'monstres marins du pli, qui se joue alors sans eux : +20 par '
+          'monstre pour son joueur, si son pari est réussi.\n\n'
+          'Planche, Raie, Salve et Coffre ne sont pas des fuites. Un pli qui '
+          'ne contient qu\'elles est défaussé, et celui qui l\'a entamé '
+          'rejoue.',
+    ),
+    (
       title: 'Score Rascal',
       body:
           'Une autre façon de compter, au choix à la création de la partie. '

@@ -15,6 +15,7 @@ class TrickArea extends StatelessWidget {
     this.winner,
     this.cardWidth = 54,
     this.namedPirates = false,
+    this.overboard,
   });
 
   final List<Play> plays;
@@ -25,8 +26,20 @@ class TrickArea extends StatelessWidget {
   final double cardWidth;
   final bool namedPirates;
 
+  /// The pirate the plank threw out of the trick.
+  final Card? overboard;
+
+  /// The card that takes the trick: the winner may have played two, after
+  /// a last salvo.
+  Play? get _winning {
+    if (winner == null) return null;
+    final taking = resolveTrick(plays, overboard: overboard).winningPlay;
+    return taking ?? plays.where((play) => play.seat == winner).firstOrNull;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final winning = _winning;
     return Wrap(
       alignment: WrapAlignment.center,
       spacing: Tokens.space2,
@@ -39,7 +52,8 @@ class TrickArea extends StatelessWidget {
               CardView(
                 play.card,
                 width: cardWidth,
-                winning: play.seat == winner,
+                winning: play == winning,
+                dimmed: play.card == overboard,
                 namedPirates: namedPirates,
               ),
               const SizedBox(height: 2),
@@ -47,11 +61,14 @@ class TrickArea extends StatelessWidget {
                 [
                   seats[play.seat].name,
                   if (play.tigressAs case final mode?) Strings.playedAs(mode),
+                  if (play.declaredValue case final value?) '$value',
+                  if (play.jokerSuit case final suit?) Strings.suitName(suit),
+                  if (play.card == overboard) Strings.overboard,
                 ].join(' · '),
                 style: TextStyle(
-                  color: play.seat == winner ? Tokens.gold : Tokens.mutedText,
+                  color: play == winning ? Tokens.gold : Tokens.mutedText,
                   fontSize: 13,
-                  fontWeight: play.seat == winner
+                  fontWeight: play == winning
                       ? FontWeight.w800
                       : FontWeight.w500,
                 ),

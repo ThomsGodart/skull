@@ -315,17 +315,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: const Text(Strings.online),
                 ),
-                const SizedBox(height: Tokens.space4),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  children: [
-                    _entry(
-                      Strings.counter,
-                      (context) => CounterHomeScreen(
+                const SizedBox(height: Tokens.space3),
+                OutlinedButton(
+                  key: const Key('home-counter'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => CounterHomeScreen(
                         store: widget.counters,
                         settings: _settings,
                       ),
                     ),
+                  ),
+                  child: const Text(Strings.counter),
+                ),
+                const SizedBox(height: Tokens.space4),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
                     _entry(
                       Strings.history,
                       (context) => HistoryScreen(games: _games, human: _human),

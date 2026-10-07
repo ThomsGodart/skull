@@ -14,7 +14,7 @@ void main() {
   test('an unknown card identifier is refused', () {
     expect(() => Card.fromId('green-15'), throwsFormatException);
     expect(() => Card.fromId('dragon-1'), throwsFormatException);
-    expect(() => Card.fromId('pirate-6'), throwsFormatException);
+    expect(() => Card.fromId('pirate-7'), throwsFormatException);
   });
 
   test('a bid and a played card survive a trip through JSON', () {

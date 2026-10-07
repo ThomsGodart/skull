@@ -18,15 +18,20 @@ Map<String, Object?> _playToJson(Play play) => {
   'seat': play.seat,
   'card': play.card.id,
   if (play.tigressAs case final mode?) 'tigressAs': mode.name,
+  'declaredValue': ?play.declaredValue,
+  if (play.jokerSuit case final suit?) 'jokerSuit': suit.name,
 };
 
 Play _playFromJson(Object? json) {
   final map = json! as Map<String, Object?>;
   final mode = map['tigressAs'] as String?;
+  final suit = map['jokerSuit'] as String?;
   return Play(
     seat: map['seat']! as int,
     card: Card.fromId(map['card']! as String),
     tigressAs: mode == null ? null : TigressMode.values.byName(mode),
+    declaredValue: map['declaredValue'] as int?,
+    jokerSuit: suit == null ? null : Suit.values.byName(suit),
   );
 }
 
@@ -91,6 +96,17 @@ Map<String, Object?> eventToJson(Event event) => switch (event) {
         [alliance.lootSeat, alliance.winnerSeat],
     ],
     'destroyed': event.destroyed,
+    if (event.overboard case final card?) 'overboard': card.id,
+  },
+  VictimChosen() => {
+    'type': 'victimChosen',
+    'seat': event.seat,
+    'victim': event.victim,
+  },
+  CardForced() => {
+    'type': 'cardForced',
+    'seat': event.seat,
+    'card': event.card.id,
   },
   PowerUsed() => {
     'type': 'powerUsed',
@@ -165,6 +181,18 @@ Event eventFromJson(Map<String, Object?> json) => _decode(json, 'event', () {
           ),
       ],
       destroyed: json['destroyed']! as bool,
+      overboard: switch (json['overboard']) {
+        null => null,
+        final id => Card.fromId(id as String),
+      },
+    ),
+    'victimChosen' => VictimChosen(
+      seat: field('seat'),
+      victim: field('victim'),
+    ),
+    'cardForced' => CardForced(
+      seat: field('seat'),
+      card: Card.fromId(json['card']! as String),
     ),
     'powerUsed' => PowerUsed(
       seat: field('seat'),
@@ -213,6 +241,11 @@ Map<String, Object?> questionToJson(Question question) => {
     BidQuestion() => {'type': 'bid', 'maxBid': question.maxBid},
     PlayQuestion() => {'type': 'play', 'legalCards': _ids(question.legalCards)},
     ChooseLeaderQuestion() => {'type': 'chooseLeader', 'seats': question.seats},
+    WalkPlankQuestion() => {
+      'type': 'walkPlank',
+      'pirates': _ids(question.pirates),
+    },
+    ChooseVictimQuestion() => {'type': 'chooseVictim', 'seats': question.seats},
     DiscardQuestion() => {
       'type': 'discard',
       'hand': _ids(question.hand),
@@ -235,6 +268,14 @@ Question questionFromJson(Map<String, Object?> json) =>
           legalCards: _cards(json['legalCards']),
         ),
         'chooseLeader' => ChooseLeaderQuestion(
+          seat: seat,
+          seats: _ints(json['seats']),
+        ),
+        'walkPlank' => WalkPlankQuestion(
+          seat: seat,
+          pirates: _cards(json['pirates']),
+        ),
+        'chooseVictim' => ChooseVictimQuestion(
           seat: seat,
           seats: _ints(json['seats']),
         ),
