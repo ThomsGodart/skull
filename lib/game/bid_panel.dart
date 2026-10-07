@@ -5,8 +5,15 @@ import '../ui/strings.dart';
 
 /// Lets the human pick a bid from 0 to [maxBid] and confirm it.
 class BidPanel extends StatefulWidget {
-  const BidPanel({super.key, required this.maxBid, required this.onBid});
+  const BidPanel({
+    super.key,
+    required this.maxBid,
+    required this.onBid,
+    this.initialBid,
+  });
 
+  /// The bid already placed, when it is being changed.
+  final int? initialBid;
   final int maxBid;
   final ValueChanged<int> onBid;
 
@@ -15,7 +22,7 @@ class BidPanel extends StatefulWidget {
 }
 
 class _BidPanelState extends State<BidPanel> {
-  int? _bid;
+  late int? _bid = widget.initialBid;
 
   @override
   Widget build(BuildContext context) {

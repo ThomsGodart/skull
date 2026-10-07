@@ -7,6 +7,7 @@ import 'package:skull_kings/engine/engine.dart';
 import 'package:skull_kings/game/game_controller.dart';
 import 'package:skull_kings/game/score_views.dart';
 import 'package:skull_kings/game/screen_awake.dart';
+import 'package:skull_kings/game/seat_chip.dart';
 import 'package:skull_kings/game/seat_identity.dart';
 import 'package:skull_kings/game/power_dialog.dart';
 import 'package:skull_kings/game/table_screen.dart';
@@ -48,6 +49,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
   }
 
+  /// Lifts [card], then plays it with the button.
+  Future<void> playCard(WidgetTester tester, Card card) async {
+    await tapCard(tester, card);
+    await tester.tap(find.byKey(const Key('play-card')));
+    await tester.pump(const Duration(milliseconds: 200));
+  }
+
   testWidgets('the table opens on round one and asks for a bid', (
     tester,
   ) async {
@@ -60,9 +68,8 @@ void main() {
     expect(find.byKey(const Key('bid-2')), findsNothing);
   });
 
-  testWidgets('a card is played with two taps: one lifts it, one plays it', (
-    tester,
-  ) async {
+  testWidgets('a tap lifts a card and says what it does; a second tap puts '
+      'it back, and only the button plays it', (tester) async {
     final controller = await openTable(tester);
     await tester.tap(find.byKey(const Key('bid-0')));
     await tester.pump();
@@ -71,9 +78,21 @@ void main() {
     final card = controller.playQuestion!.legalCards.first;
 
     await tapCard(tester, card);
+    expect(find.byKey(const Key('card-hint')), findsOneWidget);
+    expect(find.byKey(const Key('play-card')), findsOneWidget);
 
-    expect(controller.playQuestion, isNotNull, reason: 'only lifted so far');
-    expect(find.text(Strings.tapAgain), findsOneWidget);
+    await tapCard(tester, card);
+    expect(controller.playQuestion, isNotNull, reason: 'put back, not played');
+    expect(find.byKey(const Key('play-card')), findsNothing);
+
+    await tapCard(tester, card);
+    await tester.tap(find.byKey(const Key('play-card')));
+    await tester.pump();
+    if (card.kind == CardKind.tigress) {
+      await tester.tap(find.byKey(const Key('tigress-escape')));
+      await tester.pump();
+    }
+    expect(controller.hand, isNot(contains(card)));
   });
 
   testWidgets('the score sheet stays within reach while a round summary '
@@ -84,8 +103,7 @@ void main() {
     await tester.tap(find.byKey(const Key('place-bid')));
     await tester.pump();
     final card = controller.playQuestion!.legalCards.first;
-    await tapCard(tester, card);
-    await tapCard(tester, card);
+    await playCard(tester, card);
     if (card.kind == CardKind.tigress) {
       await tester.tap(find.byKey(const Key('tigress-escape')));
     }
@@ -220,8 +238,7 @@ void main() {
           await tester.tap(find.byKey(const Key('place-bid')));
         } else if (controller.playQuestion case final question?) {
           final card = question.legalCards.first;
-          await tapCard(tester, card);
-          await tapCard(tester, card);
+          await playCard(tester, card);
           if (card.kind == CardKind.tigress) {
             await tester.tap(find.byKey(const Key('tigress-escape')));
           }
@@ -316,8 +333,7 @@ void main() {
                 card.kind == CardKind.joker && suitIsOpen(controller.trick),
             orElse: () => question.legalCards.first,
           );
-          await tapCard(tester, card);
-          await tapCard(tester, card);
+          await playCard(tester, card);
           if (card.kind == CardKind.tigress) {
             await tester.tap(find.byKey(const Key('tigress-escape')));
           }
@@ -419,8 +435,7 @@ void main() {
         await tester.tap(find.byKey(const Key('place-bid')));
       } else if (controller.playQuestion case final question?) {
         final card = question.legalCards.first;
-        await tapCard(tester, card);
-        await tapCard(tester, card);
+        await playCard(tester, card);
         if (card.kind == CardKind.tigress) {
           await tester.tap(find.byKey(const Key('tigress-escape')));
         }
@@ -494,21 +509,65 @@ void main() {
     expect(find.text(Strings.bonusHeading), findsNWidgets(2));
   });
 
-  testWidgets('a card tapped while bidding is shown large, with what it '
-      'does, and put away by a second tap', (tester) async {
+  testWidgets('a card tapped while bidding tells what it does without '
+      'hiding the table, and a second tap puts it away', (tester) async {
     final controller = await openTable(tester);
     final card = controller.hand.single;
 
     await tapCard(tester, card);
 
-    expect(find.byKey(const Key('card-preview')), findsOneWidget);
+    expect(find.byKey(const Key('card-hint')), findsOneWidget);
+    expect(find.byKey(const Key('play-card')), findsNothing);
+    expect(find.byKey(const Key('place-bid')), findsOneWidget);
     expect(controller.bidQuestion, isNotNull, reason: 'still bidding');
     final hint = Strings.cardHint(card, powers: false);
-    if (hint != null) expect(find.text(hint), findsOneWidget);
+    if (hint != null) expect(find.textContaining(hint), findsOneWidget);
 
     await tapCard(tester, card);
 
-    expect(find.byKey(const Key('card-preview')), findsNothing);
+    expect(find.byKey(const Key('card-hint')), findsNothing);
+  });
+
+  testWidgets('a seat shows what it staked with Rascal, that it holds '
+      'Harry, and a token per trick bid when asked to', (tester) async {
+    Widget chip({bool tokens = true}) => MaterialApp(
+      theme: Tokens.theme(),
+      home: Center(
+        child: SizedBox(
+          width: 160,
+          child: SeatChip(
+            identity: const SeatIdentity('Bob', Tokens.gold),
+            bid: 3,
+            tricksWon: 1,
+            score: 40,
+            wager: 20,
+            hasHarry: true,
+            showTokens: tokens,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpWidget(chip());
+
+    expect(find.text(Strings.wagerBadge(20)), findsOneWidget);
+    expect(find.text(Strings.harryBadge), findsOneWidget);
+    final tokens = find.descendant(
+      of: find.byKey(const Key('trick-tokens')),
+      matching: find.byType(Container),
+    );
+    expect(tokens, findsNWidgets(3));
+
+    await tester.pumpWidget(chip(tokens: false));
+    expect(find.byKey(const Key('trick-tokens')), findsNothing);
+  });
+
+  test('left to himself, Harry moves the bid towards the tricks taken', () {
+    expect(GameController.harryChange(2, 3, const [-1, 0, 1]), 1);
+    expect(GameController.harryChange(2, 0, const [-1, 0, 1]), -1);
+    expect(GameController.harryChange(2, 2, const [-1, 0, 1]), 0);
+    expect(GameController.harryChange(0, 0, const [0, 1]), 0);
+    // A bid of zero cannot go lower.
+    expect(GameController.harryChange(4, 2, const [0]), 0);
   });
 
   test('a pirate with its power on tells that power, a plain one how it '
@@ -571,8 +630,7 @@ void main() {
           await tester.tap(find.byKey(const Key('place-bid')));
         } else if (controller.playQuestion case final question?) {
           final card = question.legalCards.first;
-          await tapCard(tester, card);
-          await tapCard(tester, card);
+          await playCard(tester, card);
           if (card.kind == CardKind.tigress) {
             await tester.tap(find.byKey(const Key('tigress-escape')));
           }

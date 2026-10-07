@@ -82,12 +82,14 @@ void main() {
       expect(game.pending, hasLength(4), reason: 'nothing changed');
     });
 
-    test('a seat cannot bid twice', () {
+    test('a seat that bids again changes its bid, within the same limits', () {
       final game = Game(config);
       game.answer(const BidAnswer(seat: 0, bid: 1));
+      game.answer(const BidAnswer(seat: 0, bid: 0));
 
+      expect(game.viewFor(0).bids[0], 0);
       expect(
-        () => game.answer(const BidAnswer(seat: 0, bid: 0)),
+        () => game.answer(const BidAnswer(seat: 0, bid: 2)),
         throwsA(isA<IllegalAnswer>()),
       );
     });

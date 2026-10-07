@@ -41,7 +41,27 @@ abstract final class Strings {
   static String followSuit(Suit suit) => 'À toi — fournis du ${suitName(suit)}';
   static String noSuitHeld(Suit suit) =>
       'À toi — pas de ${suitName(suit)} : joue ce que tu veux';
-  static const tapAgain = 'Touche encore la carte pour la jouer';
+  static const playCard = 'Jouer';
+  static String bidPlaced(int bid) => 'Pari validé : $bid';
+  static const waitingForBids = 'En attente des autres joueurs…';
+  static const changeBid = 'Modifier mon pari';
+  static String destroyedTricks(int count) =>
+      '$count pli${count > 1 ? 's' : ''} détruit${count > 1 ? 's' : ''} : '
+      'personne ne l${count > 1 ? 'es' : '\''} a remporté${count > 1 ? 's' : ''}';
+  static String wagerBadge(int amount) => 'Mise $amount';
+  static const harryBadge = 'Harry ±1';
+  static const harryBadgeHelp =
+      'A gagné un pli avec Harry : pourra modifier son pari de 1 à la fin '
+      'de la manche';
+  static String wagerBadgeHelp(int amount) =>
+      'A misé $amount avec Rascal le Flambeur';
+  static const trickTokensLabel = 'Jetons de plis';
+  static const trickTokensHelp =
+      'Un jeton par pli parié, plein une fois le pli remporté.';
+  static const autoHarryLabel = 'Harry le Géant automatique';
+  static const autoHarryHelp =
+      'À la fin de la manche, ton pari est ajusté tout seul vers le nombre '
+      'de plis remportés.';
   static String thinking(String name) => '$name réfléchit…';
   static String trickFor(String name) => 'Pli pour $name';
   static const trickForYou = 'Pli pour toi';
@@ -479,6 +499,14 @@ abstract final class Strings {
       'rejoignent jouent, et tu pourras ajouter des bots au lancement.';
   static const onlineStart = 'Lancer la partie';
   static const onlineNeedGuest = 'Attends qu\'un autre joueur te rejoigne.';
+  static String onlineAwayCounting(String name, int seconds) =>
+      '$name est déconnecté · un bot joue à sa place dans $seconds s';
+  static String onlineAwayHeld(String name) =>
+      '$name est déconnecté · on l\'attend';
+  static String onlineAwayReplaced(String name) =>
+      '$name est déconnecté · un bot joue à sa place jusqu\'à son retour';
+  static const onlineKeepWaiting = 'L\'attendre';
+  static const onlineReplaceNow = 'Mettre un bot';
   static const onlineHostTag = 'hôte';
   static const onlineAwayTag = 'déconnecté';
   static const onlineYouTag = 'toi';
@@ -526,6 +554,9 @@ abstract final class Strings {
   static const winnerMark = '\u{1F3C6}';
   static const youWin = 'Tu gagnes !';
   static String wins(String name) => '$name gagne';
+  static String youWinWith(int score) => 'Tu gagnes avec ${points(score)} !';
+  static String winsWith(String name, int score) =>
+      '$name gagne avec ${points(score)}';
   static const playAgain = 'Rejouer';
   static const home = 'Accueil';
 

@@ -410,4 +410,22 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test('a bid can be changed until every bid is in, and no longer after', () {
+    final game = Game(const GameConfig(players: 3, seed: 3));
+    game.answer(const BidAnswer(seat: 0, bid: 1));
+    game.answer(const BidAnswer(seat: 0, bid: 0));
+    expect(game.viewFor(0).bids[0], 0);
+    expect(game.pending.map((q) => q.seat), [1, 2]);
+
+    game.answer(const BidAnswer(seat: 1, bid: 0));
+    game.answer(const BidAnswer(seat: 2, bid: 1));
+    expect(
+      () => game.answer(const BidAnswer(seat: 0, bid: 1)),
+      throwsA(isA<IllegalAnswer>()),
+    );
+    expect(game.viewFor(1).bids, [0, 0, 1]);
+    // What was answered is all it takes to play the game again.
+    expect(Game.replay(game.config, game.answers).viewFor(1).bids, [0, 0, 1]);
+  });
 }

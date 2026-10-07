@@ -18,6 +18,9 @@ class SeatChip extends StatelessWidget {
     this.isDealer = false,
     this.leadsNext = false,
     this.emphasizeBid = false,
+    this.wager,
+    this.hasHarry = false,
+    this.showTokens = false,
   });
 
   final SeatIdentity identity;
@@ -39,6 +42,15 @@ class SeatChip extends StatelessWidget {
 
   /// The bids were just turned over: this one is shown off.
   final bool emphasizeBid;
+
+  /// What the seat staked with Rascal this round, once it did.
+  final int? wager;
+
+  /// The seat won a trick with Harry: it may move its bid at the end.
+  final bool hasHarry;
+
+  /// A token per trick bid, filled once taken: read at a glance.
+  final bool showTokens;
 
   /// Gold on target, red once over the bid: a glance tells how a seat stands.
   Color get _tricksColor {
@@ -114,6 +126,22 @@ class SeatChip extends StatelessWidget {
               ],
             ),
           ),
+          if (showTokens && bid != null && !identity.isGhost) _tokens(bid!),
+          if (wager != null || hasHarry)
+            _fitted(
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (wager case final amount?)
+                    _badge(
+                      Strings.wagerBadge(amount),
+                      Strings.wagerBadgeHelp(amount),
+                    ),
+                  if (hasHarry)
+                    _badge(Strings.harryBadge, Strings.harryBadgeHelp),
+                ],
+              ),
+            ),
           _fitted(
             Text(
               [
@@ -124,6 +152,40 @@ class SeatChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// One token per trick bid: full when taken, hollow while still to take.
+  /// Tricks beyond the bid are red.
+  Widget _tokens(int bid) {
+    final count = tricksWon > bid ? tricksWon : bid;
+    if (count == 0) return const SizedBox.shrink();
+    return Padding(
+      key: const Key('trick-tokens'),
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: _fitted(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var index = 0; index < count; index++)
+              Container(
+                width: 12,
+                height: 12,
+                margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: index >= bid
+                      ? Tokens.danger
+                      : (index < tricksWon ? Tokens.gold : Colors.transparent),
+                  border: Border.all(
+                    color: index >= bid ? Tokens.danger : Tokens.gold,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -121,6 +121,21 @@ class GameController extends ChangeNotifier {
   /// Set when the human must bid.
   BidQuestion? bidQuestion;
 
+  /// The bid the human placed, while the others are still choosing theirs.
+  int? placedBid;
+  BidQuestion? _lastBidQuestion;
+
+  /// Tricks nobody won this round: destroyed by a sea monster, or thrown
+  /// away. They explain why the tricks taken fall short of the cards dealt.
+  int destroyedTricks = 0;
+
+  /// What each seat staked with Rascal this round.
+  Map<int, int> wagers = const {};
+
+  /// The seats that won a trick with Harry this round, and so may move their
+  /// bid at the end of it.
+  Set<int> harrySeats = const {};
+
   /// Set when the human must play a card.
   PlayQuestion? playQuestion;
 
@@ -196,8 +211,27 @@ class GameController extends ChangeNotifier {
 
   /// Ignored unless the human is being asked to bid.
   void bid(int bid) {
-    if (bidQuestion == null) return;
+    final question = bidQuestion;
+    if (question == null) return;
+    _lastBidQuestion = question;
+    // Before the answer goes: the bids may be turned over at once.
+    placedBid = bid;
     _answer(BidAnswer(seat: humanSeat, bid: bid));
+    _notify();
+  }
+
+  /// Lets the human choose another bid, while the bids are not turned over.
+  void changeBid() {
+    if (placedBid == null || bidQuestion != null) return;
+    bidQuestion = _lastBidQuestion;
+    _notify();
+  }
+
+  /// What Harry does to a bid of [bid] after [tricksWon] tricks when left to
+  /// himself: he moves it towards the tricks taken, if [changes] allow.
+  static int harryChange(int bid, int tricksWon, List<int> changes) {
+    final wanted = (tricksWon - bid).clamp(-1, 1);
+    return changes.contains(wanted) ? wanted : 0;
   }
 
   /// Ignored unless the human is being asked to play.
@@ -327,6 +361,10 @@ class GameController extends ChangeNotifier {
         lastTrickWinner = null;
         lastTrickOverboard = null;
         forcedCard = null;
+        placedBid = null;
+        destroyedTricks = 0;
+        wagers = const {};
+        harrySeats = const {};
         _order = const [];
       case TurnsSet():
         _order = event.order;
@@ -335,6 +373,9 @@ class GameController extends ChangeNotifier {
       case BidsRevealed():
         // The ghost bids nothing.
         bids = List<int?>.of(event.bids)..length = seats;
+        placedBid = null;
+        // Too late to change one's mind.
+        bidQuestion = null;
         _revealingBids = true;
         _notify();
         await _wait(speed.bidReveal);
@@ -363,6 +404,7 @@ class GameController extends ChangeNotifier {
         trickAlliances = event.alliances;
         trickOverboard = event.overboard;
         trickSideBonuses = event.sideBonuses;
+        if (event.destroyed) destroyedTricks++;
         if (!event.destroyed) {
           tricksWon = [
             for (var seat = 0; seat < seats; seat++)
@@ -386,6 +428,9 @@ class GameController extends ChangeNotifier {
         // The human's own power needs no announcement: its question, or its
         // result, follows at once. Harry's is the exception, since nothing
         // happens until the round is over.
+        if (event.pirate == Pirate.harry) {
+          harrySeats = {...harrySeats, event.seat};
+        }
         if (event.seat != humanSeat || event.pirate == Pirate.harry) {
           await _announce(event);
         }
@@ -407,6 +452,7 @@ class GameController extends ChangeNotifier {
       case CardsDiscarded():
         await _announce(event);
       case WagerPlaced():
+        wagers = {...wagers, event.seat: event.amount};
         await _announce(event);
       case BidChanged():
         bids = [

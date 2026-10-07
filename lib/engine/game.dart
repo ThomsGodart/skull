@@ -193,7 +193,17 @@ final class Game {
   /// Throws [IllegalAnswer], leaving the game untouched, when the answer does
   /// not match a pending question.
   void answer(Answer answer) {
-    final question = pending.where((q) => q.seat == answer.seat).firstOrNull;
+    var question = pending.where((q) => q.seat == answer.seat).firstOrNull;
+    // A bid stays the player's own business until all are in: it may be
+    // changed for as long as the bids are not turned over.
+    if (question == null &&
+        answer is BidAnswer &&
+        !_finished &&
+        !_bidsRevealed &&
+        answer.seat >= 0 &&
+        answer.seat < _players) {
+      question = BidQuestion(seat: answer.seat, maxBid: _cardsDealt);
+    }
     switch ((question, answer)) {
       case (final BidQuestion question, final BidAnswer answer):
         _bid(question, answer);

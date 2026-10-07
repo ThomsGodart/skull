@@ -164,7 +164,7 @@ Ajouté le 2026-10-05 à ta demande. Supabase est déjà initialisé dans `darts
 |---|---|---|
 | **E1** | Accueil | « Continuer » (si une partie est en cours, avec manche et score), « Nouvelle partie », « Jouer en ligne », « Compteur de points », puis Historique, Statistiques, Règles, Réglages. |
 | **E2** | Nouvelle partie | Nombre d'adversaires, préréglage (M3), mode de score, détail de l'extension. Résumé avant de lancer. |
-| **E3** | Table | Voir §7. |
+| **E3** | Table | Voir §7. **Retours du test en ligne, 2026-10-07 (Thomas)** : un pari validé s'affiche comme tel et reste modifiable tant que tous les paris ne sont pas révélés (le moteur accepte un nouveau pari jusque-là) ; une carte touchée se soulève et son rôle s'affiche sur une ligne au-dessus de la main, sans masquer la table ; un second appui la repose, et seule la touche « Jouer » la joue (sauf réglage « jouer en un appui ») ; en paysage, les cartes prennent la hauteur disponible ; les plis détruits sont comptés près du total des paris ; chaque siège montre la mise de Rascal et la possession de Harry ; réglages « jetons de plis » et « Harry automatique ». En ligne : un joueur déconnecté est annoncé à tous avec le décompte avant son remplacement par un bot ; l'hôte peut choisir de l'attendre, ou de mettre le bot tout de suite. |
 | **E4** | Fin de partie | Voir U12. |
 | **E5** | Historique | Une ligne par partie terminée : date, mode, nombre de joueurs, mon classement, mon score, gagnant. Suppression par appui long, avec confirmation. |
 | **E6** | Détail d'une partie | Feuille de score complète et configuration. Rejeu pli par pli : plus tard (les données sont déjà là grâce à A7). |

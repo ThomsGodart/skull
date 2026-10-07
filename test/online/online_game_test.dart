@@ -324,6 +324,53 @@ void main() {
     });
   });
 
+  test('a guest who drops out is counted down, then replaced; the host may '
+      'wait for them instead, or put the bot at once', () async {
+    final theHost = host(grace: const Duration(milliseconds: 60));
+    await theHost.open('ROOM');
+    final leaving = guest('g1');
+    final staying = guest('g2');
+    await leaving.join('ROOM');
+    await staying.join('ROOM');
+    await pause(fast * 3);
+    final seen = <List<Absence>>[];
+    staying.absences.listen(seen.add);
+    theHost.start(Random(7)).open();
+    await pause(fast * 3);
+
+    await leaving.leave();
+    await pause(fast * 3);
+    expect(theHost.currentAbsences.single.state, AbsenceState.counting);
+    expect(seen.last.single.name, 'g1');
+    expect(seen.last.single.until, isNotNull);
+
+    // The host knows they are coming back: the countdown stops.
+    theHost.keepWaiting('g1');
+    await pause(const Duration(milliseconds: 100));
+    expect(theHost.currentAbsences.single.state, AbsenceState.held);
+    expect(seen.last.single.state, AbsenceState.held);
+
+    theHost.replaceNow('g1');
+    await pause(fast * 3);
+    expect(seen.last.single.state, AbsenceState.replaced);
+  });
+
+  test('left alone, the countdown ends with a bot on the seat', () async {
+    final theHost = host(grace: const Duration(milliseconds: 30));
+    await theHost.open('ROOM');
+    final leaving = guest('g1');
+    await leaving.join('ROOM');
+    await pause(fast * 3);
+    theHost.start(Random(7), bots: 1).open();
+    await pause(fast * 3);
+
+    await leaving.leave();
+    await pause(const Duration(milliseconds: 80));
+
+    expect(theHost.currentAbsences.single.state, AbsenceState.replaced);
+    await theHost.close();
+  });
+
   test('when the host closes the room, the guests are told', () async {
     final (theHost, guests, _) = await startGame(1);
     var told = false;

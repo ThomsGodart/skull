@@ -110,6 +110,55 @@ final class Seating {
   };
 }
 
+/// What becomes of the seat of a player who dropped out of a started game.
+enum AbsenceState {
+  /// A bot takes the seat when [Absence.until] comes.
+  counting,
+
+  /// The host said to wait: nobody plays the seat until its player is back,
+  /// or the host changes their mind.
+  held,
+
+  /// A bot plays the seat until its player is back.
+  replaced,
+}
+
+/// A player of a started game who is not connected.
+final class Absence {
+  const Absence({
+    required this.id,
+    required this.name,
+    required this.state,
+    this.until,
+  });
+
+  final String id;
+  final String name;
+  final AbsenceState state;
+
+  /// When a bot takes over, while [state] is [AbsenceState.counting].
+  final DateTime? until;
+
+  /// As sent to the guests: the time left rather than a moment, since two
+  /// phones never quite agree on what time it is.
+  Json toJson(DateTime now) => {
+    'id': id,
+    'name': name,
+    'state': state.name,
+    if (until case final until?) 'left': until.difference(now).inMilliseconds,
+  };
+
+  static Absence fromJson(Json json, DateTime now) => Absence(
+    id: json['id']! as String,
+    name: json['name']! as String,
+    state: AbsenceState.values.byName(json['state']! as String),
+    until: switch (json['left']) {
+      final int left => now.add(Duration(milliseconds: left)),
+      _ => null,
+    },
+  );
+}
+
 /// A short code friends can read out to each other.
 String newRoomCode(Random random) {
   // No letter that is mistaken for another when read aloud or typed.
@@ -156,7 +205,67 @@ class OnlineHost {
 
   /// For each guest seat, every event sent to it so far, as JSON.
   final Map<int, List<Json>> _logs = {};
+
+  /// The players of the started game who are away, and the timer that puts
+  /// a bot on the seat of each one still counted down.
+  final Map<String, Absence> _away = {};
   final Map<String, Timer> _absences = {};
+  final _absent = StreamController<List<Absence>>.broadcast();
+
+  /// Who is away, each time that changes.
+  Stream<List<Absence>> get absences => _absent.stream;
+
+  List<Absence> get currentAbsences => List.unmodifiable(_away.values);
+
+  void _setAbsence(RoomPlayer player, AbsenceState? state) {
+    _absences.remove(player.id)?.cancel();
+    final seat = _players.indexOf(player);
+    if (state == null) {
+      _away.remove(player.id);
+    } else {
+      DateTime? until;
+      if (state == AbsenceState.counting) {
+        until = DateTime.now().add(grace);
+        _absences[player.id] = Timer(
+          grace,
+          () => _setAbsence(player, AbsenceState.replaced),
+        );
+      }
+      _away[player.id] = Absence(
+        id: player.id,
+        name: player.name,
+        state: state,
+        until: until,
+      );
+    }
+    _table?.setAutopilot(seat, on: state == AbsenceState.replaced);
+    final list = currentAbsences;
+    if (!_absent.isClosed) _absent.add(list);
+    final now = DateTime.now();
+    transport.send({
+      'type': 'absences',
+      'list': [for (final absence in list) absence.toJson(now)],
+    });
+  }
+
+  RoomPlayer? _guest(String id) =>
+      _players.where((player) => player.id == id && id != self.id).firstOrNull;
+
+  /// The host knows [id] is coming back: no bot takes the seat meanwhile.
+  void keepWaiting(String id) {
+    final player = _guest(id);
+    if (player != null && _away.containsKey(id)) {
+      _setAbsence(player, AbsenceState.held);
+    }
+  }
+
+  /// A bot takes the seat of [id] now, until they are back.
+  void replaceNow(String id) {
+    final player = _guest(id);
+    if (player != null && _away.containsKey(id)) {
+      _setAbsence(player, AbsenceState.replaced);
+    }
+  }
 
   /// The room as it stands, each time it changes.
   Stream<Lobby> get lobby => _lobby.stream;
@@ -203,17 +312,14 @@ class OnlineHost {
   void _onPresence(Set<String> present) {
     _present = present;
     _everPresent.addAll(present);
-    for (final (seat, player) in _players.indexed) {
-      if (player.id == self.id) continue;
+    for (final player in _players) {
+      if (player.id == self.id || !started) continue;
       if (present.contains(player.id)) {
-        _absences.remove(player.id)?.cancel();
-        _table?.setAutopilot(seat, on: false);
-      } else if (started) {
-        // A bot takes over if they are not back in time.
-        _absences[player.id] ??= Timer(
-          grace,
-          () => _table?.setAutopilot(seat, on: true),
-        );
+        if (_away.containsKey(player.id)) _setAbsence(player, null);
+      } else if (!_away.containsKey(player.id)) {
+        // A bot takes over if they are not back in time — unless the host
+        // says otherwise.
+        _setAbsence(player, AbsenceState.counting);
       }
     }
     if (!started) {
@@ -355,6 +461,7 @@ class OnlineHost {
     }
     await transport.disconnect();
     await _lobby.close();
+    await _absent.close();
   }
 }
 
@@ -376,6 +483,10 @@ class OnlineGuest {
   final _lobby = StreamController<Lobby>.broadcast();
   final _refused = StreamController<String>.broadcast();
   final _hostPresent = StreamController<bool>.broadcast();
+  final _absent = StreamController<List<Absence>>.broadcast();
+
+  /// Who is away from the started game, as the host last said.
+  Stream<List<Absence>> get absences => _absent.stream;
   final _closed = Completer<void>();
   final List<StreamSubscription<Object?>> _subscriptions = [];
   final _started = Completer<(Seating, SeatFeed)>();
@@ -459,6 +570,12 @@ class OnlineGuest {
         case 'feed':
           _hostId ??= message.from;
           _onFeed(payload);
+        case 'absences':
+          final now = DateTime.now();
+          _absent.add([
+            for (final absence in payload['list']! as List)
+              Absence.fromJson(absence as Json, now),
+          ]);
         case 'closed':
           if (!_closed.isCompleted) _closed.complete();
       }
@@ -502,6 +619,7 @@ class OnlineGuest {
     await _lobby.close();
     await _refused.close();
     await _hostPresent.close();
+    await _absent.close();
   }
 }
 

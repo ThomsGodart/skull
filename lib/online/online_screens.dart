@@ -260,13 +260,135 @@ Widget _onlineTable({
   required AppSettings settings,
   required String leaveWarning,
   ValueListenable<String?>? banner,
+  required Stream<List<Absence>> absences,
+  List<Absence> initialAbsences = const [],
+  String selfId = '',
+  void Function(String id)? onKeepWaiting,
+  void Function(String id)? onReplaceNow,
 }) => TableScreen(
   controller: GameController.onFeed(feed, speed: speed),
   seatIdentities: onlineSeats(seating),
   settings: settings,
   banner: banner,
+  notices: AbsenceNotices(
+    absences: absences,
+    initial: initialAbsences,
+    selfId: selfId,
+    onKeepWaiting: onKeepWaiting,
+    onReplaceNow: onReplaceNow,
+  ),
   leaveWarning: leaveWarning,
 );
+
+/// Says who dropped out of the game and what becomes of their seat: the
+/// seconds left before a bot takes it, and, for the host, the way to wait
+/// for them instead or to put the bot there at once.
+class AbsenceNotices extends StatefulWidget {
+  const AbsenceNotices({
+    super.key,
+    required this.absences,
+    this.initial = const [],
+    this.selfId = '',
+    this.onKeepWaiting,
+    this.onReplaceNow,
+  });
+
+  final Stream<List<Absence>> absences;
+  final List<Absence> initial;
+
+  /// This phone's own player: it is never told about itself.
+  final String selfId;
+
+  /// Set on the host's phone only: its player decides.
+  final void Function(String id)? onKeepWaiting;
+  final void Function(String id)? onReplaceNow;
+
+  @override
+  State<AbsenceNotices> createState() => _AbsenceNoticesState();
+}
+
+class _AbsenceNoticesState extends State<AbsenceNotices> {
+  late List<Absence> _absences = widget.initial;
+  StreamSubscription<List<Absence>>? _subscription;
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = widget.absences.listen(
+      (absences) => setState(() => _absences = absences),
+    );
+    // The countdown moves by itself.
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_absences.any((a) => a.state == AbsenceState.counting)) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = _absences.where((a) => a.id != widget.selfId).toList();
+    if (shown.isEmpty) return const SizedBox.shrink();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [for (final absence in shown) _line(absence)],
+    );
+  }
+
+  Widget _line(Absence absence) {
+    final left = absence.until?.difference(DateTime.now()).inSeconds ?? 0;
+    final (text, label, action) = switch (absence.state) {
+      AbsenceState.counting => (
+        Strings.onlineAwayCounting(absence.name, left < 0 ? 0 : left),
+        Strings.onlineKeepWaiting,
+        widget.onKeepWaiting,
+      ),
+      AbsenceState.held => (
+        Strings.onlineAwayHeld(absence.name),
+        Strings.onlineReplaceNow,
+        widget.onReplaceNow,
+      ),
+      AbsenceState.replaced => (
+        Strings.onlineAwayReplaced(absence.name),
+        Strings.onlineKeepWaiting,
+        widget.onKeepWaiting,
+      ),
+    };
+    return Container(
+      key: Key('absence-${absence.id}'),
+      width: double.infinity,
+      color: Tokens.panelRaised,
+      padding: const EdgeInsets.symmetric(
+        horizontal: Tokens.space3,
+        vertical: Tokens.space1,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(color: Tokens.text, fontSize: 13),
+            ),
+          ),
+          if (action != null)
+            TextButton(
+              key: Key('absence-action-${absence.id}'),
+              onPressed: () => action(absence.id),
+              child: Text(label),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 /// The room of the phone that created it: its code, who came, and the
 /// button that starts the game.
@@ -413,6 +535,11 @@ class _HostRoomScreenState extends State<HostRoomScreen> {
           speed: widget.speed,
           settings: widget.settings,
           leaveWarning: Strings.onlineLeaveHost,
+          absences: widget.host.absences,
+          initialAbsences: widget.host.currentAbsences,
+          selfId: widget.host.self.id,
+          onKeepWaiting: widget.host.keepWaiting,
+          onReplaceNow: widget.host.replaceNow,
         ),
       ),
     );
@@ -552,6 +679,8 @@ class _GuestRoomScreenState extends State<GuestRoomScreen> {
           settings: widget.settings,
           leaveWarning: Strings.onlineLeaveGuest,
           banner: _banner,
+          absences: widget.guest.absences,
+          selfId: widget.guest.self.id,
         ),
       ),
     );

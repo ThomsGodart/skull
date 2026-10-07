@@ -33,6 +33,8 @@ class AppSettings extends ChangeNotifier {
   static const _singleTapKey = 'singleTapPlay';
   static const _hapticsKey = 'haptics';
   static const _reduceMotionKey = 'reduceMotion';
+  static const _autoHarryKey = 'autoHarry';
+  static const _trickTokensKey = 'trickTokens';
 
   static Future<AppSettings> load(SettingsStore store) async {
     final values = await store.readAll();
@@ -73,6 +75,8 @@ class AppSettings extends ChangeNotifier {
     settings._singleTapPlay = values[_singleTapKey] == 'true';
     settings._haptics = values[_hapticsKey] != 'false';
     settings._reduceMotion = values[_reduceMotionKey] == 'true';
+    settings._autoHarry = values[_autoHarryKey] == 'true';
+    settings._trickTokens = values[_trickTokensKey] == 'true';
     return settings;
   }
 
@@ -89,6 +93,8 @@ class AppSettings extends ChangeNotifier {
   bool _singleTapPlay = false;
   bool _haptics = true;
   bool _reduceMotion = false;
+  bool _autoHarry = false;
+  bool _trickTokens = false;
 
   /// The name shown at the human's seat.
   String get playerName => _playerName;
@@ -161,6 +167,23 @@ class AppSettings extends ChangeNotifier {
 
   /// Cards move without animation, whatever the system setting says.
   bool get reduceMotion => _reduceMotion;
+
+  /// Harry's power is used without asking: the bid moves towards the tricks
+  /// taken, as far as it may.
+  bool get autoHarry => _autoHarry;
+
+  /// Each seat shows a token per trick bid, filled once taken.
+  bool get trickTokens => _trickTokens;
+
+  Future<void> setAutoHarry(bool value) {
+    _autoHarry = value;
+    return _changed(_autoHarryKey, '$value');
+  }
+
+  Future<void> setTrickTokens(bool value) {
+    _trickTokens = value;
+    return _changed(_trickTokensKey, '$value');
+  }
 
   Future<void> setBotSpeed(BotSpeed speed) {
     _botSpeed = speed;

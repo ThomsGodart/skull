@@ -29,6 +29,7 @@ class TableScreen extends StatefulWidget {
     this.human = const SeatIdentity(Strings.you, Tokens.gold),
     this.seatIdentities,
     this.banner,
+    this.notices,
     this.leaveWarning,
     this.settings,
     this.screenAwake = const WakelockScreenAwake(),
@@ -55,6 +56,10 @@ class TableScreen extends StatefulWidget {
   /// Something to tell the player above the table for as long as it is not
   /// null: a paused online game, for instance.
   final ValueListenable<String?>? banner;
+
+  /// Shown under the top bar: what an online game has to say about who is
+  /// away.
+  final Widget? notices;
 
   /// What leaving costs, when the game is not one that is saved and resumed.
   final String? leaveWarning;
@@ -144,6 +149,21 @@ class _TableScreenState extends State<TableScreen> {
   /// A pirate just won the human a trick: a dialog asks how to use its power.
   /// It cannot be dismissed, since the game waits for the answer.
   Future<void> _askPower(AfterTrickQuestion question) async {
+    // Left to himself, Harry moves the bid towards the tricks taken.
+    if (question case AdjustBidQuestion(:final seat, :final changes)
+        when widget.settings?.autoHarry ?? false) {
+      _game.answerAfterTrick(
+        AdjustBidAnswer(
+          seat: seat,
+          change: GameController.harryChange(
+            _game.bids[seat] ?? 0,
+            _game.tricksWon[seat],
+            changes,
+          ),
+        ),
+      );
+      return;
+    }
     final answer = await showDialog<Answer>(
       context: context,
       barrierDismissible: false,
@@ -198,15 +218,19 @@ class _TableScreenState extends State<TableScreen> {
     _game.dismissStock();
   }
 
+  /// A tap on a card that may be played lifts it, to read what it does; a
+  /// second tap puts it back. It is played with the button, never by a tap
+  /// meant to put it away — unless the player asked for single-tap play.
   Future<void> _onCardTap(Card card) async {
-    if (card != _selected && !_singleTap) {
-      _vibrate(HapticFeedback.selectionClick);
-      setState(() {
-        _selected = card;
-        _inspected = null;
-      });
-      return;
-    }
+    if (_singleTap) return _play(card);
+    _vibrate(HapticFeedback.selectionClick);
+    setState(() {
+      _selected = card == _selected ? null : card;
+      _inspected = null;
+    });
+  }
+
+  Future<void> _play(Card card) async {
     TigressMode? mode;
     int? value;
     Suit? suit;
@@ -406,7 +430,6 @@ class _TableScreenState extends State<TableScreen> {
       return lead;
     }
     if (game.playQuestion case final question?) {
-      if (_selected != null) return Strings.tapAgain;
       if (game.forcedCard case final forced?
           when question.legalCards.contains(forced)) {
         return Strings.forcedCard(
@@ -456,11 +479,50 @@ class _TableScreenState extends State<TableScreen> {
     ),
   );
 
-  Widget _statusLine() => Text(
-    _status(),
-    textAlign: TextAlign.center,
-    style: const TextStyle(color: Tokens.text, fontWeight: FontWeight.w700),
-  );
+  /// What the table says in a line — or, while a card is lifted, what that
+  /// card does and the button that plays it. The game stays in view.
+  Widget _statusLine() {
+    final card = _selected ?? _inspected;
+    if (card == null) {
+      return Text(
+        _status(),
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: Tokens.text, fontWeight: FontWeight.w700),
+      );
+    }
+    final name = Strings.cardName(card, namedPirates: _namedPirates);
+    final hint = Strings.cardHint(card, powers: _namedPirates);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Tokens.space2,
+        vertical: Tokens.space1,
+      ),
+      decoration: BoxDecoration(
+        color: Tokens.panelRaised,
+        borderRadius: BorderRadius.circular(Tokens.radiusButton),
+        border: Border.all(color: Tokens.gold),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              hint == null ? name : '$name — $hint',
+              key: const Key('card-hint'),
+              style: const TextStyle(color: Tokens.text, fontSize: 13),
+            ),
+          ),
+          if (card == _selected) ...[
+            const SizedBox(width: Tokens.space2),
+            FilledButton(
+              key: const Key('play-card'),
+              onPressed: () => _play(card),
+              child: const Text(Strings.playCard),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Widget _hand(GameController game, {double? cardWidth}) => HandFan(
     cards: game.hand,
@@ -488,16 +550,14 @@ class _TableScreenState extends State<TableScreen> {
 
   /// Phone on its side: everyone on the left, the trick and the hand on the
   /// right, with cards sized to the little height there is.
-  Widget _landscapeBody(GameController game) => Row(
+  Widget _landscapeBody(GameController game, double height) => Row(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Expanded(
-        flex: 5,
+        flex: 4,
         child: Column(
           children: [
             Expanded(child: SingleChildScrollView(child: _opponents())),
-            const SizedBox(height: Tokens.space1),
-            _statusLine(),
             const SizedBox(height: Tokens.space1),
             _seatChip(game.humanSeat, showCards: false),
           ],
@@ -505,9 +565,25 @@ class _TableScreenState extends State<TableScreen> {
       ),
       const SizedBox(width: Tokens.space2),
       Expanded(
-        flex: 6,
+        flex: 7,
         child: Column(
-          children: [_trickZone(game, maxCard: 64), _hand(game, cardWidth: 60)],
+          children: [
+            // The height is shared between the trick and the hand, and the
+            // cards are as large as their share allows.
+            _trickZone(
+              game,
+              maxCard: ((height * 0.46 - 34) / CardView.aspect).clamp(64, 120),
+            ),
+            // On the wide side, where a card's text has room to be read.
+            _statusLine(),
+            _hand(
+              game,
+              cardWidth: ((height * 0.42 - 22) / CardView.aspect).clamp(
+                60,
+                110,
+              ),
+            ),
+          ],
         ),
       ),
     ],
@@ -515,62 +591,6 @@ class _TableScreenState extends State<TableScreen> {
 
   static bool _isLandscape(BoxConstraints constraints) =>
       constraints.maxWidth > constraints.maxHeight * 1.15;
-
-  /// The card being looked at, large, with what it does. A tap puts it away.
-  Widget _cardPreview(Card card) {
-    final hint = Strings.cardHint(card, powers: _namedPirates);
-    return Positioned.fill(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // As large as the room above the hand allows.
-          final width = (constraints.maxHeight * 0.34).clamp(90.0, 170.0);
-          // On its side, the phone has the hand on the right: the card is
-          // shown on the left, clear of it.
-          return Align(
-            alignment: _isLandscape(constraints)
-                ? const Alignment(-0.85, 0)
-                : const Alignment(0, -0.35),
-            child: GestureDetector(
-              onTap: () => setState(() {
-                _inspected = null;
-                _selected = null;
-              }),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CardView(
-                    card,
-                    key: const Key('card-preview'),
-                    width: width,
-                    namedPirates: _namedPirates,
-                  ),
-                  if (hint != null)
-                    Container(
-                      margin: const EdgeInsets.only(top: Tokens.space2),
-                      padding: const EdgeInsets.all(Tokens.space2),
-                      constraints: const BoxConstraints(maxWidth: 280),
-                      decoration: BoxDecoration(
-                        color: Tokens.panelRaised,
-                        borderRadius: BorderRadius.circular(
-                          Tokens.radiusButton,
-                        ),
-                        border: Border.all(color: Tokens.gold),
-                      ),
-                      child: Text(
-                        hint,
-                        key: const Key('card-hint'),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Tokens.text),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 
   /// What a pirate's power just did, in words.
   String? _powerNotice() {
@@ -649,6 +669,7 @@ class _TableScreenState extends State<TableScreen> {
                           ),
                         ),
                 ),
+              ?widget.notices,
               Expanded(
                 child: Stack(
                   children: [
@@ -657,12 +678,10 @@ class _TableScreenState extends State<TableScreen> {
                       child: LayoutBuilder(
                         builder: (context, constraints) =>
                             _isLandscape(constraints)
-                            ? _landscapeBody(game)
+                            ? _landscapeBody(game, constraints.maxHeight)
                             : _portraitBody(game),
                       ),
                     ),
-                    if (_selected ?? _inspected case final card?)
-                      _cardPreview(card),
                     if (game.roundSummary case final summary?)
                       _roundOver(summary),
                     if (over) _gameOver(game.result!),
@@ -707,14 +726,48 @@ class _TableScreenState extends State<TableScreen> {
               if (_game.totalBids case final total?)
                 FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text(
-                    Strings.bidsTotal(total, _game.cardsDealt),
-                    key: const Key('bids-total'),
-                    style: const TextStyle(
-                      color: Tokens.gold,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        Strings.bidsTotal(total, _game.cardsDealt),
+                        key: const Key('bids-total'),
+                        style: const TextStyle(
+                          color: Tokens.gold,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      // Tricks nobody took: fewer are left to win.
+                      if (_game.destroyedTricks > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(left: Tokens.space2),
+                          child: Tooltip(
+                            message: Strings.destroyedTricks(
+                              _game.destroyedTricks,
+                            ),
+                            child: Row(
+                              key: const Key('destroyed-tricks'),
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Pictogram(
+                                  CardLook.of(krakenCard).emblem,
+                                  size: 16,
+                                  color: Tokens.danger,
+                                ),
+                                Text(
+                                  ' −${_game.destroyedTricks}',
+                                  style: const TextStyle(
+                                    color: Tokens.danger,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
             ],
@@ -769,6 +822,9 @@ class _TableScreenState extends State<TableScreen> {
     isCurrent: _game.currentSeat == seat,
     isDealer: _game.dealer == seat,
     emphasizeBid: _game.revealingBids,
+    wager: _game.wagers[seat],
+    hasHarry: _game.harrySeats.contains(seat),
+    showTokens: widget.settings?.trickTokens ?? false,
     // Between two tricks, and while bids are open: who plays first.
     leadsNext:
         _game.leader == seat &&
@@ -783,7 +839,35 @@ class _TableScreenState extends State<TableScreen> {
       return BidPanel(
         key: ValueKey('bid-panel-${_game.round}'),
         maxBid: question.maxBid,
+        initialBid: _game.placedBid,
         onBid: _game.bid,
+      );
+    }
+    // The bid is in, the others' are not: say so, and let it be changed.
+    if (_game.placedBid case final bid?) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            Strings.bidPlaced(bid),
+            key: const Key('bid-placed'),
+            style: const TextStyle(
+              color: Tokens.gold,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: Tokens.space1),
+          const Text(
+            Strings.waitingForBids,
+            style: TextStyle(color: Tokens.mutedText),
+          ),
+          TextButton(
+            key: const Key('change-bid'),
+            onPressed: _game.changeBid,
+            child: const Text(Strings.changeBid),
+          ),
+        ],
       );
     }
     final bonuses = _game.trickBonuses;
@@ -941,8 +1025,11 @@ class _TableScreenState extends State<TableScreen> {
         fit: BoxFit.scaleDown,
         child: Text(
           result.winner == _game.humanSeat
-              ? Strings.youWin
-              : Strings.wins(_seats[result.winner].name),
+              ? Strings.youWinWith(result.scores[result.winner])
+              : Strings.winsWith(
+                  _seats[result.winner].name,
+                  result.scores[result.winner],
+                ),
           style: const TextStyle(
             color: Tokens.text,
             fontSize: 30,

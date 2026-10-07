@@ -68,6 +68,20 @@ class SettingsScreen extends StatelessWidget {
                 value: settings.reduceMotion,
                 onChanged: settings.setReduceMotion,
               ),
+              SwitchListTile(
+                key: const Key('setting-trick-tokens'),
+                title: const Text(Strings.trickTokensLabel),
+                subtitle: const Text(Strings.trickTokensHelp),
+                value: settings.trickTokens,
+                onChanged: settings.setTrickTokens,
+              ),
+              SwitchListTile(
+                key: const Key('setting-auto-harry'),
+                title: const Text(Strings.autoHarryLabel),
+                subtitle: const Text(Strings.autoHarryHelp),
+                value: settings.autoHarry,
+                onChanged: settings.setAutoHarry,
+              ),
               const Divider(),
               ListTile(
                 leading: CircleAvatar(

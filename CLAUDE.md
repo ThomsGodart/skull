@@ -18,6 +18,8 @@ L'icône de l'application est dessinée par `python3 tool/app_icon.py` (Pillow),
 
 Sauvegarde en ligne (`lib/cloud/`) : les magasins drift sont enveloppés par des `BackedUp…Store` qui recopient chaque changement dans la table Supabase `user_data`, sous un compte anonyme. C'est une copie, jamais une source : l'appli ne lit que la base locale, et toute erreur réseau est ignorée. Le schéma distant est dans `supabase/migrations/`.
 
+Version web : `web/sqlite3.wasm` et `web/drift_worker.js` viennent des publications GitHub de `sqlite3.dart` (étiquette `sqlite3-<version>`) et de `drift` (étiquette `drift-<version>`). Après une montée de version de `sqlite3` ou de `drift` dans `pubspec.lock`, les retélécharger aux mêmes versions. Le site est publié sur GitHub Pages par `.github/workflows/pages.yml` à chaque poussée sur `main`.
+
 Stockage : drift (SQLite), schéma dans `lib/storage/app_database.dart`. Après toute modification du schéma, régénérer avec `dart run build_runner build` et incrémenter `schemaVersion` avec une migration.
 
 @GAME_RULES.md
