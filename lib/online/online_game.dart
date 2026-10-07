@@ -389,7 +389,7 @@ class OnlineHost {
   /// returns the host's own seat feed.
   SeatFeed start(Random random, {int bots = 0}) {
     final config = this.config = this.config.copyWith(
-      seed: random.nextInt(1 << 32),
+      seed: SeededRandom.newSeed(random),
       players: (_players.length + bots).clamp(minPlayers, maxPlayers),
     );
     final table = _table = LocalTable(

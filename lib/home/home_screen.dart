@@ -148,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _starting = false;
       return;
     }
-    final config = setup.copyWith(seed: Random().nextInt(1 << 32));
+    final config = setup.copyWith(seed: SeededRandom.newSeed(Random()));
     final messenger = ScaffoldMessenger.of(context);
     final int id;
     try {
