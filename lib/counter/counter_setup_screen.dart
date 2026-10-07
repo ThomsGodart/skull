@@ -32,6 +32,7 @@ class _CounterSetupScreenState extends State<CounterSetupScreen> {
   Scoring _scoring = Scoring.classic;
   bool _loot = false;
   bool _powers = false;
+  bool _manualBonuses = false;
 
   @override
   void dispose() {
@@ -77,8 +78,10 @@ class _CounterSetupScreenState extends State<CounterSetupScreen> {
         players: names,
         firstLeader: _firstLeader,
         scoring: _scoring,
-        loot: _loot,
-        piratePowers: _powers,
+        // Counted by hand, alliances and wagers are part of the total.
+        loot: _loot && !_manualBonuses,
+        piratePowers: _powers && !_manualBonuses,
+        manualBonuses: _manualBonuses,
       ),
     );
   }
@@ -197,19 +200,29 @@ class _CounterSetupScreenState extends State<CounterSetupScreen> {
                         setState(() => _scoring = choice.single),
                   ),
                   SwitchListTile(
+                    key: const Key('counter-manual-bonuses'),
                     contentPadding: EdgeInsets.zero,
-                    title: const Text(Strings.optionLoot),
-                    subtitle: const Text(Strings.optionLootHelp),
-                    value: _loot,
-                    onChanged: (on) => setState(() => _loot = on),
+                    title: const Text(Strings.counterManualBonuses),
+                    subtitle: const Text(Strings.counterManualBonusesHelp),
+                    value: _manualBonuses,
+                    onChanged: (on) => setState(() => _manualBonuses = on),
                   ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(Strings.optionPowers),
-                    subtitle: const Text(Strings.optionPowersHelp),
-                    value: _powers,
-                    onChanged: (on) => setState(() => _powers = on),
-                  ),
+                  if (!_manualBonuses) ...[
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(Strings.optionLoot),
+                      subtitle: const Text(Strings.optionLootHelp),
+                      value: _loot,
+                      onChanged: (on) => setState(() => _loot = on),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(Strings.optionPowers),
+                      subtitle: const Text(Strings.optionPowersHelp),
+                      value: _powers,
+                      onChanged: (on) => setState(() => _powers = on),
+                    ),
+                  ],
                 ],
               ),
             ),

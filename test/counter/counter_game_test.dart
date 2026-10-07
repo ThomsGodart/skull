@@ -101,6 +101,31 @@ void main() {
     expect(results[1].score.bonusPoints, 10);
   });
 
+  test('a bonus counted by hand is added as it is, made bid or not', () {
+    final game = CounterGame(
+      players: const ['Anne', 'Bob', 'Chloé'],
+      manualBonuses: true,
+      rounds: [
+        const CounterRound(
+          entries: [
+            CounterEntry(bid: 1, tricksWon: 1, manualBonus: 30),
+            CounterEntry(bid: 1, tricksWon: 0, manualBonus: -20),
+            CounterEntry(bid: 0, tricksWon: 0),
+          ],
+        ),
+      ],
+    );
+
+    expect(game.totals, [50, -30, 10]);
+    expect(game.scoredRounds.single.results[0].score.bonusPoints, 30);
+
+    final back = CounterGame.fromJson(
+      jsonDecode(jsonEncode(game.toJson())) as Map<String, Object?>,
+    );
+    expect(back.manualBonuses, isTrue);
+    expect(back.totals, [50, -30, 10]);
+  });
+
   test('a loot alliance pays both members only when both made their bid', () {
     CounterGame withAlliance(int bobTricks) => newGame()
       ..saveRound(

@@ -172,7 +172,7 @@ Ajouté le 2026-10-05 à ta demande. Supabase est déjà initialisé dans `darts
 | **E8** | Règles | Résumé rédigé par nous à partir de `GAME_RULES.md` : cartes, hiérarchie, score, extension. Pas de copie du livret. |
 | **E9** | Réglages | Vitesse des bots, jouer en un appui, vibrations, animations réduites, nom et couleur du joueur, licences. |
 | **E10** | Profil | Un seul profil local : un nom et une couleur, dans les réglages. Pas d'écran dédié, pas de compte. |
-| **E11** | Compteur | Joueurs enregistrés réutilisables, ordre des sièges, premier joueur, mêmes options de règles. Par manche : paris, plis, bonus par type, récapitulatif. Correction d'une manche passée. |
+| **E11** | Compteur | Joueurs enregistrés réutilisables, ordre des sièges, premier joueur, mêmes options de règles. Par manche : paris, plis, bonus par type, récapitulatif. Correction d'une manche passée. Option « bonus comptés à la main » (demande de Thomas, 2026-10-07) : les joueurs saisissent eux-mêmes le total des bonus de chaque joueur, par pas de 10, ajouté tel quel au score (pari réussi ou non) ; le Butin et les pouvoirs des pirates ne sont alors plus proposés, ils font partie de ce total. |
 
 Une seule partie de jeu en cours à la fois ; en lancer une nouvelle demande confirmation.
 

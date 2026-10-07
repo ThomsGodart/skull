@@ -348,6 +348,10 @@ abstract final class Strings {
   static const counterBid = 'Pari';
   static const counterTricks = 'Plis';
   static const counterBonus = 'Bonus';
+  static const counterManualBonuses = 'Bonus comptés à la main';
+  static const counterManualBonusesHelp =
+      'Tu additionnes toi-même les bonus de chaque joueur et tu saisis le '
+      'total, sans détailler les cartes.';
   static String counterBonusFor(String name) => 'Bonus de $name';
   static String counterTricksMismatch(int claimed, int cards) =>
       '$claimed pli${claimed > 1 ? 's' : ''} saisi${claimed > 1 ? 's' : ''} '

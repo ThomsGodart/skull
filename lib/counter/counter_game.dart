@@ -8,6 +8,7 @@ final class CounterEntry {
     this.bonuses = const {},
     this.wager = 0,
     this.bidChange = 0,
+    this.manualBonus = 0,
   });
 
   factory CounterEntry.fromJson(Map<String, Object?> json) => CounterEntry(
@@ -20,6 +21,7 @@ final class CounterEntry {
     },
     wager: json['wager'] as int? ?? 0,
     bidChange: json['bidChange'] as int? ?? 0,
+    manualBonus: json['manualBonus'] as int? ?? 0,
   );
 
   /// The bid as announced, before Harry.
@@ -35,18 +37,24 @@ final class CounterEntry {
   /// What Harry the giant did to the bid: -1, 0 or +1.
   final int bidChange;
 
+  /// Points the players added up themselves. Taken as they are, whatever the
+  /// bid did: the app checks nothing about them.
+  final int manualBonus;
+
   CounterEntry copyWith({
     int? bid,
     int? tricksWon,
     Map<Bonus, int>? bonuses,
     int? wager,
     int? bidChange,
+    int? manualBonus,
   }) => CounterEntry(
     bid: bid ?? this.bid,
     tricksWon: tricksWon ?? this.tricksWon,
     bonuses: bonuses ?? this.bonuses,
     wager: wager ?? this.wager,
     bidChange: bidChange ?? this.bidChange,
+    manualBonus: manualBonus ?? this.manualBonus,
   );
 
   Map<String, Object?> toJson() => {
@@ -58,6 +66,7 @@ final class CounterEntry {
       },
     if (wager != 0) 'wager': wager,
     if (bidChange != 0) 'bidChange': bidChange,
+    if (manualBonus != 0) 'manualBonus': manualBonus,
   };
 }
 
@@ -105,6 +114,7 @@ final class CounterGame {
     this.scoring = Scoring.classic,
     this.loot = false,
     this.piratePowers = false,
+    this.manualBonuses = false,
     List<CounterRound> rounds = const [],
     this.draftBids,
   }) : players = List.unmodifiable(players),
@@ -133,6 +143,7 @@ final class CounterGame {
     ),
     loot: json['loot'] as bool? ?? false,
     piratePowers: json['piratePowers'] as bool? ?? false,
+    manualBonuses: json['manualBonuses'] as bool? ?? false,
     rounds: [
       for (final round in json['rounds'] as List? ?? const [])
         CounterRound.fromJson(round as Map<String, Object?>),
@@ -151,6 +162,10 @@ final class CounterGame {
 
   /// Pirate powers are in play: wagers and bid changes may be entered.
   final bool piratePowers;
+
+  /// The players add up their bonuses themselves and enter the total, rather
+  /// than say which cards they took.
+  final bool manualBonuses;
 
   final List<CounterRound> _rounds;
 
@@ -219,7 +234,7 @@ final class CounterGame {
                 bool made(int other) =>
                     _scoredBid(entries[other], cards) ==
                     entries[other].tricksWon;
-                final score = scoreRound(
+                final byTheRules = scoreRound(
                   bid: bid,
                   tricksWon: entry.tricksWon,
                   cardsDealt: cards,
@@ -230,6 +245,12 @@ final class CounterGame {
                       Alliance(lootSeat: first, winnerSeat: second),
                   ], made),
                   wager: entry.wager,
+                );
+                final score = RoundScore(
+                  bidPoints: byTheRules.bidPoints,
+                  bonusPoints: byTheRules.bonusPoints + entry.manualBonus,
+                  alliancePoints: byTheRules.alliancePoints,
+                  wagerPoints: byTheRules.wagerPoints,
                 );
                 totals[player] += score.total;
                 return SeatResult(
@@ -275,6 +296,7 @@ final class CounterGame {
     'scoring': scoring.name,
     'loot': loot,
     'piratePowers': piratePowers,
+    if (manualBonuses) 'manualBonuses': true,
     'rounds': [for (final round in _rounds) round.toJson()],
     'draftBids': ?draftBids,
   };

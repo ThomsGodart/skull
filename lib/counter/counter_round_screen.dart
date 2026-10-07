@@ -267,9 +267,14 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  _columnHeadings(),
-                  for (final (player, name) in _game.players.indexed)
-                    _playerCard(player, name),
+                  if (_byHand)
+                    for (final (player, name) in _game.players.indexed)
+                      _manualCard(player, name)
+                  else ...[
+                    _columnHeadings(),
+                    for (final (player, name) in _game.players.indexed)
+                      _playerCard(player, name),
+                  ],
                   if (_results && _game.loot) _allianceEditor(),
                 ],
               ),
@@ -310,6 +315,13 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
       ),
     );
   }
+
+  /// The results are entered with a bonus total the players worked out.
+  bool get _byHand => _results && _game.manualBonuses;
+
+  /// What a hand-counted bonus moves by, and how far it may go either way.
+  static const _bonusStep = 10;
+  static const _bonusLimit = 500;
 
   static const _stepperWidth = 96.0;
   static const _bonusWidth = 40.0;
@@ -434,6 +446,98 @@ class _CounterRoundScreenState extends State<CounterRoundScreen> {
     );
   }
 
+  /// A player's results when the bonuses are counted by hand: the total they
+  /// worked out sits beside the bid and the tricks, so it takes two lines.
+  Widget _manualCard(int player, String name) {
+    final entry = _entries[player];
+    Widget labelled(String label, Widget stepper) => Column(
+      children: [
+        Text(label, style: _heading),
+        stepper,
+      ],
+    );
+    return Container(
+      margin: const EdgeInsets.only(top: Tokens.space2),
+      padding: const EdgeInsets.fromLTRB(
+        Tokens.space2,
+        Tokens.space2,
+        Tokens.space2,
+        0,
+      ),
+      decoration: BoxDecoration(
+        color: Tokens.panel,
+        borderRadius: BorderRadius.circular(Tokens.radiusButton),
+        border: Border.all(color: Tokens.outline),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Tokens.text,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Text(
+                Strings.signed(_preview(player)),
+                key: Key('counter-preview-$player'),
+                style: const TextStyle(
+                  color: Tokens.gold,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Tokens.space1),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              labelled(
+                Strings.counterBid,
+                _Stepper(
+                  name: 'bid-$player',
+                  value: entry.bid,
+                  max: _cards,
+                  onChanged: (bid) => _edit(player, entry.copyWith(bid: bid)),
+                ),
+              ),
+              labelled(
+                Strings.counterTricks,
+                _Stepper(
+                  name: 'tricks-$player',
+                  value: entry.tricksWon,
+                  max: _cards,
+                  onChanged: (won) =>
+                      _edit(player, entry.copyWith(tricksWon: won)),
+                ),
+              ),
+              labelled(
+                Strings.counterBonus,
+                _Stepper(
+                  name: 'manual-bonus-$player',
+                  value: entry.manualBonus,
+                  min: -_bonusLimit,
+                  max: _bonusLimit,
+                  step: _bonusStep,
+                  valueWidth: 40,
+                  onChanged: (points) =>
+                      _edit(player, entry.copyWith(manualBonus: points)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _allianceEditor() => Padding(
     padding: const EdgeInsets.only(top: Tokens.space4),
     child: Column(
@@ -476,6 +580,9 @@ class _Stepper extends StatelessWidget {
     required this.value,
     required this.max,
     required this.onChanged,
+    this.min = 0,
+    this.step = 1,
+    this.valueWidth = 26,
   });
 
   /// Names the two buttons for tests: `<name>-minus` and `<name>-plus`.
@@ -483,6 +590,11 @@ class _Stepper extends StatelessWidget {
   final int value;
   final int max;
   final ValueChanged<int> onChanged;
+  final int min;
+
+  /// What one press adds or takes away.
+  final int step;
+  final double valueWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -504,25 +616,28 @@ class _Stepper extends StatelessWidget {
         button(
           'minus',
           Icons.remove_circle_outline,
-          value > 0 ? value - 1 : null,
+          value - step >= min ? value - step : null,
         ),
         SizedBox(
-          width: 26,
-          child: Text(
-            '$value',
-            key: Key('$name-value'),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Tokens.text,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+          width: valueWidth,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '$value',
+              key: Key('$name-value'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Tokens.text,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ),
         button(
           'plus',
           Icons.add_circle_outline,
-          value < max ? value + 1 : null,
+          value + step <= max ? value + step : null,
         ),
       ],
     );

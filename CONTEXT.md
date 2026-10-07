@@ -39,7 +39,7 @@ Le code, les identifiants et les tests sont en anglais ; tout ce que voit le jou
 | `Wager` | mise | Les 0, 10 ou 20 points que Rascal le Flambeur fait miser. |
 | `Ghost` | fantôme, Barbe Grise | Le troisième paquet d'une partie à 2 : ni pari ni score (`Game.ghostSeat`). |
 | `Counter` | compteur de points | La feuille de score d'une partie jouée avec le vrai paquet (`CounterGame`). |
-| `CounterEntry` | saisie | Ce qu'un joueur a fait dans une manche comptée : pari, plis, bonus, mise, changement de Harry. |
+| `CounterEntry` | saisie | Ce qu'un joueur a fait dans une manche comptée : pari, plis, bonus, mise, changement de Harry, ou un total de bonus compté à la main (`manualBonus`). |
 | `Draft bids` | — | Les paris d'une manche comptée, saisis avant que ses plis soient connus. |
 | `Seat feed` | — | Ce qu'un siège reçoit d'une partie (événements, question) et sa façon d'y répondre, que la partie tourne sur ce téléphone ou chez l'hôte (`SeatFeed`). |
 | `Room` | salon | Le lieu d'une partie en ligne, rejoint par un code de quatre lettres. |

@@ -243,6 +243,41 @@ void main() {
     expect(store.active!.game.scoring, Scoring.rascal);
   });
 
+  testWidgets('bonuses can be counted by hand: the total is entered beside '
+      'the bid and the tricks', (tester) async {
+    await openCounter(tester);
+    await tap(tester, 'counter-new');
+    await tester.pumpAndSettle();
+    for (final (index, name) in ['Anne', 'Bob', 'Chloé'].indexed) {
+      await tester.enterText(find.byKey(Key('counter-name-$index')), name);
+    }
+    await tap(tester, 'counter-manual-bonuses');
+    // Alliances and wagers are part of the total the players work out.
+    expect(find.text(Strings.optionLoot), findsNothing);
+    await tap(tester, 'counter-start');
+    await tester.pumpAndSettle();
+    expect(store.active!.game.manualBonuses, isTrue);
+
+    await tap(tester, 'counter-enter');
+    await tester.pumpAndSettle();
+    await tap(tester, 'bid-0-plus');
+    await tap(tester, 'counter-bids-done');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('counter-bonus-0')), findsNothing);
+
+    await tap(tester, 'tricks-0-plus');
+    await tap(tester, 'manual-bonus-0-plus', times: 3);
+    await tap(tester, 'manual-bonus-1-minus');
+    expect(
+      tester.widget<Text>(find.byKey(const Key('counter-preview-0'))).data,
+      '+50',
+    );
+    await tap(tester, 'counter-round-done');
+    await tester.pumpAndSettle();
+
+    expect(store.active!.game.totals, [50, 0, 10]);
+  });
+
   testWidgets('two players cannot bear the same name', (tester) async {
     await openCounter(tester);
     await tap(tester, 'counter-new');
