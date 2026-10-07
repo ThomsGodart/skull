@@ -11,6 +11,7 @@ import '../game/seat_feed.dart';
 import '../game/seat_identity.dart';
 import '../game/table_screen.dart';
 import '../settings/app_settings.dart';
+import '../settings/profile_dialog.dart';
 import '../setup/setup_screen.dart';
 import '../theme/tokens.dart';
 import '../ui/strings.dart';
@@ -79,7 +80,26 @@ class _OnlineHomeScreenState extends State<OnlineHomeScreen> {
     color: widget.settings.playerColor,
   );
 
-  void _create() => Navigator.of(context).push(
+  /// Online, the others only know a player by their name: one who still
+  /// goes by the default is asked for theirs first. They may keep it.
+  Future<void> _askName() async {
+    if (widget.settings.playerName != AppSettings.defaultPlayerName) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => ProfileDialog(
+        settings: widget.settings,
+        prompt: Strings.onlineNamePrompt,
+      ),
+    );
+  }
+
+  Future<void> _create() async {
+    await _askName();
+    if (!mounted) return;
+    await _openSetup();
+  }
+
+  Future<void> _openSetup() => Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (setupContext) => SetupScreen(
         settings: widget.settings,
@@ -114,6 +134,8 @@ class _OnlineHomeScreenState extends State<OnlineHomeScreen> {
   Future<void> _join() async {
     final code = _code.text.trim().toUpperCase();
     if (code.isEmpty) return;
+    await _askName();
+    if (!mounted) return;
     final navigator = Navigator.of(context);
     final self = await _self();
     unawaited(

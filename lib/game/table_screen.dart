@@ -483,7 +483,16 @@ class _TableScreenState extends State<TableScreen> {
   /// card does and the button that plays it. The game stays in view.
   Widget _statusLine() {
     final card = _selected ?? _inspected;
-    if (card == null) {
+    final effects = widget.settings?.cardEffects ?? true;
+    // Without the cards' effects, a lifted card only brings its button.
+    if (card != null && !effects && card == _selected) {
+      return FilledButton(
+        key: const Key('play-card'),
+        onPressed: () => _play(card),
+        child: const Text(Strings.playCard),
+      );
+    }
+    if (card == null || !effects) {
       return Text(
         _status(),
         textAlign: TextAlign.center,
@@ -554,13 +563,10 @@ class _TableScreenState extends State<TableScreen> {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Expanded(
-        flex: 4,
-        child: Column(
-          children: [
-            Expanded(child: SingleChildScrollView(child: _opponents())),
-            const SizedBox(height: Tokens.space1),
-            _seatChip(game.humanSeat, showCards: false),
-          ],
+        flex: 6,
+        child: LayoutBuilder(
+          builder: (context, constraints) =>
+              SingleChildScrollView(child: _landscapeSeats(constraints)),
         ),
       ),
       const SizedBox(width: Tokens.space2),
@@ -813,25 +819,78 @@ class _TableScreenState extends State<TableScreen> {
     },
   );
 
-  Widget _seatChip(int seat, {required bool showCards}) => SeatChip(
-    identity: _seats[seat],
-    bid: _game.bids.elementAtOrNull(seat),
-    tricksWon: _game.tricksWon.elementAtOrNull(seat) ?? 0,
-    score: _game.scores[seat],
-    cardsLeft: showCards ? _game.handSizes.elementAtOrNull(seat) : null,
-    isCurrent: _game.currentSeat == seat,
-    isDealer: _game.dealer == seat,
-    emphasizeBid: _game.revealingBids,
-    wager: _game.wagers[seat],
-    hasHarry: _game.harrySeats.contains(seat),
-    showTokens: widget.settings?.trickTokens ?? false,
-    // Between two tricks, and while bids are open: who plays first.
-    leadsNext:
-        _game.leader == seat &&
-        _game.trick.isEmpty &&
-        _game.roundSummary == null &&
-        _game.result == null,
-  );
+  /// Every seat, the human's last, in the grid that shows them largest in
+  /// the room there is: on its side, the phone has the width to make them
+  /// easy to read, but little height.
+  Widget _landscapeSeats(BoxConstraints room) {
+    const gap = Tokens.space2;
+    final seats = [
+      for (var seat = 0; seat < _game.seats; seat++)
+        if (seat != _game.humanSeat) seat,
+      _game.humanSeat,
+    ];
+    final tokens = widget.settings?.trickTokens ?? false;
+    final height = _seatHeight + (tokens ? _tokensHeight : 0);
+    var perRow = 1;
+    var scale = 0.0;
+    for (var columns = 1; columns <= 4; columns++) {
+      final rows = (seats.length / columns).ceil();
+      final wide = (room.maxWidth - gap * (columns - 1)) / columns / _seatWidth;
+      final tall = (room.maxHeight - gap * (rows - 1)) / rows / height;
+      final fits = wide < tall ? wide : tall;
+      if (fits > scale) {
+        scale = fits;
+        perRow = columns;
+      }
+    }
+    scale = scale.clamp(0.6, 2.0);
+    final width = (room.maxWidth - gap * (perRow - 1)) / perRow;
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: gap,
+      runSpacing: gap,
+      children: [
+        for (final seat in seats)
+          SizedBox(
+            width: width,
+            child: _seatChip(
+              seat,
+              showCards: seat != _game.humanSeat,
+              scale: scale,
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// What a seat measures at its usual size, tokens apart.
+  static const _seatHeight = 80.0;
+  static const _tokensHeight = 20.0;
+
+  /// The width a seat is drawn for at its usual size.
+  static const _seatWidth = 112.0;
+
+  Widget _seatChip(int seat, {required bool showCards, double scale = 1}) =>
+      SeatChip(
+        scale: scale,
+        identity: _seats[seat],
+        bid: _game.bids.elementAtOrNull(seat),
+        tricksWon: _game.tricksWon.elementAtOrNull(seat) ?? 0,
+        score: _game.scores[seat],
+        cardsLeft: showCards ? _game.handSizes.elementAtOrNull(seat) : null,
+        isCurrent: _game.currentSeat == seat,
+        isDealer: _game.dealer == seat,
+        emphasizeBid: _game.revealingBids,
+        wager: _game.wagers[seat],
+        hasHarry: _game.harrySeats.contains(seat),
+        showTokens: widget.settings?.trickTokens ?? false,
+        // Between two tricks, and while bids are open: who plays first.
+        leadsNext:
+            _game.leader == seat &&
+            _game.trick.isEmpty &&
+            _game.roundSummary == null &&
+            _game.result == null,
+      );
 
   Widget _center({double maxCard = 104}) {
     // Nothing is on the table while bids are open: the bid goes there.

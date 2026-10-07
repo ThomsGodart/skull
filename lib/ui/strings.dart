@@ -55,6 +55,9 @@ abstract final class Strings {
       'de la manche';
   static String wagerBadgeHelp(int amount) =>
       'A misé $amount avec Rascal le Flambeur';
+  static const cardEffectsLabel = 'Afficher l\'effet des cartes';
+  static const cardEffectsHelp =
+      'Quand tu touches une carte, son rôle s\'affiche au-dessus de ta main.';
   static const trickTokensLabel = 'Jetons de plis';
   static const trickTokensHelp =
       'Un jeton par pli parié, plein une fois le pli remporté.';
@@ -507,6 +510,9 @@ abstract final class Strings {
       '$name est déconnecté · un bot joue à sa place jusqu\'à son retour';
   static const onlineKeepWaiting = 'L\'attendre';
   static const onlineReplaceNow = 'Mettre un bot';
+  static const onlineNamePrompt =
+      'Les autres joueurs te verront sous ce nom. Choisis le tien avant de '
+      'jouer en ligne.';
   static const onlineHostTag = 'hôte';
   static const onlineAwayTag = 'déconnecté';
   static const onlineYouTag = 'toi';

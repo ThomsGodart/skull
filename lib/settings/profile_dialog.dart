@@ -6,9 +6,12 @@ import '../ui/strings.dart';
 
 /// Lets the player choose their name and colour, and saves them.
 class ProfileDialog extends StatefulWidget {
-  const ProfileDialog({super.key, required this.settings});
+  const ProfileDialog({super.key, required this.settings, this.prompt});
 
   final AppSettings settings;
+
+  /// Why the player is asked, when the dialog opens by itself.
+  final String? prompt;
 
   @override
   State<ProfileDialog> createState() => _ProfileDialogState();
@@ -32,7 +35,13 @@ class _ProfileDialogState extends State<ProfileDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (widget.prompt case final prompt?)
+            Padding(
+              padding: const EdgeInsets.only(bottom: Tokens.space3),
+              child: Text(prompt),
+            ),
           TextField(
+            key: const Key('profile-name'),
             controller: _name,
             maxLength: AppSettings.maxNameLength,
             decoration: const InputDecoration(
@@ -72,6 +81,7 @@ class _ProfileDialogState extends State<ProfileDialog> {
           child: const Text(Strings.cancel),
         ),
         FilledButton(
+          key: const Key('profile-save'),
           onPressed: () {
             widget.settings.setPlayer(name: _name.text, color: _color);
             Navigator.pop(context);

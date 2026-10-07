@@ -140,6 +140,38 @@ void main() {
     await settle(tester);
   });
 
+  testWidgets('a player who still goes by the default name is asked for '
+      'theirs before playing online', (tester) async {
+    await openOnline(tester, name: '');
+
+    await tester.tap(find.byKey(const Key('online-create')));
+    await tester.pumpAndSettle();
+    expect(find.text(Strings.onlineNamePrompt), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('profile-name')), 'Thomas');
+    await tester.tap(find.byKey(const Key('profile-save')));
+    await tester.pumpAndSettle();
+    // Then on to setting the game up.
+    await tester.tap(find.byKey(const Key('launch')));
+    await settle(tester);
+    expect(find.text('Thomas'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await settle(tester);
+  });
+
+  testWidgets('a player with a name of their own is not asked again', (
+    tester,
+  ) async {
+    await openOnline(tester, name: 'Bob');
+
+    await tester.tap(find.byKey(const Key('online-create')));
+    await tester.pumpAndSettle();
+
+    expect(find.text(Strings.onlineNamePrompt), findsNothing);
+    expect(find.byKey(const Key('launch')), findsOneWidget);
+  });
+
   testWidgets('a full game is refused with a message', (tester) async {
     final host = OnlineHost(
       transport: hub.transport('host'),

@@ -12,8 +12,11 @@ import 'package:skull_kings/game/seat_identity.dart';
 import 'package:skull_kings/game/power_dialog.dart';
 import 'package:skull_kings/game/table_screen.dart';
 import 'package:skull_kings/game/trick_area.dart';
+import 'package:skull_kings/settings/app_settings.dart';
 import 'package:skull_kings/theme/tokens.dart';
 import 'package:skull_kings/ui/strings.dart';
+
+import '../support/memory_stores.dart';
 
 void main() {
   Future<GameController> openTable(
@@ -22,6 +25,7 @@ void main() {
     int seed = 3,
     // A small phone, portrait.
     Size size = const Size(360, 720),
+    AppSettings? settings,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -34,7 +38,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: Tokens.theme(),
-        home: TableScreen(controller: controller, onPlayAgain: () {}),
+        home: TableScreen(
+          controller: controller,
+          settings: settings,
+          onPlayAgain: () {},
+        ),
       ),
     );
     await tester.pump();
@@ -526,6 +534,52 @@ void main() {
     await tapCard(tester, card);
 
     expect(find.byKey(const Key('card-hint')), findsNothing);
+  });
+
+  testWidgets('with the cards\' effects turned off, a lifted card only brings '
+      'the button that plays it', (tester) async {
+    final settings = await AppSettings.load(
+      MemorySettingsStore({'cardEffects': 'false'}),
+    );
+    final controller = await openTable(tester, settings: settings);
+    final card = controller.hand.single;
+
+    // While bidding the card cannot be played: nothing shows for it.
+    await tapCard(tester, card);
+    expect(find.byKey(const Key('card-hint')), findsNothing);
+    expect(find.byKey(const Key('play-card')), findsNothing);
+    await tapCard(tester, card);
+
+    await tester.tap(find.byKey(const Key('bid-0')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('place-bid')));
+    await tester.pump();
+    await tapCard(tester, controller.playQuestion!.legalCards.first);
+
+    expect(find.byKey(const Key('card-hint')), findsNothing);
+    expect(find.byKey(const Key('play-card')), findsOneWidget);
+  });
+
+  testWidgets('on its side, the phone shows every seat, and larger than '
+      'upright', (tester) async {
+    double nameSize() =>
+        tester.widget<Text>(find.text(Strings.you)).style!.fontSize!;
+    await openTable(tester);
+    final upright = nameSize();
+
+    await openTable(tester, size: const Size(800, 360));
+    await tester.pump();
+
+    expect(nameSize(), greaterThan(upright * 1.3));
+    // All four of them, none scrolled out of sight.
+    final screen = tester.getRect(find.byType(TableScreen));
+    for (final chip in tester.widgetList(find.byType(SeatChip))) {
+      expect(
+        screen.contains(tester.getRect(find.byWidget(chip)).center),
+        isTrue,
+      );
+    }
+    expect(find.byType(SeatChip), findsNWidgets(4));
   });
 
   testWidgets('a seat shows what it staked with Rascal, that it holds '

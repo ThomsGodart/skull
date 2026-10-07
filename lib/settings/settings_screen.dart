@@ -69,6 +69,13 @@ class SettingsScreen extends StatelessWidget {
                 onChanged: settings.setReduceMotion,
               ),
               SwitchListTile(
+                key: const Key('setting-card-effects'),
+                title: const Text(Strings.cardEffectsLabel),
+                subtitle: const Text(Strings.cardEffectsHelp),
+                value: settings.cardEffects,
+                onChanged: settings.setCardEffects,
+              ),
+              SwitchListTile(
                 key: const Key('setting-trick-tokens'),
                 title: const Text(Strings.trickTokensLabel),
                 subtitle: const Text(Strings.trickTokensHelp),

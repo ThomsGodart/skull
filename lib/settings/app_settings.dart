@@ -35,6 +35,7 @@ class AppSettings extends ChangeNotifier {
   static const _reduceMotionKey = 'reduceMotion';
   static const _autoHarryKey = 'autoHarry';
   static const _trickTokensKey = 'trickTokens';
+  static const _cardEffectsKey = 'cardEffects';
 
   static Future<AppSettings> load(SettingsStore store) async {
     final values = await store.readAll();
@@ -77,6 +78,7 @@ class AppSettings extends ChangeNotifier {
     settings._reduceMotion = values[_reduceMotionKey] == 'true';
     settings._autoHarry = values[_autoHarryKey] == 'true';
     settings._trickTokens = values[_trickTokensKey] == 'true';
+    settings._cardEffects = values[_cardEffectsKey] != 'false';
     return settings;
   }
 
@@ -95,6 +97,7 @@ class AppSettings extends ChangeNotifier {
   bool _reduceMotion = false;
   bool _autoHarry = false;
   bool _trickTokens = false;
+  bool _cardEffects = true;
 
   /// The name shown at the human's seat.
   String get playerName => _playerName;
@@ -174,6 +177,15 @@ class AppSettings extends ChangeNotifier {
 
   /// Each seat shows a token per trick bid, filled once taken.
   bool get trickTokens => _trickTokens;
+
+  /// A lifted card tells what it does. Without it, only the button that
+  /// plays the card shows.
+  bool get cardEffects => _cardEffects;
+
+  Future<void> setCardEffects(bool value) {
+    _cardEffects = value;
+    return _changed(_cardEffectsKey, '$value');
+  }
 
   Future<void> setAutoHarry(bool value) {
     _autoHarry = value;
