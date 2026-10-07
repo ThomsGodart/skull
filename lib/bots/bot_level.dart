@@ -5,6 +5,9 @@ import 'bot.dart';
 import 'sensible_bot.dart';
 import 'sharp_bot.dart';
 
+/// True where numbers are JavaScript's: an int and a double are one there.
+const _inBrowser = identical(0, 0.0);
+
 /// How well the bots play.
 enum BotLevel { easy, normal, hard }
 
@@ -12,7 +15,11 @@ enum BotLevel { easy, normal, hard }
 Bot botFor(BotLevel level, Random random) => switch (level) {
   BotLevel.easy => _easyBot(random),
   BotLevel.normal => sensibleBot(),
-  BotLevel.hard => sharpBot(),
+  BotLevel.hard => sharpBot(
+    random,
+    // In a browser the same work takes several times longer.
+    effort: _inBrowser ? defaultEffort ~/ 3 : defaultEffort,
+  ),
 };
 
 /// The sensible bot on a bad day: one bid in two is a trick off, and one

@@ -308,8 +308,9 @@ abstract final class Strings {
   static const levelNormal = 'Normal';
   static const levelHard = 'Difficile';
   static const levelHardHelp =
-      'Les adversaires parient en comptant les cartes : la différence se '
-      'sent surtout à 5 joueurs et plus.';
+      'Avant chaque pari et chaque carte, les adversaires imaginent les '
+      'mains des autres et jouent la manche dans leur tête. Ils se '
+      'souviennent des cartes tombées.';
   static const levelEasyHelp =
       'Les adversaires se trompent souvent dans leurs paris et leurs cartes.';
   static const presetLabel = 'Mode de jeu';

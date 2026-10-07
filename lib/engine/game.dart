@@ -19,6 +19,8 @@ final class GameView {
     required this.trick,
     required this.scores,
     this.deck = const [],
+    this.roundTricks = const [],
+    this.scoring = Scoring.classic,
   });
 
   final int seat;
@@ -46,6 +48,12 @@ final class GameView {
   /// Every card the game is played with, in no telling order: everyone at
   /// the table knows what the deck holds.
   final List<Card> deck;
+
+  /// The tricks already played this round, in order: everyone saw them.
+  final List<List<Play>> roundTricks;
+
+  /// How the round will be scored.
+  final Scoring scoring;
 }
 
 /// A whole game of Skull King, with no user interface attached.
@@ -88,6 +96,9 @@ final class Game {
   late List<int> _tricksWon;
   late List<List<Bonus>> _bonuses;
   List<Play> _trick = [];
+
+  /// The tricks played so far this round.
+  final List<List<Play>> _roundTricks = [];
 
   /// The cards nobody was dealt this round.
   List<Card> _stock = [];
@@ -186,6 +197,8 @@ final class Game {
     trick: List.unmodifiable(_trick),
     scores: List.unmodifiable(_scores),
     deck: List.unmodifiable(deckFor(config)),
+    roundTricks: List.unmodifiable(_roundTricks),
+    scoring: config.scoring,
   );
 
   /// Applies [answer] and runs the game on to its next question.
@@ -406,6 +419,7 @@ final class Game {
 
   void _settleTrick({Card? overboard}) {
     final plays = _trick;
+    _roundTricks.add(List.unmodifiable(plays));
     final result = resolveTrick(plays, overboard: overboard);
     if (!result.destroyed) {
       _tricksWon[result.winner]++;
@@ -590,6 +604,7 @@ final class Game {
     _wagers = List.filled(seats, 0);
     _alliances.clear();
     _harrySeat = null;
+    _roundTricks.clear();
     _forced = List.filled(seats, null);
     _salvoSeat = null;
     _sitsOut = null;

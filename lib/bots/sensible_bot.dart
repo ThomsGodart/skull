@@ -8,9 +8,18 @@ Bot sensibleBot() =>
     (question, view) => switch (question) {
       BidQuestion() => BidAnswer(
         seat: question.seat,
-        bid: _bid(view).clamp(0, question.maxBid),
+        bid: sensibleBid(
+          view.hand,
+          players: view.handSizes.length,
+        ).clamp(0, question.maxBid),
       ),
-      PlayQuestion() => _play(question, view),
+      PlayQuestion() => sensiblePlay(
+        seat: question.seat,
+        legalCards: question.legalCards,
+        trick: view.trick,
+        needsTricks: _needsTricks(view),
+        seats: view.handSizes.length,
+      ),
       ChooseLeaderQuestion() => ChooseLeaderAnswer(
         seat: question.seat,
         // Leading suits a hand that still wants tricks; otherwise pass it on.
@@ -67,7 +76,7 @@ bool _needsTricks(GameView view) =>
 List<Card> _discards(DiscardQuestion question, GameView view) {
   final options = [
     // Each card for the most it can be worth.
-    for (final card in question.hand) _strongest(_ways(card, const [])),
+    for (final card in question.hand) _strongest(waysToPlay(card, const [])),
   ]..sort((a, b) => _strength(a).compareTo(_strength(b)));
   final ordered = _needsTricks(view) ? options : options.reversed.toList();
   return [for (final option in ordered.take(question.count)) option.card];
@@ -91,13 +100,13 @@ int _bidChange(AdjustBidQuestion question, GameView view) {
   return question.changes.contains(wanted) ? wanted : 0;
 }
 
-/// How many tricks the hand should take: the sum of each card's chance.
-int _bid(GameView view) {
-  final players = view.handSizes.length;
+/// How many tricks [hand] should take at a table of [players]: the sum of
+/// each card's chance.
+int sensibleBid(List<Card> hand, {required int players}) {
   // With more players, more cards can beat a good number card.
   final crowd = (4 / players).clamp(0.5, 1.2);
   var expected = 0.0;
-  for (final card in view.hand) {
+  for (final card in hand) {
     expected += switch (card.kind) {
       CardKind.skullKing => 0.95,
       CardKind.pirate => 0.75,
@@ -130,11 +139,27 @@ int _bid(GameView view) {
             },
     };
   }
-  return expected.round();
+  return (expected * (bidScales[players] ?? 1)).round();
 }
 
+/// By how much the sum of the cards' chances is corrected at each table
+/// size, found by having the bots play thousands of games against each
+/// other (`dart run tool/bot_lab.dart tune`).
+///
+/// With few players a card takes a trick more often than its plain chance
+/// says, and with many, less: left uncorrected, the bots took too many
+/// tricks at three and too few at six and more.
+Map<int, double> bidScales = {
+  3: 1.25,
+  4: 1.0,
+  5: 0.9,
+  6: 0.75,
+  7: 0.65,
+  8: 0.55,
+};
+
 /// One way of putting a card down.
-typedef _Option = ({
+typedef PlayOption = ({
   Card card,
   TigressMode? tigressAs,
   int? declaredValue,
@@ -142,14 +167,17 @@ typedef _Option = ({
 });
 
 /// Every way [card] can be put down on [trick].
-List<_Option> _ways(Card card, List<Play> trick) {
-  _Option way({TigressMode? tigressAs, int? declaredValue, Suit? jokerSuit}) =>
-      (
-        card: card,
-        tigressAs: tigressAs,
-        declaredValue: declaredValue,
-        jokerSuit: jokerSuit,
-      );
+List<PlayOption> waysToPlay(Card card, List<Play> trick) {
+  PlayOption way({
+    TigressMode? tigressAs,
+    int? declaredValue,
+    Suit? jokerSuit,
+  }) => (
+    card: card,
+    tigressAs: tigressAs,
+    declaredValue: declaredValue,
+    jokerSuit: jokerSuit,
+  );
   return switch (card.kind) {
     CardKind.tigress => [
       way(tigressAs: TigressMode.pirate),
@@ -163,36 +191,42 @@ List<_Option> _ways(Card card, List<Play> trick) {
   };
 }
 
-PlayAnswer _play(PlayQuestion question, GameView view) {
-  final seat = question.seat;
-  final options = <_Option>[
-    for (final card in question.legalCards) ..._ways(card, view.trick),
+/// The card the plain rules play for [seat] on [trick]: take the trick while
+/// tricks are still needed, duck it otherwise. [seats] is how many play.
+PlayAnswer sensiblePlay({
+  required int seat,
+  required List<Card> legalCards,
+  required List<Play> trick,
+  required bool needsTricks,
+  required int seats,
+}) {
+  final options = <PlayOption>[
+    for (final card in legalCards) ...waysToPlay(card, trick),
   ];
-  Play played(_Option option) => Play(
+  Play played(PlayOption option) => Play(
     seat: seat,
     card: option.card,
     tigressAs: option.tigressAs,
     declaredValue: option.declaredValue,
     jokerSuit: option.card.kind == CardKind.joker
-        ? option.jokerSuit ?? inheritedJokerSuit(view.trick)
+        ? option.jokerSuit ?? inheritedJokerSuit(trick)
         : null,
   );
-  bool winsSoFar(_Option option) {
-    final result = resolveTrick([...view.trick, played(option)]);
+  bool winsSoFar(PlayOption option) {
+    final result = resolveTrick([...trick, played(option)]);
     // A destroyed trick is taken by nobody.
     return !result.destroyed && result.winner == seat;
   }
 
   final winning = options.where(winsSoFar).toList();
   final losing = options.where((option) => !winsSoFar(option)).toList();
-  final needsTricks = _needsTricks(view);
-  final isLast = view.trick.length == view.handSizes.length - 1;
+  final isLast = trick.length == seats - 1;
 
-  final _Option choice;
+  final PlayOption choice;
   if (needsTricks) {
     if (winning.isEmpty) {
       // The trick is lost: give away the least useful card.
-      choice = _weakest(_withoutGifts(losing, view.trick));
+      choice = _weakest(_withoutGifts(losing, trick));
     } else if (isLast) {
       choice = _weakest(winning);
     } else {
@@ -203,7 +237,7 @@ PlayAnswer _play(PlayQuestion question, GameView view) {
     }
   } else if (losing.isNotEmpty) {
     // Duck, and use the chance to get rid of a card that could win later.
-    choice = _strongest(_withoutGifts(losing, view.trick));
+    choice = _strongest(_withoutGifts(losing, trick));
   } else {
     choice = _weakest(winning);
   }
@@ -218,11 +252,11 @@ PlayAnswer _play(PlayQuestion question, GameView view) {
 
 /// [losing] without the plays that hand a capture bonus to whoever wins the
 /// trick, unless nothing else is left.
-List<_Option> _withoutGifts(List<_Option> losing, List<Play> trick) {
+List<PlayOption> _withoutGifts(List<PlayOption> losing, List<Play> trick) {
   final skullKingPlayed = trick.any((play) => play.isSkullKing);
   final piratePlayed = trick.any((play) => play.isPirate);
   final mermaidPlayed = trick.any((play) => play.isMermaid);
-  bool isGift(_Option option) => switch (option.card.kind) {
+  bool isGift(PlayOption option) => switch (option.card.kind) {
     CardKind.pirate => skullKingPlayed,
     CardKind.mat => skullKingPlayed || mermaidPlayed,
     // As an escape she loses just as surely, and gives nothing away.
@@ -234,14 +268,14 @@ List<_Option> _withoutGifts(List<_Option> losing, List<Play> trick) {
   return safe.isEmpty ? losing : safe;
 }
 
-_Option _weakest(List<_Option> options) =>
+PlayOption _weakest(List<PlayOption> options) =>
     options.reduce((a, b) => _strength(b) < _strength(a) ? b : a);
 
-_Option _strongest(List<_Option> options) =>
+PlayOption _strongest(List<PlayOption> options) =>
     options.reduce((a, b) => _strength(b) > _strength(a) ? b : a);
 
 /// A rough ranking of how likely a card is to take a trick.
-int _strength(_Option option) => switch (option.card.kind) {
+int _strength(PlayOption option) => switch (option.card.kind) {
   CardKind.escape || CardKind.loot => 0,
   CardKind.kraken || CardKind.whiteWhale => 1,
   CardKind.plank ||

@@ -26,7 +26,7 @@ Une application Flutter pour jouer à **Skull King**, le jeu de plis à paris : 
 
 - **Le jeu complet** : distribution, paris simultanés, plis, résolution, scores, manches de départage en cas d'égalité.
 - **2 à 8 joueurs.** À deux, le fantôme de Barbe Grise joue le troisième paquet.
-- **Bots à trois niveaux** : Facile, Normal, Difficile. Ils ne voient que leur propre main.
+- **Bots à trois niveaux** : Facile, Normal, Difficile. Ils ne voient que leur propre main. Le niveau Difficile simule la manche avant chaque décision.
 - **Deux façons de compter** : le score classique du livret et le score Rascal.
 - **Modes avancés, au choix** : Kraken, Baleine blanche, Butin, pouvoirs des pirates.
 - **Deuxième extension, au choix** (à partir de 3 joueurs) : 7, 8 et 0/14 en double, Joker 15, Mary Thorne, Mat le Forban, Marcher sur la planche, Raie Tachetée, Dernière Salve, Coffre de Davy Jones. Les cinq dernières se retirent une à une.
@@ -79,6 +79,7 @@ L'appli fonctionne sans réseau pour le jeu en solo, le compteur, l'historique e
 | Régénérer le code de la base après un changement de schéma | `dart run build_runner build` |
 | Redessiner l'icône sur toutes les plateformes | `python3 tool/app_icon.py` (demande Pillow) |
 | Jouer une vraie partie à travers Supabase | `dart run tool/online_smoke.dart` |
+| Mesurer les bots sur des centaines de parties | `dart run tool/bot_lab.dart duel 400 4` (voir l'en-tête du fichier) |
 
 L'APK est écrit dans `build/app/outputs/flutter-apk/app-release.apk`.
 
@@ -196,7 +197,7 @@ Les données du site sont gardées par le navigateur, séparément de celles de 
 
 - **Vérifications sur appareil** : les fonctions récentes (deuxième extension, compteur manuel, salon ouvert, version web) sont couvertes par les tests automatiques, mais peu éprouvées en conditions réelles.
 - **Sauvegarde en ligne** : sans moyen de connexion rattaché au compte, la copie ne peut pas être restaurée ailleurs.
-- **Bots et deuxième extension** : ils jouent ces cartes dans les règles, sans stratégie particulière.
+- **Bots** : le niveau Difficile ne tient pas compte, dans ses simulations, des pouvoirs des pirates, de la Planche ni de la Dernière Salve. Il reste nettement plus fort que le niveau Normal avec ces options, mais ne les exploite pas.
 - **9 joueurs** : le livret de la deuxième extension le permet ; l'appli s'arrête à 8.
 - **iOS, macOS, Windows** : les projets existent, mais rien n'y a été compilé ni testé.
 
