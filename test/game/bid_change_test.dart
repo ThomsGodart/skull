@@ -54,6 +54,9 @@ class WaitingFeed implements SeatFeed {
   void acknowledgeEnd(GameFinished result) {}
 
   @override
+  void finishEarly() {}
+
+  @override
   void close() {}
 }
 

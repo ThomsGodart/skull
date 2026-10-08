@@ -68,6 +68,19 @@ class LocalTable {
     if (_open) _pump();
   }
 
+  /// Ends the game now: the unfinished round is dropped.
+  void finishEarly() {
+    if (_game.isFinished) return;
+    _game.finishEarly();
+    _distribute();
+    for (final feed in _feeds.values) {
+      feed._question = null;
+    }
+    for (final feed in _feeds.values.toList()) {
+      feed._onUpdate?.call();
+    }
+  }
+
   /// Every answer accepted so far, in order.
   List<Answer> get answers => _game.answers;
 
@@ -188,6 +201,9 @@ class _LocalFeed implements SeatFeed {
   void acknowledgeEnd(GameFinished result) {
     if (seat == _table.primarySeat) _table._report(result);
   }
+
+  @override
+  void finishEarly() => _table.finishEarly();
 
   @override
   void close() {

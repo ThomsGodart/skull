@@ -37,6 +37,7 @@ List<String> trace(List<Event> events) => [
     switch (event) {
       RoundStarted e => 'round ${e.round} dealer ${e.dealer}',
       HandDealt e => 'hand ${e.seat} ${e.cards}',
+      BidAccepted e => 'bid-ok ${e.seat}',
       BidsRevealed e => 'bids ${e.bids}',
       CardPlayed e => 'play ${e.play.seat} ${e.play.card} ${e.play.tigressAs}',
       TrickWon e => 'trick ${e.winner} ${e.bonuses}',

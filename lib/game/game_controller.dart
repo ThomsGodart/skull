@@ -125,6 +125,9 @@ class GameController extends ChangeNotifier {
   int? placedBid;
   BidQuestion? _lastBidQuestion;
 
+  /// Seats that have locked in a bid this round, before they are revealed.
+  Set<int> acceptedBids = {};
+
   /// Tricks nobody won this round: destroyed by a sea monster, or thrown
   /// away. They explain why the tricks taken fall short of the cards dealt.
   int destroyedTricks = 0;
@@ -271,6 +274,12 @@ class GameController extends ChangeNotifier {
     if (roundSummary == null && revealedStock == null) _releaseHold();
   }
 
+  /// Ends the game with the scores as they stand.
+  void finishEarly() {
+    _feed.finishEarly();
+    unawaited(_run());
+  }
+
   @override
   void dispose() {
     _disposed = true;
@@ -366,6 +375,7 @@ class GameController extends ChangeNotifier {
         lastTrickOverboard = null;
         forcedCard = null;
         placedBid = null;
+        acceptedBids = {};
         destroyedTricks = 0;
         wagers = const {};
         harrySeats = const {};
@@ -374,10 +384,15 @@ class GameController extends ChangeNotifier {
         _order = event.order;
       case HandDealt():
         hand = sortedHand(event.cards);
+      case BidAccepted():
+        acceptedBids = {...acceptedBids, event.seat};
       case BidsRevealed():
         // The ghost bids nothing.
         bids = List<int?>.of(event.bids)..length = seats;
         placedBid = null;
+        acceptedBids = {
+          for (var seat = 0; seat < scoringSeats; seat++) seat,
+        };
         // Too late to change one's mind.
         bidQuestion = null;
         _revealingBids = true;

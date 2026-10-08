@@ -44,6 +44,12 @@ class _SetupScreenState extends State<SetupScreen> {
     secondExpansion: _setup.playsSecondExpansion,
   );
 
+  int _cardsForRound(int round, int players) => cardsDealt(
+    round: round,
+    players: players,
+    secondExpansion: _setup.playsSecondExpansion,
+  );
+
   void _choosePreset(_Preset preset) => setState(() {
     _preset = preset;
     if (preset == _Preset.custom) return;
@@ -57,6 +63,27 @@ class _SetupScreenState extends State<SetupScreen> {
   });
 
   void _change(GameConfig setup) => setState(() => _setup = setup);
+
+  bool _firstCardOn(CardKind kind) => switch (kind) {
+    CardKind.kraken => _setup.kraken,
+    CardKind.whiteWhale => _setup.whiteWhale,
+    CardKind.loot => _setup.loot,
+    _ => false,
+  };
+
+  void _setFirstCard(CardKind kind, bool on) => _change(switch (kind) {
+    CardKind.kraken => _setup.copyWith(kraken: on),
+    CardKind.whiteWhale => _setup.copyWith(whiteWhale: on),
+    CardKind.loot => _setup.copyWith(loot: on),
+    _ => _setup,
+  });
+
+  String _firstCardTitle(CardKind kind) => switch (kind) {
+    CardKind.kraken => Strings.optionKraken,
+    CardKind.whiteWhale => Strings.optionWhale,
+    CardKind.loot => Strings.optionLoot,
+    _ => kind.name,
+  };
 
   Widget _label(String text) => Padding(
     padding: const EdgeInsets.only(top: Tokens.space4, bottom: Tokens.space2),
@@ -81,6 +108,7 @@ class _SetupScreenState extends State<SetupScreen> {
     final online = widget.online;
     // Online, any option may end up applying: the table can be of any size.
     final players = online ? maxPlayers : _setup.players;
+    final maxStart = standardRounds;
     return Scaffold(
       appBar: AppBar(title: const Text(Strings.setupTitle)),
       body: SafeArea(
@@ -188,25 +216,24 @@ class _SetupScreenState extends State<SetupScreen> {
                         _choosePreset(choice.single),
                   ),
                   if (_preset == _Preset.custom) ...[
-                    _option(
-                      Strings.optionKraken,
-                      Strings.optionKrakenHelp,
-                      _setup.kraken,
-                      (on) => _setup.copyWith(kraken: on),
+                    _label(Strings.optionFirstExpansion),
+                    Text(
+                      Strings.optionFirstExpansionHelp,
+                      style: const TextStyle(color: Tokens.mutedText),
                     ),
-                    _option(
-                      Strings.optionWhale,
-                      Strings.optionWhaleHelp,
-                      _setup.whiteWhale,
-                      (on) => _setup.copyWith(whiteWhale: on),
-                    ),
-                    if (players > minPlayers)
-                      _option(
-                        Strings.optionLoot,
-                        Strings.optionLootHelp,
-                        _setup.loot,
-                        (on) => _setup.copyWith(loot: on),
-                      ),
+                    for (final kind in GameConfig.firstExpansionKinds)
+                      if (kind != CardKind.loot || players > minPlayers)
+                        CheckboxListTile(
+                          key: Key('first-${kind.name}'),
+                          dense: true,
+                          contentPadding: const EdgeInsets.only(
+                            left: Tokens.space4,
+                          ),
+                          title: Text(_firstCardTitle(kind)),
+                          value: _firstCardOn(kind),
+                          onChanged: (on) =>
+                              _setFirstCard(kind, on ?? false),
+                        ),
                     _option(
                       Strings.optionPowers,
                       Strings.optionPowersHelp,
@@ -264,6 +291,29 @@ class _SetupScreenState extends State<SetupScreen> {
                         style: TextStyle(color: Tokens.mutedText),
                       ),
                     ),
+                  _label(Strings.startingRoundLabel),
+                  DropdownButton<int>(
+                    key: const Key('starting-round'),
+                    value: _setup.startingRound.clamp(1, maxStart),
+                    isExpanded: true,
+                    items: [
+                      for (var round = 1; round <= maxStart; round++)
+                        DropdownMenuItem(
+                          value: round,
+                          child: Text(
+                            Strings.startingRoundOption(
+                              round,
+                              _cardsForRound(round, online ? 4 : players),
+                            ),
+                          ),
+                        ),
+                    ],
+                    onChanged: (round) {
+                      if (round != null) {
+                        _change(_setup.copyWith(startingRound: round));
+                      }
+                    },
+                  ),
                   const SizedBox(height: Tokens.space4),
                   Text(
                     online

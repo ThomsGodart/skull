@@ -9,7 +9,7 @@ import 'room_transport.dart';
 
 /// Bumped whenever phones of different versions could no longer play the
 /// same game together.
-const onlineProtocol = 2;
+const onlineProtocol = 3;
 
 /// How long an absent player is waited for before a bot plays in their place.
 const absenceGrace = Duration(seconds: 30);
@@ -77,36 +77,57 @@ final class Lobby {
   };
 }
 
-/// Who sits where, once the game has started: the people of the room on the
-/// first seats, bots on the others.
+/// Who sits where, once the game has started: each scoring seat holds a
+/// person or a bot (`null`). Order is shuffled when the host starts.
 final class Seating {
   const Seating({
     required this.config,
     required this.seat,
-    required this.people,
+    required this.occupants,
   });
 
-  factory Seating.fromJson(Json json) => Seating(
-    config: GameConfig.fromJson(json['config']! as Json),
-    seat: json['seat']! as int,
-    people: [
-      for (final player in json['people']! as List)
-        RoomPlayer.fromJson(player as Json),
-    ],
-  );
+  factory Seating.fromJson(Json json) {
+    final config = GameConfig.fromJson(json['config']! as Json);
+    final raw = json['occupants'] as List? ?? json['people'] as List? ?? const [];
+    // Older hosts sent people packed at the front; pad with bots.
+    final packed = [
+      for (final entry in raw)
+        entry == null ? null : RoomPlayer.fromJson(entry as Json),
+    ];
+    return Seating(
+      config: config,
+      seat: json['seat']! as int,
+      occupants: [
+        for (var seat = 0; seat < config.players; seat++)
+          seat < packed.length ? packed[seat] : null,
+      ],
+    );
+  }
 
   final GameConfig config;
 
   /// The seat of the phone this was sent to.
   final int seat;
 
-  /// The person at each of the first seats, in seat order.
-  final List<RoomPlayer> people;
+  /// One entry per scoring seat: a person, or null for a bot.
+  final List<RoomPlayer?> occupants;
+
+  /// The person at [seat], if any.
+  RoomPlayer? occupantAt(int seat) =>
+      seat >= 0 && seat < occupants.length ? occupants[seat] : null;
+
+  /// People only, in seat order — kept for callers that list humans.
+  List<RoomPlayer> get people => [
+    for (final occupant in occupants)
+      if (occupant != null) occupant,
+  ];
 
   Json toJson() => {
     'config': config.toJson(),
     'seat': seat,
-    'people': [for (final player in people) player.toJson()],
+    'occupants': [
+      for (final occupant in occupants) occupant?.toJson(),
+    ],
   };
 }
 
@@ -203,7 +224,10 @@ class OnlineHost {
 
   LocalTable? _table;
 
-  /// For each guest seat, every event sent to it so far, as JSON.
+  /// Who sits where once the game has started (bots as null).
+  List<RoomPlayer?> _occupants = const [];
+
+  /// For each human seat, every event sent to it so far, as JSON.
   final Map<int, List<Json>> _logs = {};
 
   /// The players of the started game who are away, and the timer that puts
@@ -219,7 +243,8 @@ class OnlineHost {
 
   void _setAbsence(RoomPlayer player, AbsenceState? state) {
     _absences.remove(player.id)?.cancel();
-    final seat = _players.indexOf(player);
+    final seat = _seatOf(player.id);
+    if (seat == null) return;
     if (state == null) {
       _away.remove(player.id);
     } else {
@@ -289,6 +314,9 @@ class OnlineHost {
   );
 
   bool get started => _table != null;
+
+  /// Who sits where after [start], bots as null.
+  List<RoomPlayer?> get currentOccupants => List.unmodifiable(_occupants);
 
   Future<void> open(String room) async {
     _subscriptions
@@ -378,34 +406,47 @@ class OnlineHost {
 
   int? _seatOf(String id) {
     if (!started) return null;
-    final seat = _players.indexWhere((player) => player.id == id);
-    return seat > 0 ? seat : null;
+    final seat = _occupants.indexWhere((player) => player?.id == id);
+    return seat >= 0 ? seat : null;
   }
 
   /// How many bots may join the people of the room at most.
   int get botsRoom => maxPlayers - _players.length;
 
   /// Starts the game with whoever is in the room and [bots] bots more, and
-  /// returns the host's own seat feed.
+  /// returns the host's own seat feed. Seat order is shuffled so humans and
+  /// bots are mixed and the host is not always first.
   SeatFeed start(Random random, {int bots = 0}) {
     final config = this.config = this.config.copyWith(
       seed: SeededRandom.newSeed(random),
       players: (_players.length + bots).clamp(minPlayers, maxPlayers),
     );
+    final occupants = <RoomPlayer?>[
+      ..._players,
+      for (var i = 0; i < config.players - _players.length; i++) null,
+    ]..shuffle(random);
+    _occupants = occupants;
+    final humanSeats = {
+      for (final (seat, person) in occupants.indexed)
+        if (person != null) seat,
+    };
+    final hostSeat = occupants.indexWhere((person) => person?.id == self.id);
     final table = _table = LocalTable(
       config: config,
       bot: bot,
-      humanSeats: {for (var seat = 0; seat < _players.length; seat++) seat},
+      humanSeats: humanSeats,
+      primarySeat: hostSeat,
     );
-    for (var seat = 1; seat < _players.length; seat++) {
+    for (final seat in humanSeats) {
+      if (seat == hostSeat) continue;
       _logs[seat] = [];
       final feed = table.feedFor(seat);
       feed.onUpdate = () => _forward(seat, feed);
     }
     _announce();
-    final own = table.feedFor(0);
-    // The guests' feeds are opened with the host's: one game for everyone.
-    for (var seat = 1; seat < _players.length; seat++) {
+    final own = table.feedFor(hostSeat);
+    for (final seat in humanSeats) {
+      if (seat == hostSeat) continue;
       _sendFeed(seat, from: 0);
     }
     return own;
@@ -424,17 +465,18 @@ class OnlineHost {
     final log = _logs[seat]!;
     final start = from.clamp(0, log.length);
     final question = table.feedFor(seat).question;
+    final person = _occupants[seat]!;
     transport.send({
       'type': 'feed',
       'seating': Seating(
         config: table.config,
         seat: seat,
-        people: _players,
+        occupants: _occupants,
       ).toJson(),
       'from': start,
       'events': log.sublist(start),
       'question': question == null ? null : questionToJson(question),
-    }, to: _players[seat].id);
+    }, to: person.id);
   }
 
   void _onAnswer(int seat, Json payload) {
@@ -681,6 +723,11 @@ class _RemoteFeed implements SeatFeed {
 
   @override
   void acknowledgeEnd(GameFinished result) {}
+
+  @override
+  void finishEarly() {
+    // Only the host's local table may end the game early.
+  }
 
   @override
   void close() => _onUpdate = null;

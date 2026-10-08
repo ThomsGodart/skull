@@ -16,13 +16,14 @@ import '../setup/setup_screen.dart';
 import '../theme/tokens.dart';
 import '../ui/strings.dart';
 import 'online_game.dart';
+import 'room_chat.dart';
 import 'room_transport.dart';
 
 /// Makes the connection a phone known as `selfId` uses to reach its room.
 typedef TransportFactory = RoomTransport Function(String selfId);
 
-/// Who sits at each seat of an online game: the people of the room first,
-/// then bots, and the ghost when two play.
+/// Who sits at each seat of an online game. [Seating.occupants] mixes people
+/// and bots; the ghost sits in when two play.
 List<SeatIdentity> onlineSeats(Seating seating) {
   final seats = tableHands(seating.config.players);
   final ghost = seats > seating.config.players ? seats - 1 : null;
@@ -31,11 +32,10 @@ List<SeatIdentity> onlineSeats(Seating seating) {
     for (var seat = 0; seat < seats; seat++)
       if (seat == ghost)
         const SeatIdentity(Strings.ghostName, Tokens.ghost, isGhost: true)
-      else if (seat < seating.people.length)
+      else if (seating.occupantAt(seat) case final person?)
         SeatIdentity(
-          seat == seating.seat ? Strings.you : seating.people[seat].name,
-          Tokens.playerColors[seating.people[seat].color %
-              Tokens.playerColors.length],
+          person.name,
+          Tokens.playerColors[person.color % Tokens.playerColors.length],
         )
       else
         SeatIdentity(
@@ -80,15 +80,20 @@ class _OnlineHomeScreenState extends State<OnlineHomeScreen> {
     color: widget.settings.playerColor,
   );
 
-  /// Online, the others only know a player by their name: one who still
-  /// goes by the default is asked for theirs first. They may keep it.
+  /// Online, the others only know a player by their name: « Toi » is never
+  /// allowed, so anyone still carrying it must pick another.
   Future<void> _askName() async {
-    if (widget.settings.playerName != AppSettings.defaultPlayerName) return;
+    if (!AppSettings.isForbiddenName(widget.settings.playerName)) return;
     await showDialog<void>(
       context: context,
-      builder: (context) => ProfileDialog(
-        settings: widget.settings,
-        prompt: Strings.onlineNamePrompt,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: ProfileDialog(
+          settings: widget.settings,
+          prompt: Strings.onlineNamePrompt,
+          requireRealName: true,
+        ),
       ),
     );
   }
@@ -285,6 +290,9 @@ Widget _onlineTable({
   required Stream<List<Absence>> absences,
   List<Absence> initialAbsences = const [],
   String selfId = '',
+  String? roomCode,
+  bool canFinishEarly = false,
+  RoomChat? chat,
   void Function(String id)? onKeepWaiting,
   void Function(String id)? onReplaceNow,
 }) => TableScreen(
@@ -300,6 +308,9 @@ Widget _onlineTable({
     onReplaceNow: onReplaceNow,
   ),
   leaveWarning: leaveWarning,
+  roomCode: roomCode,
+  canFinishEarly: canFinishEarly,
+  chat: chat,
 );
 
 /// Says who dropped out of the game and what becomes of their seat: the
@@ -544,19 +555,24 @@ class _HostRoomScreenState extends State<HostRoomScreen> {
     final bots = await _askBots();
     if (bots == null || !mounted) return;
     final feed = widget.host.start(widget.random, bots: bots);
-    final lobby = widget.host.currentLobby;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => _onlineTable(
           seating: Seating(
             config: feed.config,
             seat: feed.seat,
-            people: lobby.players,
+            occupants: widget.host.currentOccupants,
           ),
           feed: feed,
           speed: widget.speed,
           settings: widget.settings,
           leaveWarning: Strings.onlineLeaveHost,
+          roomCode: widget.code,
+          canFinishEarly: true,
+          chat: RoomChat(
+            transport: widget.host.transport,
+            selfId: widget.host.self.id,
+          ),
           absences: widget.host.absences,
           initialAbsences: widget.host.currentAbsences,
           selfId: widget.host.self.id,
@@ -701,6 +717,11 @@ class _GuestRoomScreenState extends State<GuestRoomScreen> {
           settings: widget.settings,
           leaveWarning: Strings.onlineLeaveGuest,
           banner: _banner,
+          roomCode: widget.code,
+          chat: RoomChat(
+            transport: widget.guest.transport,
+            selfId: widget.guest.self.id,
+          ),
           absences: widget.guest.absences,
           selfId: widget.guest.self.id,
         ),

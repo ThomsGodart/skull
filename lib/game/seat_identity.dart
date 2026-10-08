@@ -15,20 +15,26 @@ final class SeatIdentity {
 
   String get initials => name.substring(0, name.length < 2 ? 1 : 2);
 
-  /// [human] at seat 0 and bots at the others, for a table of [seats]. With
-  /// a [ghostSeat], that seat is the ghost's.
+  /// [human] at [humanSeat] and bots at the others, for a table of [seats].
+  /// With a [ghostSeat], that seat is the ghost's.
   static List<SeatIdentity> table(
     int seats, {
     required SeatIdentity human,
+    int humanSeat = 0,
     int? ghostSeat,
-  }) => [
-    human,
-    for (var seat = 1; seat < seats; seat++)
-      seat == ghostSeat
-          ? const SeatIdentity(Strings.ghostName, Tokens.ghost, isGhost: true)
-          : SeatIdentity(
-              Strings.botNames[seat - 1],
-              Tokens.botColors[seat - 1],
-            ),
-  ];
+  }) {
+    var bots = 0;
+    return [
+      for (var seat = 0; seat < seats; seat++)
+        if (seat == ghostSeat)
+          const SeatIdentity(Strings.ghostName, Tokens.ghost, isGhost: true)
+        else if (seat == humanSeat)
+          human
+        else
+          SeatIdentity(
+            Strings.botNames[bots % Strings.botNames.length],
+            Tokens.botColors[bots++ % Tokens.botColors.length],
+          ),
+    ];
+  }
 }

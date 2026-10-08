@@ -6,25 +6,47 @@ import '../ui/strings.dart';
 
 /// Lets the player choose their name and colour, and saves them.
 class ProfileDialog extends StatefulWidget {
-  const ProfileDialog({super.key, required this.settings, this.prompt});
+  const ProfileDialog({
+    super.key,
+    required this.settings,
+    this.prompt,
+    this.requireRealName = false,
+  });
 
   final AppSettings settings;
 
   /// Why the player is asked, when the dialog opens by itself.
   final String? prompt;
 
+  /// When true, « Toi » and a blank name cannot be saved, and cancel is hidden.
+  final bool requireRealName;
+
   @override
   State<ProfileDialog> createState() => _ProfileDialogState();
 }
 
 class _ProfileDialogState extends State<ProfileDialog> {
-  late final _name = TextEditingController(text: widget.settings.playerName);
+  late final _name = TextEditingController(
+    text: AppSettings.isForbiddenName(widget.settings.playerName)
+        ? ''
+        : widget.settings.playerName,
+  );
   late int _color = widget.settings.playerColor;
+  String? _error;
 
   @override
   void dispose() {
     _name.dispose();
     super.dispose();
+  }
+
+  void _save() {
+    if (widget.requireRealName && AppSettings.isForbiddenName(_name.text)) {
+      setState(() => _error = Strings.nameForbidden);
+      return;
+    }
+    widget.settings.setPlayer(name: _name.text, color: _color);
+    Navigator.pop(context);
   }
 
   @override
@@ -44,9 +66,13 @@ class _ProfileDialogState extends State<ProfileDialog> {
             key: const Key('profile-name'),
             controller: _name,
             maxLength: AppSettings.maxNameLength,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: Strings.playerNameLabel,
+              errorText: _error,
             ),
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
           ),
           const SizedBox(height: Tokens.space2),
           const Text(Strings.playerColorLabel),
@@ -76,16 +102,14 @@ class _ProfileDialogState extends State<ProfileDialog> {
         ],
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text(Strings.cancel),
-        ),
+        if (!widget.requireRealName)
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(Strings.cancel),
+          ),
         FilledButton(
           key: const Key('profile-save'),
-          onPressed: () {
-            widget.settings.setPlayer(name: _name.text, color: _color);
-            Navigator.pop(context);
-          },
+          onPressed: _save,
           child: const Text(Strings.save),
         ),
       ],

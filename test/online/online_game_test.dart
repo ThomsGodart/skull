@@ -201,15 +201,20 @@ void main() {
         expect(player.result!.winner, players.first.result!.winner);
       }
       final (seating, _) = await guests.first.started;
-      expect(seating.seat, 1);
-      expect(seating.people.map((p) => p.id), ['host', 'g1', 'g2']);
+      expect(seating.occupantAt(seating.seat)?.id, 'g1');
+      expect(
+        seating.occupants.whereType<RoomPlayer>().map((p) => p.id).toSet(),
+        {'host', 'g1', 'g2'},
+      );
+      expect(seating.occupants.where((p) => p == null), hasLength(1));
     });
 
     test('each phone only ever receives its own cards', () async {
       final (_, _, players) = await startGame(2);
       await untilOver(players);
 
-      for (final (seat, player) in players.indexed) {
+      for (final player in players) {
+        final seat = player.feed.seat;
         final hands = player.events.whereType<HandDealt>();
         expect(hands, isNotEmpty);
         expect(hands.map((hand) => hand.seat).toSet(), {seat});

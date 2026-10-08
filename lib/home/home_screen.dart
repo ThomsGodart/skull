@@ -85,10 +85,12 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Opens the table on [game] and comes back here when it is left.
   Future<void> _play(SavedGame game, {bool replace = false}) async {
     final messenger = ScaffoldMessenger.of(context);
+    final humanSeat = game.config.humanSeat.clamp(0, game.config.players - 1);
     final saver = GameSaver(
       _games,
       game.id,
       playerName: _settings.playerName,
+      humanSeat: humanSeat,
       onError: (_) => messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(const SnackBar(content: Text(Strings.saveFailed))),
@@ -98,15 +100,25 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) => TableScreen(
         human: _human,
         settings: _settings,
+        canFinishEarly: true,
         controller: GameController(
           config: game.config,
           bot: botFor(_settings.activeGameBotLevel, Random()),
           speed: _settings.botSpeed.table,
+          humanSeat: humanSeat,
           savedAnswers: game.answers,
           onProgress: (progress) {
             saver.record(progress);
             _saving = saver.done;
           },
+        ),
+        seatIdentities: SeatIdentity.table(
+          tableHands(game.config.players),
+          human: _human,
+          humanSeat: humanSeat,
+          ghostSeat: game.config.players == 2
+              ? tableHands(game.config.players) - 1
+              : null,
         ),
         onPlayAgain: () =>
             _start(game.config, _settings.activeGameBotLevel, replace: true),
@@ -148,7 +160,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _starting = false;
       return;
     }
-    final config = setup.copyWith(seed: SeededRandom.newSeed(Random()));
+    final random = Random();
+    final config = setup.copyWith(
+      seed: SeededRandom.newSeed(random),
+      humanSeat: random.nextInt(setup.players),
+    );
     final messenger = ScaffoldMessenger.of(context);
     final int id;
     try {

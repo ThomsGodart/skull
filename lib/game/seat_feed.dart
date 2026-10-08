@@ -34,5 +34,9 @@ abstract interface class SeatFeed {
   /// Tells the game that this seat has seen the final standings.
   void acknowledgeEnd(GameFinished result);
 
+  /// Ends the game with the scores as they stand. Only the host (or a solo
+  /// table) may do this; a guest's call is forwarded to the host.
+  void finishEarly();
+
   void close();
 }

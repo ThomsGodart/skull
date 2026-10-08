@@ -93,10 +93,11 @@ void main() {
     await tester.tap(find.byKey(const Key('online-bots-confirm')));
     await settle(tester);
 
-    // The host is at the table, facing Bob.
+    // The host is at the table, facing Bob (seats are shuffled).
     expect(find.text(Strings.roundTitle(1, 1)), findsOneWidget);
     expect(find.text('Bob'), findsOneWidget);
-    expect(seating?.seat, 1);
+    expect(seating?.people.map((p) => p.name).toSet(), {'Anne', 'Bob'});
+    expect(find.text(Strings.you), findsNothing);
 
     guest.leave();
     await tester.pumpWidget(const SizedBox());
@@ -127,10 +128,12 @@ void main() {
     await settle(tester);
 
     expect(find.text(Strings.roundTitle(1, 1)), findsOneWidget);
-    // Seen from Bob's seat: the host by name, himself as "Toi".
+    // Own seat shows the real name, never « Toi ».
     expect(find.text('Zoé'), findsOneWidget);
-    expect(find.text(Strings.you), findsOneWidget);
+    expect(find.text('Bob'), findsOneWidget);
+    expect(find.text(Strings.you), findsNothing);
     expect(find.byKey(const Key('bid-0')), findsOneWidget);
+    expect(find.byKey(const Key('table-room-code')), findsOneWidget);
 
     host.close();
     await settle(tester);
@@ -140,21 +143,18 @@ void main() {
     await settle(tester);
   });
 
-  testWidgets('a player who still goes by the default name is asked for '
-      'theirs before playing online', (tester) async {
+  testWidgets('an empty name is replaced before online play, so setup opens '
+      'without a rename prompt', (tester) async {
     await openOnline(tester, name: '');
 
     await tester.tap(find.byKey(const Key('online-create')));
     await tester.pumpAndSettle();
-    expect(find.text(Strings.onlineNamePrompt), findsOneWidget);
+    expect(find.text(Strings.onlineNamePrompt), findsNothing);
+    expect(find.byKey(const Key('launch')), findsOneWidget);
 
-    await tester.enterText(find.byKey(const Key('profile-name')), 'Thomas');
-    await tester.tap(find.byKey(const Key('profile-save')));
-    await tester.pumpAndSettle();
-    // Then on to setting the game up.
     await tester.tap(find.byKey(const Key('launch')));
     await settle(tester);
-    expect(find.text('Thomas'), findsOneWidget);
+    expect(find.byKey(const Key('online-room-code')), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
     await settle(tester);

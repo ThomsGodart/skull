@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skull_kings/bots/bot_level.dart';
@@ -6,14 +8,19 @@ import 'package:skull_kings/game/table_speed.dart';
 import 'package:skull_kings/settings/app_settings.dart';
 import 'package:skull_kings/storage/app_database.dart';
 import 'package:skull_kings/storage/drift_settings_store.dart';
+import 'package:skull_kings/ui/strings.dart';
 
 import '../support/memory_stores.dart';
 
 void main() {
   test('a first launch starts with the defaults', () async {
-    final settings = await AppSettings.load(MemorySettingsStore());
+    final settings = await AppSettings.load(
+      MemorySettingsStore(),
+      random: Random(1),
+    );
 
-    expect(settings.playerName, AppSettings.defaultPlayerName);
+    expect(settings.playerName, isNot(AppSettings.forbiddenPlayerName));
+    expect(Strings.botNames, contains(settings.playerName));
     expect(settings.playerColor, 0);
     expect(settings.opponents, 3);
   });
@@ -31,12 +38,18 @@ void main() {
     expect(reloaded.opponents, 6);
   });
 
-  test('a blank name falls back to the default one', () async {
-    final settings = await AppSettings.load(MemorySettingsStore());
+  test('a blank or forbidden name is replaced by a random one', () async {
+    final settings = await AppSettings.load(
+      MemorySettingsStore(),
+      random: Random(2),
+    );
 
     await settings.setPlayer(name: '   ', color: 0);
+    expect(settings.playerName, isNot(AppSettings.forbiddenPlayerName));
+    expect(settings.playerName.trim(), isNotEmpty);
 
-    expect(settings.playerName, AppSettings.defaultPlayerName);
+    await settings.setPlayer(name: Strings.you, color: 0);
+    expect(settings.playerName, isNot(AppSettings.forbiddenPlayerName));
   });
 
   test('a name is trimmed and kept short enough for the table', () async {

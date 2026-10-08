@@ -108,7 +108,7 @@ class _PowerDialogState extends State<PowerDialog> {
       ),
       WagerQuestion(:final amounts) => (
         Strings.pirateName(Pirate.rascal),
-        Strings.wagerBody,
+        Strings.wagerBodyWithBid(widget.bid),
         [
           for (final amount in amounts)
             _choice(

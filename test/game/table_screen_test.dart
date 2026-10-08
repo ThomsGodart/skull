@@ -88,10 +88,18 @@ void main() {
     await tapCard(tester, card);
     expect(find.byKey(const Key('card-hint')), findsOneWidget);
     expect(find.byKey(const Key('play-card')), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byKey(const Key('play-card'))).onPressed,
+      isNotNull,
+    );
 
     await tapCard(tester, card);
     expect(controller.playQuestion, isNotNull, reason: 'put back, not played');
-    expect(find.byKey(const Key('play-card')), findsNothing);
+    // « Jouer » stays on screen, disabled until a card is selected again.
+    expect(
+      tester.widget<FilledButton>(find.byKey(const Key('play-card'))).onPressed,
+      isNull,
+    );
 
     await tapCard(tester, card);
     await tester.tap(find.byKey(const Key('play-card')));
@@ -525,7 +533,12 @@ void main() {
     await tapCard(tester, card);
 
     expect(find.byKey(const Key('card-hint')), findsOneWidget);
-    expect(find.byKey(const Key('play-card')), findsNothing);
+    expect(find.byKey(const Key('play-card')), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byKey(const Key('play-card'))).onPressed,
+      isNull,
+      reason: 'not our turn to play while bidding',
+    );
     expect(find.byKey(const Key('place-bid')), findsOneWidget);
     expect(controller.bidQuestion, isNotNull, reason: 'still bidding');
     final hint = Strings.cardHint(card, powers: false);
@@ -544,10 +557,13 @@ void main() {
     final controller = await openTable(tester, settings: settings);
     final card = controller.hand.single;
 
-    // While bidding the card cannot be played: nothing shows for it.
+    // While bidding the card cannot be played: the button stays disabled.
     await tapCard(tester, card);
     expect(find.byKey(const Key('card-hint')), findsNothing);
-    expect(find.byKey(const Key('play-card')), findsNothing);
+    expect(
+      tester.widget<FilledButton>(find.byKey(const Key('play-card'))).onPressed,
+      isNull,
+    );
     await tapCard(tester, card);
 
     await tester.tap(find.byKey(const Key('bid-0')));
@@ -557,7 +573,10 @@ void main() {
     await tapCard(tester, controller.playQuestion!.legalCards.first);
 
     expect(find.byKey(const Key('card-hint')), findsNothing);
-    expect(find.byKey(const Key('play-card')), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byKey(const Key('play-card'))).onPressed,
+      isNotNull,
+    );
   });
 
   testWidgets('on its side, the phone shows every seat, and larger than '

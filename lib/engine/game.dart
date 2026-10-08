@@ -69,7 +69,16 @@ final class Game {
         'must be $minPlayers to $maxPlayers',
       );
     }
+    if (config.startingRound < 1 || config.startingRound > standardRounds) {
+      throw ArgumentError.value(
+        config.startingRound,
+        'startingRound',
+        'must be 1 to $standardRounds',
+      );
+    }
     _dealer = _random.nextInt(config.players);
+    // Skip early rounds without dealing them: the table asked to start later.
+    _round = config.startingRound - 1;
     _startRound();
   }
 
@@ -284,11 +293,28 @@ final class Game {
       throw IllegalAnswer('bid ${answer.bid} is not in 0..${question.maxBid}');
     }
     _bids[answer.seat] = answer.bid;
+    _events.add(BidAccepted(answer.seat));
     final bids = _bids.take(_players);
     if (bids.contains(null)) return;
     _bidsRevealed = true;
     _events.add(BidsRevealed([for (final bid in bids) bid!]));
     _ghostPlays();
+  }
+
+  /// Ends the game with the scores as they stand. An unfinished round is
+  /// abandoned (not scored). A tie for first names the lowest-numbered seat.
+  void finishEarly() {
+    if (_finished) return;
+    _finished = true;
+    _power = null;
+    _powersLeft.clear();
+    final best = _scores.isEmpty
+        ? 0
+        : _scores.reduce((a, b) => a > b ? a : b);
+    final winner =
+        soleLeader(_scores) ??
+        _scores.indexWhere((score) => score == best).clamp(0, _players - 1);
+    _events.add(GameFinished(winner: winner, scores: List.of(_scores)));
   }
 
   void _play(PlayQuestion question, PlayAnswer answer) {

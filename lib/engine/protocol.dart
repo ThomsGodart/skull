@@ -28,6 +28,8 @@ final class GameConfig {
     this.piratePowers = false,
     this.secondExpansion = false,
     this.leftOut = const {},
+    this.startingRound = 1,
+    this.humanSeat = 0,
   });
 
   factory GameConfig.fromJson(Map<String, Object?> json) => GameConfig(
@@ -46,6 +48,8 @@ final class GameConfig {
       for (final kind in json['leftOut'] as List? ?? const [])
         CardKind.values.byName(kind as String),
     },
+    startingRound: json['startingRound'] as int? ?? 1,
+    humanSeat: json['humanSeat'] as int? ?? 0,
   );
 
   /// Seats at the table, [minPlayers] to [maxPlayers].
@@ -72,6 +76,14 @@ final class GameConfig {
   /// [optionalKinds].
   final Set<CardKind> leftOut;
 
+  /// The first round dealt: 1 is the usual start; higher skips the early
+  /// rounds when the table wants a short game.
+  final int startingRound;
+
+  /// Where the human sits in a solo game. Drawn at launch so the table is
+  /// not always human then bots. Ignored online.
+  final int humanSeat;
+
   /// The cards of the second expansion that may be left out; the others
   /// always come with it.
   static const optionalKinds = [
@@ -80,6 +92,14 @@ final class GameConfig {
     CardKind.stingray,
     CardKind.lastSalvo,
     CardKind.davyJones,
+  ];
+
+  /// The cards of the first expansion that may be left in or out, shown
+  /// like [optionalKinds].
+  static const firstExpansionKinds = [
+    CardKind.kraken,
+    CardKind.whiteWhale,
+    CardKind.loot,
   ];
 
   /// The second expansion is asked for and can be played: its cards call for
@@ -96,6 +116,8 @@ final class GameConfig {
     bool? piratePowers,
     bool? secondExpansion,
     Set<CardKind>? leftOut,
+    int? startingRound,
+    int? humanSeat,
   }) => GameConfig(
     players: players ?? this.players,
     seed: seed ?? this.seed,
@@ -106,6 +128,8 @@ final class GameConfig {
     piratePowers: piratePowers ?? this.piratePowers,
     secondExpansion: secondExpansion ?? this.secondExpansion,
     leftOut: leftOut ?? this.leftOut,
+    startingRound: startingRound ?? this.startingRound,
+    humanSeat: humanSeat ?? this.humanSeat,
   );
 
   /// Any expansion card or the pirate powers are in play.
@@ -124,6 +148,8 @@ final class GameConfig {
     'piratePowers': piratePowers,
     if (secondExpansion) 'secondExpansion': true,
     if (leftOut.isNotEmpty) 'leftOut': [for (final kind in leftOut) kind.name],
+    if (startingRound != 1) 'startingRound': startingRound,
+    if (humanSeat != 0) 'humanSeat': humanSeat,
   };
 }
 
@@ -416,6 +442,14 @@ final class HandDealt extends Event {
 
   @override
   int get audience => seat;
+}
+
+/// A seat locked in its bid: everyone may see that it has, not what it is,
+/// until [BidsRevealed].
+final class BidAccepted extends Event {
+  const BidAccepted(this.seat);
+
+  final int seat;
 }
 
 final class BidsRevealed extends Event {

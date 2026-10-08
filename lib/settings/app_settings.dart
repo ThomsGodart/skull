@@ -16,7 +16,9 @@ enum BotSpeed { normal, fast, instant }
 class AppSettings extends ChangeNotifier {
   AppSettings._(this._store);
 
-  static const defaultPlayerName = Strings.you;
+  /// Never a display name: « Toi » is reserved for nowhere.
+  static const forbiddenPlayerName = Strings.you;
+
   static const maxNameLength = 12;
   static const minOpponents = minPlayers - 1;
   static const maxOpponents = maxPlayers - 1;
@@ -37,10 +39,31 @@ class AppSettings extends ChangeNotifier {
   static const _trickTokensKey = 'trickTokens';
   static const _cardEffectsKey = 'cardEffects';
 
-  static Future<AppSettings> load(SettingsStore store) async {
+  /// A pirate-style name drawn like the bots'.
+  static String randomPlayerName([Random? random]) {
+    final names = Strings.botNames;
+    return names[(random ?? Random()).nextInt(names.length)];
+  }
+
+  static bool isForbiddenName(String name) {
+    final trimmed = name.trim();
+    return trimmed.isEmpty || trimmed == forbiddenPlayerName;
+  }
+
+  static Future<AppSettings> load(SettingsStore store, {Random? random}) async {
     final values = await store.readAll();
     final settings = AppSettings._(store);
-    settings._playerName = _cleanName(values[_nameKey] ?? '');
+    final rawName = values[_nameKey] ?? '';
+    if (isForbiddenName(rawName)) {
+      settings._playerName = randomPlayerName(random);
+      try {
+        await store.write(_nameKey, settings._playerName);
+      } on Object {
+        // Kept in memory until the next write succeeds.
+      }
+    } else {
+      settings._playerName = _cleanName(rawName, random: random);
+    }
     final color = int.tryParse(values[_colorKey] ?? '');
     if (color != null && _isColor(color)) settings._playerColor = color;
     final opponents = int.tryParse(values[_opponentsKey] ?? '');
@@ -83,7 +106,7 @@ class AppSettings extends ChangeNotifier {
   }
 
   final SettingsStore _store;
-  String _playerName = defaultPlayerName;
+  String _playerName = 'Mako';
   int _playerColor = 0;
   int _opponents = 3;
   GameConfig _lastSetup = const GameConfig(players: 4, seed: 0);
@@ -116,6 +139,7 @@ class AppSettings extends ChangeNotifier {
     _lastSetup = setup.copyWith(
       players: _clampOpponents(setup.players - 1) + 1,
       seed: 0,
+      humanSeat: 0,
     );
     _opponents = _lastSetup.players - 1;
     await _changed(_setupKey, jsonEncode(_lastSetup.toJson()));
@@ -165,7 +189,8 @@ class AppSettings extends ChangeNotifier {
   /// A card is played by one tap instead of two.
   bool get singleTapPlay => _singleTapPlay;
 
-  /// The phone vibrates lightly when a card is picked or played.
+  /// The phone vibrates lightly when a card is picked or played, and when
+  /// it becomes the player's turn.
   bool get haptics => _haptics;
 
   /// Cards move without animation, whatever the system setting says.
@@ -243,9 +268,9 @@ class AppSettings extends ChangeNotifier {
   static int _clampOpponents(int opponents) =>
       opponents.clamp(minOpponents, maxOpponents);
 
-  static String _cleanName(String name) {
+  static String _cleanName(String name, {Random? random}) {
     final trimmed = name.trim();
-    if (trimmed.isEmpty) return defaultPlayerName;
+    if (isForbiddenName(trimmed)) return randomPlayerName(random);
     return trimmed.length <= maxNameLength
         ? trimmed
         : trimmed.substring(0, maxNameLength);

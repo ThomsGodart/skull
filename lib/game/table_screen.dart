@@ -11,6 +11,7 @@ import '../ui/cards/card_view.dart';
 import '../ui/cards/hand_fan.dart';
 import '../ui/pictogram.dart';
 import '../ui/strings.dart';
+import '../online/room_chat.dart';
 import 'bid_panel.dart';
 import 'game_controller.dart';
 import 'power_dialog.dart';
@@ -32,6 +33,9 @@ class TableScreen extends StatefulWidget {
     this.notices,
     this.leaveWarning,
     this.settings,
+    this.roomCode,
+    this.canFinishEarly = true,
+    this.chat,
     this.screenAwake = const WakelockScreenAwake(),
   });
 
@@ -64,6 +68,15 @@ class TableScreen extends StatefulWidget {
   /// What leaving costs, when the game is not one that is saved and resumed.
   final String? leaveWarning;
 
+  /// The online room code, shown while the table is open.
+  final String? roomCode;
+
+  /// Whether the pause menu offers ending the game early.
+  final bool canFinishEarly;
+
+  /// In-game chat for an online table.
+  final RoomChat? chat;
+
   @override
   State<TableScreen> createState() => _TableScreenState();
 }
@@ -74,6 +87,7 @@ class _TableScreenState extends State<TableScreen> {
       SeatIdentity.table(
         widget.controller.seats,
         human: widget.human,
+        humanSeat: widget.controller.humanSeat,
         ghostSeat: widget.controller.ghostSeat,
       );
 
@@ -88,15 +102,23 @@ class _TableScreenState extends State<TableScreen> {
   /// A card the player tapped only to look at it, when it cannot be played.
   Card? _inspected;
 
+  /// Whether a play turn was already signalled with a vibration.
+  bool _turnBuzzed = false;
+
   GameController get _game => widget.controller;
 
   @override
   void initState() {
     super.initState();
     _game.addListener(_onGameChanged);
+    widget.chat?.addListener(_onChatChanged);
     _game.start();
     _openTables++;
     widget.screenAwake.keepOn();
+  }
+
+  void _onChatChanged() {
+    if (mounted) setState(() {});
   }
 
   /// Tables currently open. When one replaces another, the new one opens
@@ -112,6 +134,9 @@ class _TableScreenState extends State<TableScreen> {
   @override
   void dispose() {
     if (--_openTables == 0) widget.screenAwake.release();
+    widget.chat
+      ?..removeListener(_onChatChanged)
+      ..dispose();
     _game
       ..removeListener(_onGameChanged)
       ..dispose();
@@ -119,8 +144,17 @@ class _TableScreenState extends State<TableScreen> {
   }
 
   void _onGameChanged() {
-    if (_game.playQuestion == null) _selected = null;
+    // Keep a pre-selected card across turns: only clear when it leaves the hand.
+    if (_selected != null && !_game.hand.contains(_selected)) {
+      _selected = null;
+    }
     if (!_game.hand.contains(_inspected)) _inspected = null;
+    if (_game.playQuestion == null) {
+      _turnBuzzed = false;
+    } else if (!_turnBuzzed) {
+      _turnBuzzed = true;
+      _vibrate(HapticFeedback.mediumImpact);
+    }
     setState(() {});
     final power = _game.afterTrickQuestion;
     if (power != null && !identical(power, _powerShown)) {
@@ -181,8 +215,33 @@ class _TableScreenState extends State<TableScreen> {
     if (answer != null) _game.answerAfterTrick(answer);
   }
 
-  /// Juanita's power: the cards nobody was dealt.
+  /// Juanita's power: last trick, then the hand, then the undealt stock.
   Future<void> _showStock(List<Card> stock) async {
+    Widget cards(String label, List<Card> list) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Tokens.mutedText,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: Tokens.space1),
+        if (list.isEmpty)
+          const Text(Strings.noLastTrick, style: TextStyle(color: Tokens.mutedText))
+        else
+          Wrap(
+            spacing: Tokens.space1,
+            runSpacing: Tokens.space1,
+            children: [
+              for (final card in sortedHand(list))
+                CardView(card, width: 62, namedPirates: _namedPirates),
+            ],
+          ),
+      ],
+    );
+
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -192,17 +251,18 @@ class _TableScreenState extends State<TableScreen> {
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(Strings.stockBody),
               const SizedBox(height: Tokens.space3),
-              Wrap(
-                spacing: Tokens.space1,
-                runSpacing: Tokens.space1,
-                children: [
-                  for (final card in sortedHand(stock))
-                    CardView(card, width: 62, namedPirates: _namedPirates),
-                ],
+              cards(
+                Strings.lastTrickLabel,
+                [for (final play in _game.lastTrick ?? const []) play.card],
               ),
+              const SizedBox(height: Tokens.space3),
+              cards(Strings.yourHandLabel, _game.hand),
+              const SizedBox(height: Tokens.space3),
+              cards(Strings.stockLabel, stock),
             ],
           ),
         ),
@@ -316,7 +376,7 @@ class _TableScreenState extends State<TableScreen> {
   /// The game is saved as it goes, so leaving loses nothing.
   Future<void> _pause() async {
     final navigator = Navigator.of(context);
-    final quit = await showDialog<bool>(
+    final action = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text(Strings.pause),
@@ -329,18 +389,46 @@ class _TableScreenState extends State<TableScreen> {
             ),
             child: const Text(Strings.rules),
           ),
+          if (widget.canFinishEarly && _game.result == null)
+            TextButton(
+              key: const Key('finish-early'),
+              onPressed: () => Navigator.pop(context, 'finish'),
+              child: const Text(Strings.finishEarly),
+            ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(context, 'quit'),
             child: const Text(Strings.quit),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(context, 'resume'),
             child: const Text(Strings.resume),
           ),
         ],
       ),
     );
-    if (quit ?? false) navigator.pop();
+    if (action == 'quit') {
+      navigator.pop();
+    } else if (action == 'finish') {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text(Strings.finishEarly),
+          content: const Text(Strings.finishEarlyConfirm),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text(Strings.cancel),
+            ),
+            FilledButton(
+              key: const Key('finish-early-confirm'),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text(Strings.finishEarly),
+            ),
+          ],
+        ),
+      );
+      if (confirm ?? false) _game.finishEarly();
+    }
   }
 
   /// The whole score sheet, on nearly the full screen.
@@ -479,57 +567,63 @@ class _TableScreenState extends State<TableScreen> {
     ),
   );
 
-  /// What the table says in a line — or, while a card is lifted, what that
-  /// card does and the button that plays it. The game stays in view.
+  /// Always shows « Jouer »: disabled until it is our turn and a card is
+  /// selected. Effects text sits beside it when a card is lifted.
   Widget _statusLine() {
     final card = _selected ?? _inspected;
     final effects = widget.settings?.cardEffects ?? true;
-    // Without the cards' effects, a lifted card only brings its button.
-    if (card != null && !effects && card == _selected) {
-      return FilledButton(
-        key: const Key('play-card'),
-        onPressed: () => _play(card),
-        child: const Text(Strings.playCard),
+    final canPlay =
+        _game.playQuestion != null &&
+        _selected != null &&
+        (_game.playQuestion!.legalCards.contains(_selected) ||
+            _game.forcedCard == _selected);
+    final playButton = FilledButton(
+      key: const Key('play-card'),
+      onPressed: canPlay ? () => _play(_selected!) : null,
+      child: const Text(Strings.playCard),
+    );
+    if (card != null && effects) {
+      final name = Strings.cardName(card, namedPirates: _namedPirates);
+      final hint = Strings.cardHint(card, powers: _namedPirates);
+      return Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Tokens.space2,
+          vertical: Tokens.space1,
+        ),
+        decoration: BoxDecoration(
+          color: Tokens.panelRaised,
+          borderRadius: BorderRadius.circular(Tokens.radiusButton),
+          border: Border.all(color: Tokens.gold),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                hint == null ? name : '$name — $hint',
+                key: const Key('card-hint'),
+                style: const TextStyle(color: Tokens.text, fontSize: 13),
+              ),
+            ),
+            const SizedBox(width: Tokens.space2),
+            playButton,
+          ],
+        ),
       );
     }
-    if (card == null || !effects) {
-      return Text(
-        _status(),
-        textAlign: TextAlign.center,
-        style: const TextStyle(color: Tokens.text, fontWeight: FontWeight.w700),
-      );
-    }
-    final name = Strings.cardName(card, namedPirates: _namedPirates);
-    final hint = Strings.cardHint(card, powers: _namedPirates);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Tokens.space2,
-        vertical: Tokens.space1,
-      ),
-      decoration: BoxDecoration(
-        color: Tokens.panelRaised,
-        borderRadius: BorderRadius.circular(Tokens.radiusButton),
-        border: Border.all(color: Tokens.gold),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              hint == null ? name : '$name — $hint',
-              key: const Key('card-hint'),
-              style: const TextStyle(color: Tokens.text, fontSize: 13),
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            _status(),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Tokens.text,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          if (card == _selected) ...[
-            const SizedBox(width: Tokens.space2),
-            FilledButton(
-              key: const Key('play-card'),
-              onPressed: () => _play(card),
-              child: const Text(Strings.playCard),
-            ),
-          ],
-        ],
-      ),
+        ),
+        playButton,
+      ],
     );
   }
 
@@ -727,6 +821,17 @@ class _TableScreenState extends State<TableScreen> {
                   ),
                 ),
               ),
+              if (widget.roomCode case final code?)
+                Text(
+                  Strings.onlineCode(code),
+                  key: const Key('table-room-code'),
+                  style: const TextStyle(
+                    color: Tokens.gold,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2,
+                  ),
+                ),
               // Once the bids are known: are there more tricks announced
               // than there are to take, or fewer?
               if (_game.totalBids case final total?)
@@ -779,6 +884,7 @@ class _TableScreenState extends State<TableScreen> {
             ],
           ),
         ),
+        if (widget.chat != null) _chatButton(),
         IconButton(
           tooltip: Strings.lastTrick,
           onPressed: _showLastTrick,
@@ -791,6 +897,137 @@ class _TableScreenState extends State<TableScreen> {
         ),
       ],
     );
+  }
+
+  Widget _chatButton() {
+    final chat = widget.chat!;
+    final unread = chat.unread;
+    return IconButton(
+      key: const Key('chat-open'),
+      tooltip: Strings.chatTitle,
+      onPressed: _openChat,
+      icon: Badge(
+        isLabelVisible: unread > 0,
+        label: Text('$unread'),
+        child: const Icon(Icons.chat_bubble_outline),
+      ),
+    );
+  }
+
+  Future<void> _openChat() async {
+    final chat = widget.chat;
+    if (chat == null) return;
+    chat.markOpen(true);
+    final input = TextEditingController();
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Tokens.panel,
+      isScrollControlled: true,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.55,
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(Tokens.space3),
+                  child: Text(
+                    Strings.chatTitle,
+                    style: TextStyle(
+                      color: Tokens.text,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListenableBuilder(
+                    listenable: chat,
+                    builder: (context, _) {
+                      final lines = chat.lines;
+                      if (lines.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            Strings.chatEmpty,
+                            style: TextStyle(color: Tokens.mutedText),
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Tokens.space3,
+                        ),
+                        itemCount: lines.length,
+                        itemBuilder: (context, index) {
+                          final line = lines[index];
+                          return ListTile(
+                            dense: true,
+                            title: Text(
+                              line.fromName,
+                              style: const TextStyle(
+                                color: Tokens.gold,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                            subtitle: Text(
+                              line.text,
+                              style: const TextStyle(color: Tokens.text),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(Tokens.space2),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          key: const Key('chat-input'),
+                          controller: input,
+                          decoration: const InputDecoration(
+                            hintText: Strings.chatHint,
+                          ),
+                          onSubmitted: (text) {
+                            chat.send(
+                              text,
+                              fromName: widget.settings?.playerName ??
+                                  widget.human.name,
+                            );
+                            input.clear();
+                          },
+                        ),
+                      ),
+                      IconButton(
+                        key: const Key('chat-send'),
+                        onPressed: () {
+                          chat.send(
+                            input.text,
+                            fromName: widget.settings?.playerName ??
+                                widget.human.name,
+                          );
+                          input.clear();
+                        },
+                        icon: const Icon(Icons.send),
+                        tooltip: Strings.chatSend,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    chat.markOpen(false);
+    input.dispose();
   }
 
   /// The opponents, in rows of two to four so that each tile stays wide
@@ -881,6 +1118,9 @@ class _TableScreenState extends State<TableScreen> {
         isCurrent: _game.currentSeat == seat,
         isDealer: _game.dealer == seat,
         emphasizeBid: _game.revealingBids,
+        bidAccepted:
+            _game.acceptedBids.contains(seat) &&
+            _game.bids.elementAtOrNull(seat) == null,
         wager: _game.wagers[seat],
         hasHarry: _game.harrySeats.contains(seat),
         showTokens: widget.settings?.trickTokens ?? false,

@@ -213,9 +213,32 @@ abstract final class Strings {
   static const close = 'Fermer';
   static const quit = 'Quitter';
   static const pause = 'Pause';
+  static const finishEarly = 'Terminer la partie';
+  static const finishEarlyConfirm =
+      'La manche en cours ne sera pas comptée. Les scores restent '
+      'tels quels.';
   static const gameIsSaved =
       'La partie est sauvegardée. Tu pourras la reprendre depuis l\'accueil.';
   static const resume = 'Reprendre';
+  static const bidAcceptedHelp = 'Pari validé';
+  static const startingRoundLabel = 'Commencer à la manche';
+  static String startingRoundOption(int round, int cards) =>
+      'Manche $round · $cards carte${cards > 1 ? 's' : ''}';
+  static const chatTitle = 'Discussion';
+  static const chatHint = 'Écrire un message…';
+  static const chatSend = 'Envoyer';
+  static const chatEmpty = 'Aucun message pour l\'instant.';
+  static const lastTrickLabel = 'Dernier pli';
+  static const yourHandLabel = 'Ta main';
+  static const stockLabel = 'Cartes non distribuées';
+  static String wagerBodyWithBid(int bid) =>
+      'Ton pari est $bid. Mise dessus : gagnée s\'il est réussi, '
+      'perdue sinon.';
+  static const nameForbidden =
+      'Choisis un vrai nom : « Toi » n\'est pas autorisé.';
+  static const optionFirstExpansion = 'Première extension';
+  static const optionFirstExpansionHelp =
+      'Choisis les cartes à ajouter au jeu de base.';
 
   static String savedGameSummary(int round, int score) =>
       'Manche $round · ${points(score)}';
@@ -390,6 +413,7 @@ abstract final class Strings {
   static const discardConfirm = 'Défausser';
   static const wagerBody =
       'Mise sur ton pari : gagnée s\'il est réussi, perdue sinon.';
+  // Prefer [wagerBodyWithBid] when the current bid is known.
   static String wagerOption(int amount) =>
       amount == 0 ? 'Ne rien miser' : 'Miser $amount';
   static String adjustBidBody(int tricks) =>

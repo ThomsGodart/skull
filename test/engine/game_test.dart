@@ -62,14 +62,39 @@ void main() {
       game.answer(const BidAnswer(seat: 1, bid: 0));
       game.answer(const BidAnswer(seat: 2, bid: 1));
 
-      expect(game.takeEvents(), isEmpty);
+      expect(
+        game.takeEvents().whereType<BidAccepted>().map((e) => e.seat),
+        [0, 1, 2],
+      );
       expect(game.pending.single.seat, 3);
 
       game.answer(const BidAnswer(seat: 3, bid: 0));
 
-      final revealed = game.takeEvents().whereType<BidsRevealed>().single;
+      final events = game.takeEvents();
+      expect(events.whereType<BidAccepted>().single.seat, 3);
+      final revealed = events.whereType<BidsRevealed>().single;
       expect(revealed.bids, [1, 0, 1, 0]);
       expect(revealed.audience, isNull);
+    });
+
+    test('a short game may start at a later round', () {
+      final game = Game(
+        const GameConfig(players: 4, seed: 7, startingRound: 5),
+      );
+
+      expect(game.takeEvents().whereType<RoundStarted>().single.round, 5);
+      expect(game.viewFor(0).cardsDealt, 5);
+    });
+
+    test('finishEarly ends with the scores as they stand', () {
+      final game = Game(config)..takeEvents();
+      bidAll(game, 0);
+      game.takeEvents();
+      game.finishEarly();
+
+      final finished = game.takeEvents().whereType<GameFinished>().single;
+      expect(finished.scores, everyElement(0));
+      expect(game.pending, isEmpty);
     });
 
     test('a bid above the number of cards dealt is refused', () {

@@ -18,6 +18,7 @@ class SeatChip extends StatelessWidget {
     this.isDealer = false,
     this.leadsNext = false,
     this.emphasizeBid = false,
+    this.bidAccepted = false,
     this.wager,
     this.hasHarry = false,
     this.showTokens = false,
@@ -43,6 +44,9 @@ class SeatChip extends StatelessWidget {
 
   /// The bids were just turned over: this one is shown off.
   final bool emphasizeBid;
+
+  /// The seat has locked in a bid while the others may still be choosing.
+  final bool bidAccepted;
 
   /// What the seat staked with Rascal this round, once it did.
   final int? wager;
@@ -109,6 +113,19 @@ class SeatChip extends StatelessWidget {
                 ),
                 if (isDealer) _badge(Strings.dealerMark, Strings.dealer),
                 if (leadsNext) _badge(Strings.leadMark, Strings.leadsNext),
+                if (bidAccepted && bid == null && !identity.isGhost)
+                  Padding(
+                    padding: EdgeInsets.only(left: (Tokens.space1 + 2) * scale),
+                    child: Tooltip(
+                      message: Strings.bidAcceptedHelp,
+                      child: Icon(
+                        Icons.check_circle,
+                        key: const Key('bid-accepted'),
+                        size: 16 * scale,
+                        color: Tokens.gold,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
