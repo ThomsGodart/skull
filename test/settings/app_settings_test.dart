@@ -98,17 +98,20 @@ void main() {
       expect(settings.singleTapPlay, isFalse);
       expect(settings.haptics, isTrue);
       expect(settings.reduceMotion, isFalse);
+      expect(settings.fullscreen, isFalse);
 
       await settings.setBotSpeed(BotSpeed.fast);
       await settings.setSingleTapPlay(true);
       await settings.setHaptics(false);
       await settings.setReduceMotion(true);
+      await settings.setFullscreen(true);
 
       final reloaded = await AppSettings.load(store);
       expect(reloaded.botSpeed, BotSpeed.fast);
       expect(reloaded.singleTapPlay, isTrue);
       expect(reloaded.haptics, isFalse);
       expect(reloaded.reduceMotion, isTrue);
+      expect(reloaded.fullscreen, isTrue);
     },
   );
 

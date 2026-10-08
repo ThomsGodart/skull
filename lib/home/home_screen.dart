@@ -20,6 +20,7 @@ import '../stats/stats_screen.dart';
 import '../counter/counter_store.dart';
 import '../storage/game_store.dart';
 import '../theme/tokens.dart';
+import '../ui/fullscreen_button.dart';
 import '../ui/pictogram.dart';
 import '../ui/strings.dart';
 import '../settings/profile_dialog.dart';
@@ -263,20 +264,22 @@ class _HomeScreenState extends State<HomeScreen> {
     final saved = _saved;
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(Tokens.space6),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Center(
-                  child: Pictogram(
-                    Strings.homeEmblem,
-                    size: 72,
-                    color: Tokens.gold,
-                  ),
-                ),
+        child: Stack(
+          children: [
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(Tokens.space6),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Center(
+                      child: Pictogram(
+                        Strings.homeEmblem,
+                        size: 72,
+                        color: Tokens.gold,
+                      ),
+                    ),
                 const Text(
                   Strings.appTitle,
                   textAlign: TextAlign.center,
@@ -364,18 +367,29 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-                TextButton.icon(
-                  key: const Key('edit-profile'),
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (context) => ProfileDialog(settings: _settings),
-                  ),
-                  icon: CircleAvatar(radius: 10, backgroundColor: _human.color),
-                  label: Text(_human.name),
+                    TextButton.icon(
+                      key: const Key('edit-profile'),
+                      onPressed: () => showDialog<void>(
+                        context: context,
+                        builder: (context) =>
+                            ProfileDialog(settings: _settings),
+                      ),
+                      icon: CircleAvatar(
+                        radius: 10,
+                        backgroundColor: _human.color,
+                      ),
+                      label: Text(_human.name),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: FullscreenButton(settings: _settings),
+            ),
+          ],
         ),
       ),
     );

@@ -14,6 +14,7 @@ import '../ui/cards/hand_fan.dart';
 import '../ui/pictogram.dart';
 import '../ui/strings.dart';
 import '../online/room_chat.dart';
+import '../ui/fullscreen_button.dart';
 import 'bid_panel.dart';
 import 'game_controller.dart';
 import 'power_dialog.dart';
@@ -897,6 +898,8 @@ class _TableScreenState extends State<TableScreen> {
           ),
         ),
         if (widget.chat != null) _chatButton(),
+        if (widget.settings != null)
+          FullscreenButton(settings: widget.settings!),
         IconButton(
           tooltip: Strings.lastTrick,
           onPressed: _showLastTrick,

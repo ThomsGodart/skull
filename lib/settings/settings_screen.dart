@@ -69,6 +69,13 @@ class SettingsScreen extends StatelessWidget {
                 onChanged: settings.setReduceMotion,
               ),
               SwitchListTile(
+                key: const Key('setting-fullscreen'),
+                title: const Text(Strings.fullscreenLabel),
+                subtitle: const Text(Strings.fullscreenHelp),
+                value: settings.fullscreen,
+                onChanged: settings.setFullscreen,
+              ),
+              SwitchListTile(
                 key: const Key('setting-card-effects'),
                 title: const Text(Strings.cardEffectsLabel),
                 subtitle: const Text(Strings.cardEffectsHelp),

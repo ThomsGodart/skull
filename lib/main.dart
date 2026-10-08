@@ -35,11 +35,13 @@ Future<void> main() async {
   final settings = BackedUpSettingsStore(local, cloud);
   final games = BackedUpGameStore(DriftGameStore(database), cloud);
   final counters = BackedUpCounterStore(DriftCounterStore(database), cloud);
+  final appSettings = await AppSettings.load(settings);
+  unawaited(appSettings.applyFullscreen());
   runApp(
     SkullKingsApp(
       games: games,
       counters: counters,
-      settings: await AppSettings.load(settings),
+      settings: appSettings,
       // One connection for the app, opened the first time a room is joined.
       transports: (selfId) => SupabaseRoomTransport(onlineClient(), selfId),
     ),

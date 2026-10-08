@@ -373,6 +373,11 @@ abstract final class Strings {
       'Sinon, un premier appui soulève la carte et un second la joue.';
   static const hapticsLabel = 'Vibrations';
   static const reduceMotionLabel = 'Réduire les animations';
+  static const fullscreenLabel = 'Plein écran';
+  static const fullscreenHelp =
+      'Masque les barres du téléphone, ou agrandit la page depuis l\'appli.';
+  static const fullscreenEnter = 'Plein écran';
+  static const fullscreenExit = 'Quitter le plein écran';
   static const licenses = 'Licences';
   static const licensesHelp =
       'Les mentions légales des composants libres que l\'appli embarque : '

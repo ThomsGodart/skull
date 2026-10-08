@@ -7,6 +7,7 @@ import '../bots/bot_level.dart';
 import '../engine/engine.dart';
 import '../storage/settings_store.dart';
 import '../theme/tokens.dart';
+import '../ui/app_fullscreen.dart';
 import '../ui/strings.dart';
 
 /// How fast the bots play.
@@ -38,6 +39,7 @@ class AppSettings extends ChangeNotifier {
   static const _autoHarryKey = 'autoHarry';
   static const _trickTokensKey = 'trickTokens';
   static const _cardEffectsKey = 'cardEffects';
+  static const _fullscreenKey = 'fullscreen';
 
   /// A pirate-style name drawn like the bots'.
   static String randomPlayerName([Random? random]) {
@@ -102,6 +104,7 @@ class AppSettings extends ChangeNotifier {
     settings._autoHarry = values[_autoHarryKey] == 'true';
     settings._trickTokens = values[_trickTokensKey] == 'true';
     settings._cardEffects = values[_cardEffectsKey] != 'false';
+    settings._fullscreen = values[_fullscreenKey] == 'true';
     return settings;
   }
 
@@ -121,6 +124,7 @@ class AppSettings extends ChangeNotifier {
   bool _autoHarry = false;
   bool _trickTokens = false;
   bool _cardEffects = true;
+  bool _fullscreen = false;
 
   /// The name shown at the human's seat.
   String get playerName => _playerName;
@@ -207,9 +211,32 @@ class AppSettings extends ChangeNotifier {
   /// plays the card shows.
   bool get cardEffects => _cardEffects;
 
+  /// The app hides the system bars (or takes the page fullscreen on the web).
+  bool get fullscreen => _fullscreen;
+
   Future<void> setCardEffects(bool value) {
     _cardEffects = value;
     return _changed(_cardEffectsKey, '$value');
+  }
+
+  /// Turns fullscreen on or off and applies it at once.
+  Future<void> setFullscreen(bool value) async {
+    _fullscreen = value;
+    await _changed(_fullscreenKey, '$value');
+    try {
+      await setAppFullscreen(value);
+    } on Object {
+      // The preference is kept; the platform may refuse (web gesture rules).
+    }
+  }
+
+  /// Applies the stored fullscreen choice after launch.
+  Future<void> applyFullscreen() async {
+    try {
+      await setAppFullscreen(_fullscreen);
+    } on Object {
+      // Ignored: the next toggle will try again.
+    }
   }
 
   Future<void> setAutoHarry(bool value) {
