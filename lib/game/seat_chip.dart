@@ -113,19 +113,6 @@ class SeatChip extends StatelessWidget {
                 ),
                 if (isDealer) _badge(Strings.dealerMark, Strings.dealer),
                 if (leadsNext) _badge(Strings.leadMark, Strings.leadsNext),
-                if (bidAccepted && bid == null && !identity.isGhost)
-                  Padding(
-                    padding: EdgeInsets.only(left: (Tokens.space1 + 2) * scale),
-                    child: Tooltip(
-                      message: Strings.bidAcceptedHelp,
-                      child: Icon(
-                        Icons.check_circle,
-                        key: const Key('bid-accepted'),
-                        size: 16 * scale,
-                        color: Tokens.gold,
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -135,12 +122,15 @@ class SeatChip extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (!identity.isGhost) ...[
-                  _stat(
-                    Strings.counterBid,
-                    bid?.toString() ?? '?',
-                    Tokens.text,
-                    boxed: emphasizeBid,
-                  ),
+                  if (bidAccepted && bid == null)
+                    _bidAcceptedMark()
+                  else
+                    _stat(
+                      Strings.counterBid,
+                      bid?.toString() ?? '?',
+                      Tokens.text,
+                      boxed: emphasizeBid,
+                    ),
                   SizedBox(width: Tokens.space3 * scale),
                 ],
                 _stat(Strings.counterTricks, '$tricksWon', _tricksColor),
@@ -213,6 +203,27 @@ class SeatChip extends StatelessWidget {
 
   static Widget _fitted(Widget child) =>
       FittedBox(fit: BoxFit.scaleDown, child: child);
+
+  /// Replaces the bid « ? » once the seat has locked in a bid.
+  Widget _bidAcceptedMark() => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(
+        Strings.counterBid,
+        style: TextStyle(color: Tokens.mutedText, fontSize: 13 * scale),
+      ),
+      SizedBox(width: Tokens.space1 * scale),
+      Tooltip(
+        message: Strings.bidAcceptedHelp,
+        child: Icon(
+          Icons.check_circle,
+          key: const Key('bid-accepted'),
+          size: 22 * scale,
+          color: Tokens.gold,
+        ),
+      ),
+    ],
+  );
 
   /// A label and the figure that goes with it, the figure large.
   Widget _stat(String label, String value, Color color, {bool boxed = false}) =>

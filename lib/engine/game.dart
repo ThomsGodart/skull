@@ -543,13 +543,13 @@ final class Game {
         // how many tricks they took.
         _harrySeat = seat;
       case Pirate.mary:
-        _power = ChooseVictimQuestion(
-          seat: seat,
-          seats: [
-            for (var other = 0; other < _players; other++)
-              if (_hands[other].isNotEmpty) other,
-          ],
-        );
+        // Only opponents: Mary never forces a card from her own hand.
+        final victims = [
+          for (var other = 0; other < _players; other++)
+            if (other != seat && _hands[other].isNotEmpty) other,
+        ];
+        if (victims.isEmpty) return;
+        _power = ChooseVictimQuestion(seat: seat, seats: victims);
     }
     _events.add(PowerUsed(seat: seat, pirate: pirate));
   }

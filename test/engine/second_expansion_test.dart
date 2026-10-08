@@ -477,13 +477,26 @@ void main() {
       }
     });
 
+    test('Mary cannot pick herself: only opponents with cards left', () {
+      final game = _gameWhere(
+        (game) => game.pending.first is ChooseVictimQuestion,
+        everything.copyWith(players: 4),
+      );
+      final question = game.pending.single as ChooseVictimQuestion;
+      expect(question.seats, isNot(contains(question.seat)));
+      expect(question.seats, isNotEmpty);
+      for (final victim in question.seats) {
+        expect(game.viewFor(victim).hand, isNotEmpty);
+      }
+    });
+
     test('Mary\'s victim can only play the card drawn from its hand', () {
       final game = _gameWhere(
         (game) => game.pending.first is ChooseVictimQuestion,
         everything.copyWith(players: 4),
       );
       final question = game.pending.single as ChooseVictimQuestion;
-      final victim = question.seats.firstWhere((seat) => seat != question.seat);
+      final victim = question.seats.first;
       game.takeEvents();
       game.answer(ChooseVictimAnswer(seat: question.seat, victim: victim));
       final forced = game.takeEvents().whereType<CardForced>().single;

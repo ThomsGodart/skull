@@ -18,6 +18,7 @@ class TrickArea extends StatelessWidget {
     this.overboard,
     this.slideFromBelow,
     this.animate = false,
+    this.onCardTap,
   });
 
   final List<Play> plays;
@@ -37,6 +38,9 @@ class TrickArea extends StatelessWidget {
 
   /// A card slides into place when it is put down.
   final bool animate;
+
+  /// Called when a card in the trick is tapped, to show what it does.
+  final ValueChanged<Play>? onCardTap;
 
   static const _slide = Duration(milliseconds: 260);
 
@@ -59,34 +63,40 @@ class TrickArea extends StatelessWidget {
         for (final play in plays)
           _slideIn(
             play,
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CardView(
-                  play.card,
-                  width: cardWidth,
-                  winning: play == winning,
-                  dimmed: play.card == overboard,
-                  namedPirates: namedPirates,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  [
-                    seats[play.seat].name,
-                    if (play.tigressAs case final mode?) Strings.playedAs(mode),
-                    if (play.declaredValue case final value?) '$value',
-                    if (play.jokerSuit case final suit?) Strings.suitName(suit),
-                    if (play.card == overboard) Strings.overboard,
-                  ].join(' · '),
-                  style: TextStyle(
-                    color: play == winning ? Tokens.gold : Tokens.mutedText,
-                    fontSize: 13,
-                    fontWeight: play == winning
-                        ? FontWeight.w800
-                        : FontWeight.w500,
+            GestureDetector(
+              key: Key('trick-card-${play.card.id}'),
+              onTap: onCardTap == null ? null : () => onCardTap!(play),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CardView(
+                    play.card,
+                    width: cardWidth,
+                    winning: play == winning,
+                    dimmed: play.card == overboard,
+                    namedPirates: namedPirates,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    [
+                      seats[play.seat].name,
+                      if (play.tigressAs case final mode?)
+                        Strings.playedAs(mode),
+                      if (play.declaredValue case final value?) '$value',
+                      if (play.jokerSuit case final suit?)
+                        Strings.suitName(suit),
+                      if (play.card == overboard) Strings.overboard,
+                    ].join(' · '),
+                    style: TextStyle(
+                      color: play == winning ? Tokens.gold : Tokens.mutedText,
+                      fontSize: 13,
+                      fontWeight: play == winning
+                          ? FontWeight.w800
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
       ],

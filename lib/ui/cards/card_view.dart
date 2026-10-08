@@ -96,39 +96,45 @@ class CardView extends StatelessWidget {
               color: look.color,
             ),
           ),
-          // What taking the extra 7 or 8 is worth.
+          // Extra 7/8: the bonus in both corners so a crowded hand still shows
+          // it (top-right alone is easy to miss under an overlapping card).
           if (card.isExtraNumber)
-            Align(
-              alignment: Alignment.topRight,
-              child: Text(
-                Strings.signed(
-                  (card.value == 8 ? Bonus.extraEight : Bonus.extraSeven)
-                      .points,
-                ),
-                style: TextStyle(
-                  color: look.color,
-                  fontSize: width * 0.16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+            Align(alignment: Alignment.topRight, child: _extraBonus(look)),
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (card.isExtraNumber) _extraBonus(look),
+                if (card.suit == Suit.black)
+                  Text(
+                    Strings.trump,
+                    style: TextStyle(
+                      color: look.color,
+                      fontSize: width * 0.13,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+              ],
             ),
-          if (card.suit == Suit.black)
-            Align(
-              alignment: Alignment.bottomLeft,
-              child: Text(
-                Strings.trump,
-                style: TextStyle(
-                  color: look.color,
-                  fontSize: width * 0.13,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
+          ),
         ],
       ),
     );
   }
+
+  Widget _extraBonus(CardLook look) => Text(
+    Strings.signed(
+      (card.value == 8 ? Bonus.extraEight : Bonus.extraSeven).points,
+    ),
+    style: TextStyle(
+      color: look.color,
+      fontSize: width * 0.16,
+      fontWeight: FontWeight.w800,
+    ),
+  );
 
   Widget _special(CardLook look) => Padding(
     padding: EdgeInsets.all(width * 0.06),

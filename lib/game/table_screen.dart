@@ -499,6 +499,7 @@ class _TableScreenState extends State<TableScreen> {
                   cardWidth: 78,
                   namedPirates: _namedPirates,
                   overboard: _game.lastTrickOverboard,
+                  onCardTap: _showTrickCard,
                 ),
               ),
             ),
@@ -651,6 +652,10 @@ class _TableScreenState extends State<TableScreen> {
     namedPirates: _namedPirates,
   );
 
+  /// True while the human is choosing a bid, or waiting on the others'.
+  bool get _bidding =>
+      _game.bidQuestion != null || _game.placedBid != null;
+
   /// Phone held upright: opponents on top, the trick, then the hand.
   Widget _portraitBody(GameController game) => Column(
     children: [
@@ -660,47 +665,47 @@ class _TableScreenState extends State<TableScreen> {
       const SizedBox(height: Tokens.space2),
       SizedBox(width: 220, child: _seatChip(game.humanSeat, showCards: false)),
       const SizedBox(height: Tokens.space2),
-      _hand(game),
+      // Compact hand while bidding so the bid panel stays reachable.
+      _hand(game, cardWidth: _bidding ? 52 : null),
     ],
   );
 
   /// Phone on its side: everyone on the left, the trick and the hand on the
   /// right, with cards sized to the little height there is.
-  Widget _landscapeBody(GameController game, double height) => Row(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Expanded(
-        flex: 6,
-        child: LayoutBuilder(
-          builder: (context, constraints) =>
-              SingleChildScrollView(child: _landscapeSeats(constraints)),
+  Widget _landscapeBody(GameController game, double height) {
+    // While bidding, give the panel most of the height: a full fan would
+    // paint over the bid buttons and block taps.
+    final bidding = _bidding;
+    final handWidth = bidding
+        ? 44.0
+        : ((height * 0.42 - 22) / CardView.aspect).clamp(60.0, 110.0);
+    final trickMax = bidding
+        ? ((height * 0.78 - 28) / CardView.aspect).clamp(72.0, 140.0)
+        : ((height * 0.46 - 34) / CardView.aspect).clamp(64.0, 120.0);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          flex: 6,
+          child: LayoutBuilder(
+            builder: (context, constraints) =>
+                SingleChildScrollView(child: _landscapeSeats(constraints)),
+          ),
         ),
-      ),
-      const SizedBox(width: Tokens.space2),
-      Expanded(
-        flex: 7,
-        child: Column(
-          children: [
-            // The height is shared between the trick and the hand, and the
-            // cards are as large as their share allows.
-            _trickZone(
-              game,
-              maxCard: ((height * 0.46 - 34) / CardView.aspect).clamp(64, 120),
-            ),
-            // On the wide side, where a card's text has room to be read.
-            _statusLine(),
-            _hand(
-              game,
-              cardWidth: ((height * 0.42 - 22) / CardView.aspect).clamp(
-                60,
-                110,
-              ),
-            ),
-          ],
+        const SizedBox(width: Tokens.space2),
+        Expanded(
+          flex: 7,
+          child: Column(
+            children: [
+              _trickZone(game, maxCard: trickMax),
+              _statusLine(),
+              _hand(game, cardWidth: handWidth),
+            ],
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 
   static bool _isLandscape(BoxConstraints constraints) =>
       constraints.maxWidth > constraints.maxHeight * 1.15;
@@ -939,12 +944,13 @@ class _TableScreenState extends State<TableScreen> {
       backgroundColor: Tokens.panel,
       isScrollControlled: true,
       builder: (context) {
+        final media = MediaQuery.of(context);
+        // Keyboard + phone nav/home bar: the field must stay above both.
+        final bottom = media.viewInsets.bottom + media.padding.bottom;
         return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.viewInsetsOf(context).bottom,
-          ),
+          padding: EdgeInsets.only(bottom: bottom),
           child: SizedBox(
-            height: MediaQuery.sizeOf(context).height * 0.55,
+            height: media.size.height * 0.6,
             child: Column(
               children: [
                 const Padding(
@@ -953,7 +959,7 @@ class _TableScreenState extends State<TableScreen> {
                     Strings.chatTitle,
                     style: TextStyle(
                       color: Tokens.text,
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -967,7 +973,10 @@ class _TableScreenState extends State<TableScreen> {
                         return const Center(
                           child: Text(
                             Strings.chatEmpty,
-                            style: TextStyle(color: Tokens.mutedText),
+                            style: TextStyle(
+                              color: Tokens.mutedText,
+                              fontSize: 16,
+                            ),
                           ),
                         );
                       }
@@ -978,19 +987,31 @@ class _TableScreenState extends State<TableScreen> {
                         itemCount: lines.length,
                         itemBuilder: (context, index) {
                           final line = lines[index];
-                          return ListTile(
-                            dense: true,
-                            title: Text(
-                              line.fromName,
-                              style: const TextStyle(
-                                color: Tokens.gold,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
+                          return Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: Tokens.space3,
                             ),
-                            subtitle: Text(
-                              line.text,
-                              style: const TextStyle(color: Tokens.text),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  line.fromName,
+                                  style: const TextStyle(
+                                    color: Tokens.gold,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  line.text,
+                                  style: const TextStyle(
+                                    color: Tokens.text,
+                                    fontSize: 17,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
                             ),
                           );
                         },
@@ -999,13 +1020,19 @@ class _TableScreenState extends State<TableScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(Tokens.space2),
+                  padding: const EdgeInsets.fromLTRB(
+                    Tokens.space3,
+                    Tokens.space2,
+                    Tokens.space2,
+                    Tokens.space3,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
                         child: TextField(
                           key: const Key('chat-input'),
                           controller: input,
+                          style: const TextStyle(fontSize: 17),
                           decoration: const InputDecoration(
                             hintText: Strings.chatHint,
                           ),
@@ -1043,6 +1070,42 @@ class _TableScreenState extends State<TableScreen> {
     );
     chat.markOpen(false);
     input.dispose();
+  }
+
+  /// What a card in the trick does, for anyone who taps it.
+  void _showTrickCard(Play play) {
+    final effects = widget.settings?.cardEffects ?? true;
+    if (!effects) return;
+    final name = Strings.cardName(play.card, namedPirates: _namedPirates);
+    final hint = Strings.cardHint(play.card, powers: _namedPirates);
+    final who = _seats[play.seat].name;
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Tokens.panel,
+        title: Text(name),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              who,
+              style: const TextStyle(color: Tokens.gold, fontSize: 15),
+            ),
+            if (hint != null) ...[
+              const SizedBox(height: Tokens.space2),
+              Text(hint, style: const TextStyle(color: Tokens.text)),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(Strings.close),
+          ),
+        ],
+      ),
+    );
   }
 
   /// The opponents, in rows of two to four so that each tile stays wide
@@ -1204,6 +1267,7 @@ class _TableScreenState extends State<TableScreen> {
               overboard: _game.trickOverboard,
               slideFromBelow: _game.humanSeat,
               animate: !(widget.settings?.reduceMotion ?? false),
+              onCardTap: _showTrickCard,
             );
           },
         ),

@@ -638,6 +638,70 @@ void main() {
     expect(find.byType(SeatChip), findsNWidgets(4));
   });
 
+  testWidgets('a tap on a card in the trick calls back with that play', (
+    tester,
+  ) async {
+    Play? tapped;
+    final card = const Card.number(Suit.green, 5);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: Tokens.theme(),
+        home: Scaffold(
+          body: TrickArea(
+            plays: [Play(seat: 0, card: card)],
+            seats: const [SeatIdentity('Ada', Tokens.gold)],
+            onCardTap: (play) => tapped = play,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(Key('trick-card-${card.id}')));
+    expect(tapped?.card, card);
+  });
+
+  testWidgets('in landscape while bidding, the place-bid button stays '
+      'clear of the hand', (tester) async {
+    await openTable(tester, size: const Size(800, 360));
+    final bid = tester.getRect(find.byKey(const Key('place-bid')));
+    final handCards = find.byWidgetPredicate(
+      (widget) =>
+          widget.key is ValueKey<String> &&
+          (widget.key! as ValueKey<String>).value.startsWith('hand-'),
+    );
+    for (final element in handCards.evaluate()) {
+      final card = tester.getRect(find.byElementPredicate((e) => e == element));
+      expect(
+        bid.overlaps(card),
+        isFalse,
+        reason: 'bid button must not sit under a hand card',
+      );
+    }
+    expect(bid.height, greaterThan(20));
+  });
+
+  testWidgets('while bids are open, a seat that has locked in shows a tick '
+      'instead of the bid « ? »', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: Tokens.theme(),
+        home: const Center(
+          child: SizedBox(
+            width: 160,
+            child: SeatChip(
+              identity: SeatIdentity('Bob', Tokens.gold),
+              bid: null,
+              tricksWon: 0,
+              score: 0,
+              bidAccepted: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.byKey(const Key('bid-accepted')), findsOneWidget);
+    expect(find.text('?'), findsNothing);
+  });
+
   testWidgets('a seat shows what it staked with Rascal, that it holds '
       'Harry, and a token per trick bid when asked to', (tester) async {
     Widget chip({bool tokens = true}) => MaterialApp(
