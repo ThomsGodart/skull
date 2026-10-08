@@ -51,6 +51,7 @@ void main() {
   OnlineHost host({
     GameConfig config = config,
     Duration grace = fast,
+    Duration lobbyGrace = fast,
     int capacity = maxPlayers,
   }) => OnlineHost(
     transport: hub.transport('host'),
@@ -58,6 +59,7 @@ void main() {
     config: config,
     bot: randomBot(Random(1)),
     grace: grace,
+    lobbyGrace: lobbyGrace,
     capacity: capacity,
   );
 
@@ -137,11 +139,33 @@ void main() {
         expect(theHost.currentLobby.players, hasLength(2));
 
         await leaver.leave();
-        await pause(fast);
+        await pause(fast * 3);
 
         expect(theHost.currentLobby.players.map((p) => p.id), ['host']);
       },
     );
+
+    test('a brief presence gap after hello does not drop the guest', () async {
+      final theHost = host(lobbyGrace: const Duration(milliseconds: 40));
+      await theHost.open('ROOM');
+      final bob = guest('g1', name: 'Bob');
+      await bob.join('ROOM');
+      await pause(fast * 3);
+      expect(theHost.currentLobby.players.map((p) => p.id), ['host', 'g1']);
+
+      // Same flap Supabase often does: gone from presence, still in the room.
+      await bob.transport.disconnect();
+      await pause(const Duration(milliseconds: 10));
+      expect(
+        theHost.currentLobby.players.map((p) => p.id),
+        ['host', 'g1'],
+        reason: 'still within lobby grace',
+      );
+      await bob.transport.connect('ROOM');
+      // The guest's nudge timer says hello again once the channel is back.
+      await pause(const Duration(milliseconds: 60));
+      expect(theHost.currentLobby.players.map((p) => p.id), ['host', 'g1']);
+    });
 
     test('whoever comes plays: the game has as many seats as people in the '
         'room, plus the bots the host asks for', () async {

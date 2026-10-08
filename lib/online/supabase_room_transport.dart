@@ -65,10 +65,20 @@ class SupabaseRoomTransport implements RoomTransport {
   void _onBroadcast(Map<String, dynamic> message) {
     final from = message['from'];
     final to = message['to'];
-    final body = message['body'];
+    // Flat envelope from our sends; some builds nest under `payload`.
+    final body = message['body'] ?? message['payload'];
     if (from is! String || body is! Map) return;
     if (to != null && to != selfId) return;
-    _messages.add(RoomMessage(from, body.cast<String, Object?>()));
+    try {
+      _messages.add(
+        RoomMessage(from, {
+          for (final entry in body.entries)
+            if (entry.key is String) entry.key as String: entry.value,
+        }),
+      );
+    } on Object {
+      // A malformed broadcast is dropped; the next hello/sync retries.
+    }
   }
 
   @override

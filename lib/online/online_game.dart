@@ -14,6 +14,17 @@ const onlineProtocol = 3;
 /// How long an absent player is waited for before a bot plays in their place.
 const absenceGrace = Duration(seconds: 30);
 
+/// How long a guest may vanish from presence before the lobby drops them.
+/// Presence flaps right after hello; without this the host loses the guest.
+const defaultLobbyGrace = Duration(seconds: 2);
+
+/// Reads a wire integer that may arrive as [int] or [num] (JSON / JS).
+int? onlineInt(Object? value) => switch (value) {
+  final int n => n,
+  final num n => n.toInt(),
+  _ => null,
+};
+
 /// Someone in a room.
 final class RoomPlayer {
   const RoomPlayer({
@@ -26,7 +37,7 @@ final class RoomPlayer {
   factory RoomPlayer.fromJson(Json json) => RoomPlayer(
     id: json['id']! as String,
     name: json['name']! as String,
-    color: json['color']! as int,
+    color: onlineInt(json['color']) ?? 0,
     connected: json['connected'] as bool? ?? true,
   );
 
@@ -96,7 +107,7 @@ final class Seating {
     ];
     return Seating(
       config: config,
-      seat: json['seat']! as int,
+      seat: onlineInt(json['seat']) ?? 0,
       occupants: [
         for (var seat = 0; seat < config.players; seat++)
           seat < packed.length ? packed[seat] : null,
@@ -197,6 +208,7 @@ class OnlineHost {
     required this.config,
     required this.bot,
     this.grace = absenceGrace,
+    this.lobbyGrace = defaultLobbyGrace,
     this.capacity = maxPlayers,
   }) {
     _players.add(self);
@@ -206,6 +218,9 @@ class OnlineHost {
   final RoomPlayer self;
   final Bot bot;
   final Duration grace;
+
+  /// Delay before a presence gap drops a guest from the lobby.
+  final Duration lobbyGrace;
 
   /// How many people the room takes, the host included.
   final int capacity;
@@ -234,7 +249,12 @@ class OnlineHost {
   /// a bot on the seat of each one still counted down.
   final Map<String, Absence> _away = {};
   final Map<String, Timer> _absences = {};
+  final Map<String, Timer> _lobbyLeaves = {};
   final _absent = StreamController<List<Absence>>.broadcast();
+
+  void _cancelLobbyLeave(String id) {
+    _lobbyLeaves.remove(id)?.cancel();
+  }
 
   /// Who is away, each time that changes.
   Stream<List<Absence>> get absences => _absent.stream;
@@ -351,36 +371,55 @@ class OnlineHost {
       }
     }
     if (!started) {
-      // Someone who left before the game started gives their place back.
-      _players.removeWhere(
-        (player) =>
-            player.id != self.id &&
-            _everPresent.contains(player.id) &&
-            !present.contains(player.id),
-      );
+      // Presence often blanks a guest for a moment after hello: wait before
+      // giving their place back, and cancel if they reappear or say hello.
+      for (final player in List.of(_players)) {
+        if (player.id == self.id) continue;
+        if (present.contains(player.id)) {
+          _cancelLobbyLeave(player.id);
+        } else if (_everPresent.contains(player.id)) {
+          _lobbyLeaves.putIfAbsent(
+            player.id,
+            () => Timer(lobbyGrace, () {
+              _lobbyLeaves.remove(player.id);
+              if (started || _present.contains(player.id)) return;
+              final before = _players.length;
+              _players.removeWhere((p) => p.id == player.id);
+              if (_players.length != before) _announce();
+            }),
+          );
+        }
+      }
     }
     _announce();
   }
 
   void _onMessage(RoomMessage message) {
     final payload = message.payload;
-    switch (payload['type']) {
-      case 'hello':
-        _onHello(message.from, payload);
-      case 'sync':
-        final seat = _seatOf(message.from);
-        if (seat != null) _sendFeed(seat, from: payload['have'] as int? ?? 0);
-      case 'answer':
-        final seat = _seatOf(message.from);
-        if (seat != null) _onAnswer(seat, payload);
+    try {
+      switch (payload['type']) {
+        case 'hello':
+          _onHello(message.from, payload);
+        case 'sync':
+          final seat = _seatOf(message.from);
+          if (seat != null) {
+            _sendFeed(seat, from: onlineInt(payload['have']) ?? 0);
+          }
+        case 'answer':
+          final seat = _seatOf(message.from);
+          if (seat != null) _onAnswer(seat, payload);
+      }
+    } on Object {
+      // A bad wire message must not stop the host hearing the next hello.
     }
   }
 
   void _onHello(String id, Json payload) {
-    if (payload['protocol'] != onlineProtocol) {
+    if (onlineInt(payload['protocol']) != onlineProtocol) {
       transport.send({'type': 'refused', 'reason': 'version'}, to: id);
       return;
     }
+    _cancelLobbyLeave(id);
     final known = _players.any((player) => player.id == id);
     if (!known) {
       if (started || _players.length >= capacity) {
@@ -394,7 +433,7 @@ class OnlineHost {
         RoomPlayer(
           id: id,
           name: payload['name'] as String? ?? '?',
-          color: payload['color'] as int? ?? 0,
+          color: onlineInt(payload['color']) ?? 0,
         ),
       );
     }
@@ -495,6 +534,10 @@ class OnlineHost {
     for (final timer in _absences.values) {
       timer.cancel();
     }
+    for (final timer in _lobbyLeaves.values) {
+      timer.cancel();
+    }
+    _lobbyLeaves.clear();
     // First of all, and without waiting for anything: the guests must hear
     // of it even if the rest is cut short.
     transport.send({'type': 'closed'});
@@ -600,7 +643,7 @@ class OnlineGuest {
     try {
       switch (payload['type']) {
         case 'lobby':
-          if (payload['protocol'] != onlineProtocol) {
+          if (onlineInt(payload['protocol']) != onlineProtocol) {
             _refused.add('version');
             return;
           }
@@ -637,7 +680,7 @@ class OnlineGuest {
       }, to: _hostId),
     );
     if (!_started.isCompleted) _started.complete((seating, feed));
-    final from = payload['from']! as int;
+    final from = onlineInt(payload['from']) ?? 0;
     if (from > feed.received) {
       // Something was missed: ask for it again.
       _sync();
