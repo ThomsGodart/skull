@@ -119,6 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ghostSeat: game.config.players == 2
               ? tableHands(game.config.players) - 1
               : null,
+          random: Random(game.config.seed),
         ),
         onPlayAgain: () =>
             _start(game.config, _settings.activeGameBotLevel, replace: true),

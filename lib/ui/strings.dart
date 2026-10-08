@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../engine/engine.dart';
 
 /// Every text the player reads. Kept in one place so it can be translated.
@@ -16,7 +18,8 @@ abstract final class Strings {
       'ne parie pas, ne marque pas, mais prend des plis. Le Butin et la '
       'deuxième extension ne sont pas utilisés.';
 
-  /// Names of the bots, in seat order.
+  /// Pool of pirate-style names: bots (and a random player name) are drawn
+  /// from here without repeating at the same table.
   static const botNames = [
     'Mako',
     'Corail',
@@ -25,7 +28,59 @@ abstract final class Strings {
     'Récif',
     'Ancre',
     'Rafale',
+    'Brume',
+    'Écubier',
+    'Caravelle',
+    'Corsaire',
+    'Crabe',
+    'Dauphin',
+    'Écume',
+    'Fregate',
+    'Galion',
+    'Goéland',
+    'Harpon',
+    'Houle',
+    'Jolly',
+    'Kraken',
+    'Lagon',
+    'Lame',
+    'Marée',
+    'Mouette',
+    'Nautilus',
+    'Nerée',
+    'Ouragan',
+    'Perle',
+    'Pirate',
+    'Plume',
+    'Poseidon',
+    'Requins',
+    'Rhum',
+    'Sabre',
+    'Salée',
+    'Sirène',
+    'Tempête',
+    'Timon',
+    'Tortue',
+    'Trident',
+    'Vague',
+    'Vigie',
+    'Vortex',
+    'Alizé',
+    'Baleine',
+    'Boucan',
+    'Cabestan',
+    'Flibuste',
+    'Naufrage',
   ];
+
+  /// [count] distinct names drawn from [botNames].
+  static List<String> shuffledBotNames(int count, [Random? random]) {
+    if (count < 0 || count > botNames.length) {
+      throw ArgumentError.value(count, 'count', 'must be 0..${botNames.length}');
+    }
+    final names = List<String>.of(botNames)..shuffle(random ?? Random());
+    return names.take(count).toList();
+  }
 
   static String roundTitle(int round, int cards) =>
       'Manche $round · $cards carte${cards > 1 ? 's' : ''}';

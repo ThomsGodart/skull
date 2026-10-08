@@ -26,6 +26,7 @@ void main() {
     // A small phone, portrait.
     Size size = const Size(360, 720),
     AppSettings? settings,
+    TableSpeed speed = TableSpeed.instant,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -33,7 +34,7 @@ void main() {
     final controller = GameController(
       config: GameConfig(players: players, seed: seed),
       bot: randomBot(Random(seed)),
-      speed: TableSpeed.instant,
+      speed: speed,
     );
     await tester.pumpWidget(
       MaterialApp(
@@ -477,10 +478,46 @@ void main() {
 
     expect(find.text(Strings.leadMark), findsOneWidget);
     final leader = controller.leader;
+    final seats = SeatIdentity.table(
+      4,
+      human: const SeatIdentity(Strings.you, Tokens.gold),
+      random: Random(3),
+    );
     final expected = leader == 0
         ? Strings.youLeadRound
-        : Strings.leadsRound(Strings.botNames[leader - 1]);
+        : Strings.leadsRound(seats[leader].name);
     expect(find.textContaining(expected), findsOneWidget);
+  });
+
+  testWidgets('a card selected before our turn keeps Jouer ready when the '
+      'turn arrives', (tester) async {
+    // Linger after bids so a card can be lifted before PlayQuestion lands.
+    const slowReveal = TableSpeed(
+      botPlay: Duration.zero,
+      trickHold: Duration.zero,
+      bidReveal: Duration(milliseconds: 400),
+    );
+    final controller = await openTable(tester, speed: slowReveal);
+    await tester.tap(find.byKey(const Key('bid-0')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('place-bid')));
+    await tester.pump();
+
+    expect(controller.playQuestion, isNull, reason: 'still revealing bids');
+    final card = controller.hand.first;
+    await tapCard(tester, card);
+    expect(
+      tester.widget<FilledButton>(find.byKey(const Key('play-card'))).onPressed,
+      isNull,
+    );
+
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(controller.playQuestion, isNotNull);
+    expect(
+      tester.widget<FilledButton>(find.byKey(const Key('play-card'))).onPressed,
+      isNotNull,
+      reason: 'pre-selected card makes Jouer clickable on our turn',
+    );
   });
 
   testWidgets('the round summary gives tricks before bid, under a Bonus '

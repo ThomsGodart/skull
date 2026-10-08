@@ -24,9 +24,14 @@ typedef TransportFactory = RoomTransport Function(String selfId);
 
 /// Who sits at each seat of an online game. [Seating.occupants] mixes people
 /// and bots; the ghost sits in when two play.
-List<SeatIdentity> onlineSeats(Seating seating) {
+List<SeatIdentity> onlineSeats(Seating seating, {Random? random}) {
   final seats = tableHands(seating.config.players);
   final ghost = seats > seating.config.players ? seats - 1 : null;
+  final botCount = [
+    for (var seat = 0; seat < seats; seat++)
+      if (seat != ghost && seating.occupantAt(seat) == null) seat,
+  ].length;
+  final botNames = Strings.shuffledBotNames(botCount, random);
   var bots = 0;
   return [
     for (var seat = 0; seat < seats; seat++)
@@ -39,7 +44,7 @@ List<SeatIdentity> onlineSeats(Seating seating) {
         )
       else
         SeatIdentity(
-          Strings.botNames[bots % Strings.botNames.length],
+          botNames[bots],
           Tokens.botColors[bots++ % Tokens.botColors.length],
         ),
   ];
@@ -297,7 +302,10 @@ Widget _onlineTable({
   void Function(String id)? onReplaceNow,
 }) => TableScreen(
   controller: GameController.onFeed(feed, speed: speed),
-  seatIdentities: onlineSeats(seating),
+  seatIdentities: onlineSeats(
+    seating,
+    random: Random(seating.config.seed),
+  ),
   settings: settings,
   banner: banner,
   notices: AbsenceNotices(

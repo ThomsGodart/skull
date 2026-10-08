@@ -69,7 +69,10 @@ class HandFan extends StatelessWidget {
   }
 
   Widget _tappable(Card card) {
-    final playable = legal?.contains(card) ?? false;
+    // No [legal] list yet: every card may be pre-selected for when the turn
+    // comes. Once the turn is open, only legal cards use [onTap].
+    final awaitingTurn = legal == null;
+    final playable = awaitingTurn || legal!.contains(card);
     return GestureDetector(
       key: Key('hand-${card.id}'),
       onTap: playable && onTap != null

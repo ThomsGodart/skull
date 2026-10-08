@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide Card;
 import 'package:flutter/services.dart';
@@ -89,6 +91,7 @@ class _TableScreenState extends State<TableScreen> {
         human: widget.human,
         humanSeat: widget.controller.humanSeat,
         ghostSeat: widget.controller.ghostSeat,
+        random: Random(widget.controller.config.seed),
       );
 
   /// The seats that appear on a score sheet: every one but the ghost's.
@@ -149,6 +152,15 @@ class _TableScreenState extends State<TableScreen> {
       _selected = null;
     }
     if (!_game.hand.contains(_inspected)) _inspected = null;
+    // A card looked at while waiting becomes the selection once it is legal.
+    if (_game.playQuestion case final question?
+        when _selected == null && _inspected != null) {
+      if (question.legalCards.contains(_inspected) ||
+          _game.forcedCard == _inspected) {
+        _selected = _inspected;
+        _inspected = null;
+      }
+    }
     if (_game.playQuestion == null) {
       _turnBuzzed = false;
     } else if (!_turnBuzzed) {
