@@ -8,6 +8,7 @@ import '../engine/engine.dart';
 import '../storage/settings_store.dart';
 import '../theme/tokens.dart';
 import '../ui/app_fullscreen.dart';
+import '../ui/player_icons.dart';
 import '../ui/strings.dart';
 
 /// How fast the bots play.
@@ -26,6 +27,7 @@ class AppSettings extends ChangeNotifier {
 
   static const _nameKey = 'playerName';
   static const _colorKey = 'playerColor';
+  static const _iconKey = 'playerIcon';
   static const _opponentsKey = 'opponents';
   static const _setupKey = 'lastSetup';
   static const _onlineIdKey = 'onlineId';
@@ -69,6 +71,8 @@ class AppSettings extends ChangeNotifier {
     }
     final color = int.tryParse(values[_colorKey] ?? '');
     if (color != null && _isColor(color)) settings._playerColor = color;
+    final icon = int.tryParse(values[_iconKey] ?? '');
+    if (icon != null && _isIcon(icon)) settings._playerIcon = icon;
     final opponents = int.tryParse(values[_opponentsKey] ?? '');
     if (opponents != null) settings._opponents = _clampOpponents(opponents);
     try {
@@ -113,6 +117,7 @@ class AppSettings extends ChangeNotifier {
   final SettingsStore _store;
   String _playerName = 'Mako';
   int _playerColor = 0;
+  int _playerIcon = 0;
   int _opponents = 3;
   GameConfig _lastSetup = const GameConfig(players: 4, seed: 0);
   List<String> _knownPlayers = const [];
@@ -134,6 +139,9 @@ class AppSettings extends ChangeNotifier {
 
   /// An index into [Tokens.playerColors].
   int get playerColor => _playerColor;
+
+  /// An index into [PlayerIcons.glyphs]: the emblem shown at their seat.
+  int get playerIcon => _playerIcon;
 
   /// How many bots the last game was set up with.
   int get opponents => _lastSetup.players - 1;
@@ -290,13 +298,22 @@ class AppSettings extends ChangeNotifier {
     }
   }
 
-  Future<void> setPlayer({required String name, required int color}) async {
+  Future<void> setPlayer({
+    required String name,
+    required int color,
+    int? icon,
+  }) async {
     _playerName = _cleanName(name);
     if (_isColor(color)) _playerColor = color;
+    if (icon != null && _isIcon(icon)) _playerIcon = icon;
     notifyListeners();
     await _store.write(_nameKey, _playerName);
     await _store.write(_colorKey, '$_playerColor');
+    await _store.write(_iconKey, '$_playerIcon');
   }
+
+  static bool _isIcon(int icon) =>
+      icon >= 0 && icon < PlayerIcons.glyphs.length;
 
   Future<void> setOpponents(int opponents) =>
       setLastSetup(_lastSetup.copyWith(players: opponents + 1));

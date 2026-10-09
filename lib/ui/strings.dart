@@ -639,6 +639,7 @@ abstract final class Strings {
   static const profileTitle = 'Ton profil';
   static const playerNameLabel = 'Nom';
   static const playerColorLabel = 'Couleur';
+  static const playerIconLabel = 'Emblème';
   static const save = 'Enregistrer';
   static const cancel = 'Annuler';
 

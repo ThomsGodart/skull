@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
+import '../ui/player_icons.dart';
 import '../ui/strings.dart';
 import 'seat_identity.dart';
 
@@ -95,18 +96,25 @@ class SeatChip extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircleAvatar(
-                  radius: 10 * scale,
-                  backgroundColor: identity.color,
-                  child: Text(
-                    identity.initials,
-                    style: TextStyle(
-                      fontSize: 9 * scale,
-                      fontWeight: FontWeight.w800,
-                      color: Tokens.onAvatar,
+                if (identity.icon case final glyph?)
+                  PlayerAvatar(
+                    color: identity.color,
+                    glyph: glyph,
+                    radius: 11 * scale,
+                  )
+                else
+                  CircleAvatar(
+                    radius: 10 * scale,
+                    backgroundColor: identity.color,
+                    child: Text(
+                      identity.initials,
+                      style: TextStyle(
+                        fontSize: 9 * scale,
+                        fontWeight: FontWeight.w800,
+                        color: Tokens.onAvatar,
+                      ),
                     ),
                   ),
-                ),
                 SizedBox(width: (Tokens.space1 + 2) * scale),
                 Text(
                   identity.name,

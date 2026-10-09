@@ -22,6 +22,9 @@ abstract final class Tokens {
     Color(0xFF3FB3A8),
     Color(0xFF9B7BE0),
     Color(0xFF6FBF5A),
+    Color(0xFF4F9BE0),
+    Color(0xFFE07BB5),
+    Color(0xFFE08A3B),
   ];
 
   /// The ghost that sits in when only two play.

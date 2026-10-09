@@ -203,4 +203,29 @@ void main() {
 
     expect(await store.readAll(), {'playerName': 'Bob'});
   });
+
+  test(
+    'the emblem chosen is kept, and one that does not exist is not',
+    () async {
+      final store = MemorySettingsStore();
+      final settings = await AppSettings.load(store);
+      expect(settings.playerIcon, 0);
+
+      await settings.setPlayer(name: 'Anne', color: 6, icon: 7);
+      final reloaded = await AppSettings.load(store);
+      expect(reloaded.playerIcon, 7);
+      expect(reloaded.playerColor, 6, reason: 'one of the added colours');
+
+      await settings.setPlayer(name: 'Anne', color: 6, icon: 99);
+      expect(settings.playerIcon, 7);
+      // Changing the name alone leaves the emblem as it was.
+      await settings.setPlayer(name: 'Bob', color: 6);
+      expect(settings.playerIcon, 7);
+
+      final odd = await AppSettings.load(
+        MemorySettingsStore({'playerIcon': '-3'}),
+      );
+      expect(odd.playerIcon, 0);
+    },
+  );
 }

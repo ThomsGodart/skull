@@ -5,11 +5,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:skull_kings/bots/bot.dart';
 import 'package:skull_kings/engine/engine.dart';
 import 'package:skull_kings/game/seat_feed.dart';
+import 'package:skull_kings/game/seat_identity.dart';
 import 'package:skull_kings/online/online_game.dart';
 import 'package:skull_kings/online/online_screens.dart';
 import 'package:skull_kings/online/room_transport.dart';
 import 'package:skull_kings/settings/app_settings.dart';
+import 'package:skull_kings/settings/profile_dialog.dart';
 import 'package:skull_kings/theme/tokens.dart';
+import 'package:skull_kings/ui/player_icons.dart';
 import 'package:skull_kings/ui/rules_content.dart';
 import 'package:skull_kings/ui/strings.dart';
 
@@ -303,6 +306,79 @@ void main() {
     host.close();
     await tester.pumpWidget(const SizedBox());
     await settle(tester);
+  });
+
+  test('there are ten emblems and a palette of colours to choose from', () {
+    expect(PlayerIcons.glyphs, hasLength(10));
+    expect(PlayerIcons.glyphs.toSet(), hasLength(10));
+    expect(Tokens.playerColors.toSet().length, greaterThanOrEqualTo(8));
+  });
+
+  test('host and guest see every seat under the same name, colour and '
+      'emblem', () async {
+    final host = OnlineHost(
+      transport: hub.transport('host'),
+      self: const RoomPlayer(id: 'host', name: 'Zoé', color: 2, icon: 4),
+      config: const GameConfig(players: 4, seed: 0),
+      bot: randomBot(Random(1)),
+    );
+    await host.open('ROOM');
+    final guest = OnlineGuest(
+      transport: hub.transport('g'),
+      self: const RoomPlayer(id: 'g', name: 'Bob', color: 6, icon: 8),
+      retry: const Duration(milliseconds: 5),
+    );
+    await guest.join('ROOM');
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(host.currentLobby.players.last.icon, 8);
+
+    final hostFeed = host.start(Random(3), bots: 2);
+    final (guestSeating, _) = await guest.started;
+    List<SeatIdentity> seats(Seating seating) =>
+        onlineSeats(seating, random: Random(seating.config.seed));
+    final atHost = seats(
+      Seating(
+        config: hostFeed.config,
+        seat: hostFeed.seat,
+        occupants: host.currentOccupants,
+      ),
+    );
+    final atGuest = seats(guestSeating);
+
+    String look(SeatIdentity seat) => '${seat.name} ${seat.color} ${seat.icon}';
+    expect(atGuest.map(look), atHost.map(look));
+    final bob = atHost.firstWhere((seat) => seat.name == 'Bob');
+    expect(bob.icon, PlayerIcons.glyph(8));
+    expect(bob.color, Tokens.playerColors[6]);
+    expect(atHost.map((seat) => seat.icon), everyElement(isNotNull));
+    expect(atHost.map((seat) => seat.icon).toSet(), hasLength(4));
+
+    await guest.leave();
+    await host.close();
+  });
+
+  testWidgets('the emblem picked in the profile is saved and shown', (
+    tester,
+  ) async {
+    final store = MemorySettingsStore({'playerName': 'Anne'});
+    final settings = await AppSettings.load(store);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: Tokens.theme(),
+        home: Scaffold(body: ProfileDialog(settings: settings)),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('profile-icon-3')));
+    await tester.tap(find.byKey(const Key('profile-color-5')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('profile-save')));
+    await tester.pump();
+
+    expect(settings.playerIcon, 3);
+    expect(settings.playerColor, 5);
+    expect(store.values['playerIcon'], '3');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('an empty name is replaced before online play, so setup opens '

@@ -22,6 +22,7 @@ import '../storage/game_store.dart';
 import '../theme/tokens.dart';
 import '../ui/fullscreen_button.dart';
 import '../ui/pictogram.dart';
+import '../ui/player_icons.dart';
 import '../ui/strings.dart';
 import '../settings/profile_dialog.dart';
 
@@ -81,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
   SeatIdentity get _human => SeatIdentity(
     _settings.playerName,
     Tokens.playerColors[_settings.playerColor],
+    icon: PlayerIcons.glyph(_settings.playerIcon),
   );
 
   /// Opens the table on [game] and comes back here when it is left.
@@ -375,9 +377,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         builder: (context) =>
                             ProfileDialog(settings: _settings),
                       ),
-                      icon: CircleAvatar(
-                        radius: 10,
-                        backgroundColor: _human.color,
+                      icon: PlayerAvatar(
+                        radius: 11,
+                        color: _human.color,
+                        glyph: PlayerIcons.glyph(_settings.playerIcon),
                       ),
                       label: Text(_human.name),
                     ),

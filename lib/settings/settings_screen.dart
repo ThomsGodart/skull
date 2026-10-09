@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'profile_dialog.dart';
 import '../theme/tokens.dart';
+import '../ui/player_icons.dart';
 import '../ui/strings.dart';
 import 'app_settings.dart';
 
@@ -98,9 +99,9 @@ class SettingsScreen extends StatelessWidget {
               ),
               const Divider(),
               ListTile(
-                leading: CircleAvatar(
-                  radius: 14,
-                  backgroundColor: Tokens.playerColors[settings.playerColor],
+                leading: PlayerAvatar(
+                  color: Tokens.playerColors[settings.playerColor],
+                  glyph: PlayerIcons.glyph(settings.playerIcon),
                 ),
                 title: const Text(Strings.profileTitle),
                 subtitle: Text(settings.playerName),

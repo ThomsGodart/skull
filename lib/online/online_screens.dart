@@ -16,6 +16,7 @@ import '../settings/profile_dialog.dart';
 import '../setup/setup_screen.dart';
 import '../theme/tokens.dart';
 import '../ui/pirate_loader.dart';
+import '../ui/player_icons.dart';
 import '../ui/rules_content.dart';
 import '../ui/strings.dart';
 import 'online_game.dart';
@@ -35,20 +36,23 @@ List<SeatIdentity> onlineSeats(Seating seating, {Random? random}) {
       if (seat != ghost && seating.occupantAt(seat) == null) seat,
   ].length;
   final botNames = Strings.shuffledBotNames(botCount, random);
+  final botIcons = SeatIdentity.botIcons(botCount, random);
   var bots = 0;
   return [
     for (var seat = 0; seat < seats; seat++)
       if (seat == ghost)
-        const SeatIdentity(Strings.ghostName, Tokens.ghost, isGhost: true)
+        SeatIdentity.ghost
       else if (seating.occupantAt(seat) case final person?)
         SeatIdentity(
           person.name,
           Tokens.playerColors[person.color % Tokens.playerColors.length],
+          icon: PlayerIcons.glyph(person.icon),
         )
       else
         SeatIdentity(
           botNames[bots],
-          Tokens.botColors[bots++ % Tokens.botColors.length],
+          Tokens.botColors[bots % Tokens.botColors.length],
+          icon: botIcons[bots++],
         ),
   ];
 }
@@ -99,6 +103,7 @@ class _OnlineHomeScreenState extends State<OnlineHomeScreen> {
     id: await widget.settings.onlineId(_random),
     name: widget.settings.playerName,
     color: widget.settings.playerColor,
+    icon: widget.settings.playerIcon,
   );
 
   /// Online, the others only know a player by their name: « Toi » is never
@@ -245,9 +250,11 @@ class _PlayerList extends StatelessWidget {
       children: [
         for (final player in lobby.players)
           ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Tokens
+            leading: PlayerAvatar(
+              radius: 18,
+              color: Tokens
                   .playerColors[player.color % Tokens.playerColors.length],
+              glyph: PlayerIcons.glyph(player.icon),
             ),
             title: Text(player.name),
             subtitle: Text(

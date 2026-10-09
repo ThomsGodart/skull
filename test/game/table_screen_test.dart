@@ -18,6 +18,7 @@ import 'package:skull_kings/settings/app_settings.dart';
 import 'package:skull_kings/theme/tokens.dart';
 import 'package:skull_kings/ui/cards/card_view.dart';
 import 'package:skull_kings/ui/cards/hand_fan.dart';
+import 'package:skull_kings/ui/player_icons.dart';
 import 'package:skull_kings/ui/strings.dart';
 
 import '../support/memory_stores.dart';
@@ -903,6 +904,58 @@ void main() {
     );
     await tester.tap(find.byKey(Key('trick-card-${card.id}')));
     expect(tapped?.card, card);
+  });
+
+  testWidgets('a seat shows its emblem on its colour, or its first letters '
+      'when it has none', (tester) async {
+    Widget chip(SeatIdentity identity) => MaterialApp(
+      home: Center(
+        child: SeatChip(identity: identity, bid: 1, tricksWon: 0, score: 0),
+      ),
+    );
+
+    await tester.pumpWidget(
+      chip(SeatIdentity('Anne', Tokens.gold, icon: PlayerIcons.glyphs[2])),
+    );
+    final avatar = tester.widget<PlayerAvatar>(find.byType(PlayerAvatar));
+    expect(avatar.glyph, PlayerIcons.glyphs[2]);
+    expect(avatar.color, Tokens.gold);
+    expect(find.text('An'), findsNothing);
+
+    await tester.pumpWidget(chip(const SeatIdentity('Anne', Tokens.gold)));
+    expect(find.byType(PlayerAvatar), findsNothing);
+    expect(find.text('An'), findsOneWidget);
+  });
+
+  testWidgets('at a solo table every seat has an emblem: the player their '
+      'own, each bot another', (tester) async {
+    tester.view.physicalSize = const Size(360, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: Tokens.theme(),
+        home: TableScreen(
+          controller: GameController(
+            config: const GameConfig(players: 5, seed: 3),
+            bot: randomBot(Random(3)),
+            speed: TableSpeed.instant,
+          ),
+          human: SeatIdentity('Anne', Tokens.gold, icon: PlayerIcons.glyph(1)),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final glyphs = [
+      for (final avatar in tester.widgetList<PlayerAvatar>(
+        find.byType(PlayerAvatar),
+      ))
+        avatar.glyph,
+    ];
+    expect(glyphs, hasLength(5));
+    expect(glyphs.last, PlayerIcons.glyph(1));
+    expect(glyphs.take(4).toSet(), hasLength(4));
   });
 
   testWidgets('a seat shows the bonus it stands to score, and nothing '

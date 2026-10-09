@@ -33,6 +33,7 @@ final class RoomPlayer {
     required this.id,
     required this.name,
     required this.color,
+    this.icon = 0,
     this.connected = true,
   });
 
@@ -40,6 +41,7 @@ final class RoomPlayer {
     id: json['id']! as String,
     name: json['name']! as String,
     color: onlineInt(json['color']) ?? 0,
+    icon: onlineInt(json['icon']) ?? 0,
     connected: json['connected'] as bool? ?? true,
   );
 
@@ -48,12 +50,16 @@ final class RoomPlayer {
 
   /// An index into the colours a player may pick.
   final int color;
+
+  /// An index into the emblems a player may pick.
+  final int icon;
   final bool connected;
 
   Json toJson() => {
     'id': id,
     'name': name,
     'color': color,
+    'icon': icon,
     'connected': connected,
   };
 }
@@ -328,6 +334,7 @@ class OnlineHost {
           id: player.id,
           name: player.name,
           color: player.color,
+          icon: player.icon,
           // Not seen yet is not gone: presence comes a moment after hello.
           connected:
               player.id == self.id ||
@@ -450,6 +457,7 @@ class OnlineHost {
           id: id,
           name: payload['name'] as String? ?? '?',
           color: onlineInt(payload['color']) ?? 0,
+          icon: onlineInt(payload['icon']) ?? 0,
         ),
       );
     }
@@ -703,6 +711,7 @@ class OnlineGuest {
     'protocol': onlineProtocol,
     'name': self.name,
     'color': self.color,
+    'icon': self.icon,
   });
 
   void _sync() => transport.send({
