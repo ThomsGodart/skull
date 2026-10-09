@@ -230,13 +230,6 @@ class GameController extends ChangeNotifier {
     _notify();
   }
 
-  /// What Harry does to a bid of [bid] after [tricksWon] tricks when left to
-  /// himself: he moves it towards the tricks taken, if [changes] allow.
-  static int harryChange(int bid, int tricksWon, List<int> changes) {
-    final wanted = (tricksWon - bid).clamp(-1, 1);
-    return changes.contains(wanted) ? wanted : 0;
-  }
-
   /// Ignored unless the human is being asked to play.
   void play(
     Card card, {
@@ -390,9 +383,7 @@ class GameController extends ChangeNotifier {
         // The ghost bids nothing.
         bids = List<int?>.of(event.bids)..length = seats;
         placedBid = null;
-        acceptedBids = {
-          for (var seat = 0; seat < scoringSeats; seat++) seat,
-        };
+        acceptedBids = {for (var seat = 0; seat < scoringSeats; seat++) seat};
         // Too late to change one's mind.
         bidQuestion = null;
         _revealingBids = true;

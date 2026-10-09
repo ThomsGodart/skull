@@ -686,6 +686,7 @@ class OnlineGuest {
 
   void _onFeed(Json payload) {
     final seating = Seating.fromJson(payload['seating']! as Json);
+    final from = onlineInt(payload['from'])!;
     final feed = _feed ??= _RemoteFeed(
       seating.config,
       seating.seat,
@@ -695,7 +696,6 @@ class OnlineGuest {
       }, to: _hostId),
     );
     if (!_started.isCompleted) _started.complete((seating, feed));
-    final from = onlineInt(payload['from'])!;
     if (from > feed.received) {
       // Something was missed: ask for it again.
       _sync();

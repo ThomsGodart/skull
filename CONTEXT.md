@@ -44,6 +44,7 @@ Le code, les identifiants et les tests sont en anglais ; tout ce que voit le jou
 | `sea monster` | monstre marin | Kraken, Baleine blanche ou Raie Tachetée (`Play.isCreature`). |
 | `Draft bids` | — | Les paris d'une manche comptée, saisis avant que ses plis soient connus. |
 | `Seat feed` | — | Ce qu'un siège reçoit d'une partie (événements, question) et sa façon d'y répondre, que la partie tourne sur ce téléphone ou chez l'hôte (`SeatFeed`). |
+| `Table interaction` | — | Ce que le joueur fait à la table : la carte levée ou regardée, si elle peut être jouée, et ce que la partie demande de lui poser ou de lui montrer (`TableInteraction`). L'écran de table n'écoute que lui. |
 | `Room` | salon | Le lieu d'une partie en ligne, rejoint par un code de quatre lettres. |
 | `Host` / `Guest` | hôte / invité | Le téléphone qui fait tourner la partie en ligne, et ceux qui la suivent. |
 | `Bot level` | niveau des adversaires | `easy`, `normal`, `hard`. |

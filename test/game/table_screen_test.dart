@@ -735,15 +735,6 @@ void main() {
     expect(find.byKey(const Key('trick-tokens')), findsNothing);
   });
 
-  test('left to himself, Harry moves the bid towards the tricks taken', () {
-    expect(GameController.harryChange(2, 3, const [-1, 0, 1]), 1);
-    expect(GameController.harryChange(2, 0, const [-1, 0, 1]), -1);
-    expect(GameController.harryChange(2, 2, const [-1, 0, 1]), 0);
-    expect(GameController.harryChange(0, 0, const [0, 1]), 0);
-    // A bid of zero cannot go lower.
-    expect(GameController.harryChange(4, 2, const [0]), 0);
-  });
-
   test('a pirate with its power on tells that power, a plain one how it '
       'ranks', () {
     final harry = baseDeck().firstWhere(

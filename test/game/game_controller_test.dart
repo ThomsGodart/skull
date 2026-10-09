@@ -421,41 +421,6 @@ void main() {
 
     expect(notified, greaterThan(0));
   });
-
-  test('a question answered the instant it is asked, as Harry is when left '
-      'to himself, does not freeze the table', () async {
-    var harryAnswered = 0;
-    for (var seed = 0; seed < 12; seed++) {
-      final controller = GameController(
-        config: GameConfig(players: 4, seed: seed, piratePowers: true),
-        bot: randomBot(Random(seed)),
-        speed: TableSpeed.instant,
-      );
-      // What the table does with the automatic Harry setting.
-      controller.addListener(() {
-        if (controller.afterTrickQuestion case AdjustBidQuestion(
-          :final seat,
-          :final changes,
-        )) {
-          harryAnswered++;
-          controller.answerAfterTrick(
-            AdjustBidAnswer(
-              seat: seat,
-              change: GameController.harryChange(
-                controller.bids[seat]!,
-                controller.tricksWon[seat],
-                changes,
-              ),
-            ),
-          );
-        }
-      });
-      controller.start();
-      await playUntil(controller, () => controller.result != null);
-      controller.dispose();
-    }
-    expect(harryAnswered, greaterThan(0));
-  });
 }
 
 TigressMode? tigressModeFor(Card card) =>

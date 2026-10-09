@@ -22,6 +22,7 @@ import 'score_views.dart';
 import 'screen_awake.dart';
 import 'seat_chip.dart';
 import 'seat_identity.dart';
+import 'table_interaction.dart';
 import 'trick_area.dart';
 
 /// The table of a game in progress. Owns [controller] from here on.
@@ -100,21 +101,22 @@ class _TableScreenState extends State<TableScreen> {
       .take(widget.controller.scoringSeats)
       .toList();
 
-  /// The card lifted by a first tap, waiting for the second.
-  Card? _selected;
-
-  /// A card the player tapped only to look at it, when it cannot be played.
-  Card? _inspected;
-
-  /// Whether a play turn was already signalled with a vibration.
-  bool _turnBuzzed = false;
-
   GameController get _game => widget.controller;
+
+  /// The card the player lifted or looks at, and what the game wants asked.
+  late final TableInteraction _table =
+      TableInteraction(
+          _game,
+          autoHarry: () => widget.settings?.autoHarry ?? false,
+        )
+        ..onTurn = (() => _vibrate(HapticFeedback.mediumImpact))
+        ..onPower = _askPower
+        ..onStock = _showStock;
 
   @override
   void initState() {
     super.initState();
-    _game.addListener(_onGameChanged);
+    _table.addListener(_onTableChanged);
     widget.chat?.addListener(_onChatChanged);
     _game.start();
     _openTables++;
@@ -141,49 +143,14 @@ class _TableScreenState extends State<TableScreen> {
     widget.chat
       ?..removeListener(_onChatChanged)
       ..dispose();
-    _game
-      ..removeListener(_onGameChanged)
+    _table
+      ..removeListener(_onTableChanged)
       ..dispose();
+    _game.dispose();
     super.dispose();
   }
 
-  void _onGameChanged() {
-    // Keep a pre-selected card across turns: only clear when it leaves the hand.
-    if (_selected != null && !_game.hand.contains(_selected)) {
-      _selected = null;
-    }
-    if (!_game.hand.contains(_inspected)) _inspected = null;
-    // A card looked at while waiting becomes the selection once it is legal.
-    if (_game.playQuestion case final question?
-        when _selected == null && _inspected != null) {
-      if (question.legalCards.contains(_inspected) ||
-          _game.forcedCard == _inspected) {
-        _selected = _inspected;
-        _inspected = null;
-      }
-    }
-    if (_game.playQuestion == null) {
-      _turnBuzzed = false;
-    } else if (!_turnBuzzed) {
-      _turnBuzzed = true;
-      _vibrate(HapticFeedback.mediumImpact);
-    }
-    setState(() {});
-    final power = _game.afterTrickQuestion;
-    if (power != null && !identical(power, _powerShown)) {
-      _powerShown = power;
-      _askPower(power);
-    }
-    final stock = _game.revealedStock;
-    if (stock != null && !identical(stock, _stockShown)) {
-      _stockShown = stock;
-      _showStock(stock);
-    }
-  }
-
-  /// The power question and the stock a dialog was already opened for.
-  AfterTrickQuestion? _powerShown;
-  List<Card>? _stockShown;
+  void _onTableChanged() => setState(() {});
 
   bool get _namedPirates => _game.config.piratePowers;
 
@@ -196,21 +163,6 @@ class _TableScreenState extends State<TableScreen> {
   /// A pirate just won the human a trick: a dialog asks how to use its power.
   /// It cannot be dismissed, since the game waits for the answer.
   Future<void> _askPower(AfterTrickQuestion question) async {
-    // Left to himself, Harry moves the bid towards the tricks taken.
-    if (question case AdjustBidQuestion(:final seat, :final changes)
-        when widget.settings?.autoHarry ?? false) {
-      _game.answerAfterTrick(
-        AdjustBidAnswer(
-          seat: seat,
-          change: GameController.harryChange(
-            _game.bids[seat] ?? 0,
-            _game.tricksWon[seat],
-            changes,
-          ),
-        ),
-      );
-      return;
-    }
     final answer = await showDialog<Answer>(
       context: context,
       barrierDismissible: false,
@@ -242,7 +194,10 @@ class _TableScreenState extends State<TableScreen> {
         ),
         const SizedBox(height: Tokens.space1),
         if (list.isEmpty)
-          const Text(Strings.noLastTrick, style: TextStyle(color: Tokens.mutedText))
+          const Text(
+            Strings.noLastTrick,
+            style: TextStyle(color: Tokens.mutedText),
+          )
         else
           Wrap(
             spacing: Tokens.space1,
@@ -268,10 +223,9 @@ class _TableScreenState extends State<TableScreen> {
             children: [
               const Text(Strings.stockBody),
               const SizedBox(height: Tokens.space3),
-              cards(
-                Strings.lastTrickLabel,
-                [for (final play in _game.lastTrick ?? const []) play.card],
-              ),
+              cards(Strings.lastTrickLabel, [
+                for (final play in _game.lastTrick ?? const []) play.card,
+              ]),
               const SizedBox(height: Tokens.space3),
               cards(Strings.yourHandLabel, _game.hand),
               const SizedBox(height: Tokens.space3),
@@ -297,10 +251,7 @@ class _TableScreenState extends State<TableScreen> {
   Future<void> _onCardTap(Card card) async {
     if (_singleTap) return _play(card);
     _vibrate(HapticFeedback.selectionClick);
-    setState(() {
-      _selected = card == _selected ? null : card;
-      _inspected = null;
-    });
+    _table.tap(card);
   }
 
   Future<void> _play(Card card) async {
@@ -566,11 +517,8 @@ class _TableScreenState extends State<TableScreen> {
     child: GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
-        if (_inspected != null || _selected != null) {
-          setState(() {
-            _inspected = null;
-            _selected = null;
-          });
+        if (_table.shown != null) {
+          _table.clear();
         } else {
           game.skipHold();
         }
@@ -584,16 +532,11 @@ class _TableScreenState extends State<TableScreen> {
   /// Always shows « Jouer »: disabled until it is our turn and a card is
   /// selected. Effects text sits beside it when a card is lifted.
   Widget _statusLine() {
-    final card = _selected ?? _inspected;
+    final card = _table.shown;
     final effects = widget.settings?.cardEffects ?? true;
-    final canPlay =
-        _game.playQuestion != null &&
-        _selected != null &&
-        (_game.playQuestion!.legalCards.contains(_selected) ||
-            _game.forcedCard == _selected);
     final playButton = FilledButton(
       key: const Key('play-card'),
-      onPressed: canPlay ? () => _play(_selected!) : null,
+      onPressed: _table.canPlay ? () => _play(_table.selected!) : null,
       child: const Text(Strings.playCard),
     );
     if (card != null && effects) {
@@ -644,17 +587,15 @@ class _TableScreenState extends State<TableScreen> {
   Widget _hand(GameController game, {double? cardWidth}) => HandFan(
     cards: game.hand,
     legal: game.playQuestion?.legalCards,
-    selected: _selected ?? _inspected,
+    selected: _table.shown,
     onTap: _onCardTap,
-    onInspect: (card) =>
-        setState(() => _inspected = card == _inspected ? null : card),
+    onInspect: _table.inspect,
     cardWidth: cardWidth ?? _handCardWidth(game.hand.length),
     namedPirates: _namedPirates,
   );
 
   /// True while the human is choosing a bid, or waiting on the others'.
-  bool get _bidding =>
-      _game.bidQuestion != null || _game.placedBid != null;
+  bool get _bidding => _game.bidQuestion != null || _game.placedBid != null;
 
   /// Phone held upright: opponents on top, the trick, then the hand.
   Widget _portraitBody(GameController game) => Column(
@@ -1039,7 +980,8 @@ class _TableScreenState extends State<TableScreen> {
                           onSubmitted: (text) {
                             chat.send(
                               text,
-                              fromName: widget.settings?.playerName ??
+                              fromName:
+                                  widget.settings?.playerName ??
                                   widget.human.name,
                             );
                             input.clear();
@@ -1051,7 +993,8 @@ class _TableScreenState extends State<TableScreen> {
                         onPressed: () {
                           chat.send(
                             input.text,
-                            fromName: widget.settings?.playerName ??
+                            fromName:
+                                widget.settings?.playerName ??
                                 widget.human.name,
                           );
                           input.clear();
@@ -1088,10 +1031,7 @@ class _TableScreenState extends State<TableScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              who,
-              style: const TextStyle(color: Tokens.gold, fontSize: 15),
-            ),
+            Text(who, style: const TextStyle(color: Tokens.gold, fontSize: 15)),
             if (hint != null) ...[
               const SizedBox(height: Tokens.space2),
               Text(hint, style: const TextStyle(color: Tokens.text)),
