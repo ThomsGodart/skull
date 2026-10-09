@@ -78,6 +78,46 @@ void main() {
       expect(revealed.audience, isNull);
     });
 
+    test('a seat that takes its bid back is waited for: the bids are not '
+        'turned over on the one it gave up', () {
+      final game = Game(config)..takeEvents();
+
+      game.answer(const BidAnswer(seat: 0, bid: 1));
+      game.answer(const WithdrawBidAnswer(seat: 0));
+      expect(game.takeEvents().whereType<BidWithdrawn>().single.seat, 0);
+      for (var seat = 1; seat < 4; seat++) {
+        game.answer(BidAnswer(seat: seat, bid: 0));
+      }
+
+      expect(game.takeEvents().whereType<BidsRevealed>(), isEmpty);
+      expect(game.pending.single, isA<BidQuestion>());
+      expect(game.pending.single.seat, 0);
+
+      game.answer(const BidAnswer(seat: 0, bid: 0));
+      expect(game.takeEvents().whereType<BidsRevealed>().single.bids, [
+        0,
+        0,
+        0,
+        0,
+      ]);
+    });
+
+    test('a bid cannot be taken back before it is placed, nor once the bids '
+        'are turned over', () {
+      final game = Game(config);
+      expect(
+        () => game.answer(const WithdrawBidAnswer(seat: 0)),
+        throwsA(isA<IllegalAnswer>()),
+      );
+      for (var seat = 0; seat < 4; seat++) {
+        game.answer(BidAnswer(seat: seat, bid: 0));
+      }
+      expect(
+        () => game.answer(const WithdrawBidAnswer(seat: 0)),
+        throwsA(isA<IllegalAnswer>()),
+      );
+    });
+
     test('a short game may start at a later round', () {
       final game = Game(
         const GameConfig(players: 4, seed: 7, startingRound: 5),

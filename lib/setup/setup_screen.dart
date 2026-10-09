@@ -231,8 +231,7 @@ class _SetupScreenState extends State<SetupScreen> {
                           ),
                           title: Text(_firstCardTitle(kind)),
                           value: _firstCardOn(kind),
-                          onChanged: (on) =>
-                              _setFirstCard(kind, on ?? false),
+                          onChanged: (on) => _setFirstCard(kind, on ?? false),
                         ),
                     _option(
                       Strings.optionPowers,

@@ -224,10 +224,19 @@ class GameController extends ChangeNotifier {
   }
 
   /// Lets the human choose another bid, while the bids are not turned over.
+  /// The bid is taken back from the game, which then waits for the new one
+  /// instead of turning the bids over on the old.
   void changeBid() {
     if (placedBid == null || bidQuestion != null) return;
+    try {
+      _feed.answer(WithdrawBidAnswer(seat: humanSeat));
+    } on IllegalAnswer {
+      // The bids were turned over meanwhile: too late.
+      return;
+    }
     bidQuestion = _lastBidQuestion;
     _notify();
+    unawaited(_run());
   }
 
   /// Ignored unless the human is being asked to play.
@@ -379,6 +388,8 @@ class GameController extends ChangeNotifier {
         hand = sortedHand(event.cards);
       case BidAccepted():
         acceptedBids = {...acceptedBids, event.seat};
+      case BidWithdrawn():
+        acceptedBids = {...acceptedBids}..remove(event.seat);
       case BidsRevealed():
         // The ghost bids nothing.
         bids = List<int?>.of(event.bids)..length = seats;

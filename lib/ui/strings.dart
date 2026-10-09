@@ -76,7 +76,11 @@ abstract final class Strings {
   /// [count] distinct names drawn from [botNames].
   static List<String> shuffledBotNames(int count, [Random? random]) {
     if (count < 0 || count > botNames.length) {
-      throw ArgumentError.value(count, 'count', 'must be 0..${botNames.length}');
+      throw ArgumentError.value(
+        count,
+        'count',
+        'must be 0..${botNames.length}',
+      );
     }
     final names = List<String>.of(botNames)..shuffle(random ?? Random());
     return names.take(count).toList();

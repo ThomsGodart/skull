@@ -86,6 +86,7 @@ Map<String, Object?> eventToJson(Event event) => switch (event) {
     'cards': _ids(event.cards),
   },
   BidAccepted() => {'type': 'bidAccepted', 'seat': event.seat},
+  BidWithdrawn() => {'type': 'bidWithdrawn', 'seat': event.seat},
   BidsRevealed() => {'type': 'bidsRevealed', 'bids': event.bids},
   CardPlayed() => {'type': 'cardPlayed', 'play': _playToJson(event.play)},
   TrickWon() => {
@@ -175,6 +176,7 @@ Event eventFromJson(Map<String, Object?> json) => _decode(json, 'event', () {
     'turnsSet' => TurnsSet(_ints(json['order'])),
     'handDealt' => HandDealt(seat: field('seat'), cards: _cards(json['cards'])),
     'bidAccepted' => BidAccepted(field('seat')),
+    'bidWithdrawn' => BidWithdrawn(field('seat')),
     'bidsRevealed' => BidsRevealed(_ints(json['bids'])),
     'cardPlayed' => CardPlayed(_playFromJson(json['play'])),
     'trickWon' => TrickWon(

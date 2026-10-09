@@ -159,6 +159,7 @@ Map<String, Object?> answerToJson(Answer answer) => {
   'seat': answer.seat,
   ...switch (answer) {
     BidAnswer() => {'bid': answer.bid},
+    WithdrawBidAnswer() => {'withdrawBid': true},
     PlayAnswer() => {
       'card': answer.card.id,
       if (answer.tigressAs case final mode?) 'tigressAs': mode.name,
@@ -182,6 +183,7 @@ Answer answerFromJson(Map<String, Object?> json) {
     final seat = json['seat']! as int;
     return switch (json) {
       {'bid': final int bid} => BidAnswer(seat: seat, bid: bid),
+      {'withdrawBid': true} => WithdrawBidAnswer(seat: seat),
       {'leader': final int leader} => ChooseLeaderAnswer(
         seat: seat,
         leader: leader,
@@ -326,6 +328,12 @@ final class BidAnswer extends Answer {
   final int bid;
 }
 
+/// Takes back a bid already placed, to choose another: the game then waits
+/// for it again. Only while the bids are not turned over.
+final class WithdrawBidAnswer extends Answer {
+  const WithdrawBidAnswer({required int seat}) : super(seat);
+}
+
 final class PlayAnswer extends Answer {
   const PlayAnswer({
     required int seat,
@@ -448,6 +456,13 @@ final class HandDealt extends Event {
 /// until [BidsRevealed].
 final class BidAccepted extends Event {
   const BidAccepted(this.seat);
+
+  final int seat;
+}
+
+/// A seat took its bid back to choose another: it is waited for again.
+final class BidWithdrawn extends Event {
+  const BidWithdrawn(this.seat);
 
   final int seat;
 }

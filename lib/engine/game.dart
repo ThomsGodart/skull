@@ -227,6 +227,14 @@ final class Game {
       question = BidQuestion(seat: answer.seat, maxBid: _cardsDealt);
     }
     switch ((question, answer)) {
+      case (null, WithdrawBidAnswer(:final seat))
+          when !_finished &&
+              !_bidsRevealed &&
+              seat >= 0 &&
+              seat < _players &&
+              _bids[seat] != null:
+        _bids[seat] = null;
+        _events.add(BidWithdrawn(seat));
       case (final BidQuestion question, final BidAnswer answer):
         _bid(question, answer);
       case (final PlayQuestion question, final PlayAnswer answer):

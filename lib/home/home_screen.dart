@@ -280,93 +280,94 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Tokens.gold,
                       ),
                     ),
-                const Text(
-                  Strings.appTitle,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Tokens.gold,
-                    fontSize: 36,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const Text(
-                  Strings.tagline,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Tokens.mutedText),
-                ),
-                const SizedBox(height: Tokens.space6 * 2),
-                if (saved != null) ...[
-                  FilledButton(
-                    onPressed: _continue,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(Strings.continueGame),
-                        Text(
-                          Strings.savedGameSummary(
-                            saved.round,
-                            saved.humanScore,
+                    const Text(
+                      Strings.appTitle,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Tokens.gold,
+                        fontSize: 36,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const Text(
+                      Strings.tagline,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Tokens.mutedText),
+                    ),
+                    const SizedBox(height: Tokens.space6 * 2),
+                    if (saved != null) ...[
+                      FilledButton(
+                        onPressed: _continue,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(Strings.continueGame),
+                            Text(
+                              Strings.savedGameSummary(
+                                saved.round,
+                                saved.humanScore,
+                              ),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: Tokens.space3),
+                      OutlinedButton(
+                        onPressed: _openSetup,
+                        child: const Text(Strings.newGame),
+                      ),
+                    ] else
+                      FilledButton(
+                        onPressed: _openSetup,
+                        child: const Text(Strings.newGame),
+                      ),
+                    const SizedBox(height: Tokens.space3),
+                    OutlinedButton(
+                      key: const Key('home-online'),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => OnlineHomeScreen(
+                            settings: _settings,
+                            transports: widget.transports,
                           ),
-                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      child: const Text(Strings.online),
+                    ),
+                    const SizedBox(height: Tokens.space3),
+                    OutlinedButton(
+                      key: const Key('home-counter'),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => CounterHomeScreen(
+                            store: widget.counters,
+                            settings: _settings,
+                          ),
+                        ),
+                      ),
+                      child: const Text(Strings.counter),
+                    ),
+                    const SizedBox(height: Tokens.space4),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      children: [
+                        _entry(
+                          Strings.history,
+                          (context) =>
+                              HistoryScreen(games: _games, human: _human),
+                        ),
+                        _entry(
+                          Strings.statistics,
+                          (context) => StatsScreen(games: _games),
+                        ),
+                        _entry(Strings.rules, (context) => const RulesScreen()),
+                        _entry(
+                          Strings.settings,
+                          (context) => SettingsScreen(settings: _settings),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: Tokens.space3),
-                  OutlinedButton(
-                    onPressed: _openSetup,
-                    child: const Text(Strings.newGame),
-                  ),
-                ] else
-                  FilledButton(
-                    onPressed: _openSetup,
-                    child: const Text(Strings.newGame),
-                  ),
-                const SizedBox(height: Tokens.space3),
-                OutlinedButton(
-                  key: const Key('home-online'),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => OnlineHomeScreen(
-                        settings: _settings,
-                        transports: widget.transports,
-                      ),
-                    ),
-                  ),
-                  child: const Text(Strings.online),
-                ),
-                const SizedBox(height: Tokens.space3),
-                OutlinedButton(
-                  key: const Key('home-counter'),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => CounterHomeScreen(
-                        store: widget.counters,
-                        settings: _settings,
-                      ),
-                    ),
-                  ),
-                  child: const Text(Strings.counter),
-                ),
-                const SizedBox(height: Tokens.space4),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  children: [
-                    _entry(
-                      Strings.history,
-                      (context) => HistoryScreen(games: _games, human: _human),
-                    ),
-                    _entry(
-                      Strings.statistics,
-                      (context) => StatsScreen(games: _games),
-                    ),
-                    _entry(Strings.rules, (context) => const RulesScreen()),
-                    _entry(
-                      Strings.settings,
-                      (context) => SettingsScreen(settings: _settings),
-                    ),
-                  ],
-                ),
                     TextButton.icon(
                       key: const Key('edit-profile'),
                       onPressed: () => showDialog<void>(

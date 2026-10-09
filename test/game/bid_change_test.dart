@@ -32,14 +32,26 @@ class WaitingFeed implements SeatFeed {
     return events;
   }
 
+  /// Set once the bids are turned over: nothing is taken back after that.
+  bool revealed = false;
+
   @override
   void answer(Answer answer) {
+    if (answer is WithdrawBidAnswer) {
+      if (revealed) throw const IllegalAnswer('too late');
+      answers.add(answer);
+      _events.add(BidWithdrawn(answer.seat));
+      question = const BidQuestion(seat: 0, maxBid: 1);
+      _onUpdate?.call();
+      return;
+    }
     answers.add(answer);
     question = null;
   }
 
   /// The last of the others has bid.
   void reveal(List<int> bids) {
+    revealed = true;
     _events.add(BidsRevealed(bids));
     _onUpdate?.call();
   }
@@ -75,8 +87,18 @@ void main() {
 
     controller.changeBid();
     expect(controller.bidQuestion, isNotNull, reason: 'asked again');
+    // The game is told at once: it must not turn the bids over on the one
+    // being changed, should the others all be in meanwhile.
+    expect(feed.answers.last, isA<WithdrawBidAnswer>());
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.acceptedBids, isNot(contains(0)));
+    expect(controller.bidQuestion, isNotNull);
+
     controller.bid(0);
-    expect(feed.answers.map((answer) => (answer as BidAnswer).bid), [1, 0]);
+    expect(feed.answers.whereType<BidAnswer>().map((answer) => answer.bid), [
+      1,
+      0,
+    ]);
     expect(controller.placedBid, 0);
 
     feed.reveal([0, 1, 0]);

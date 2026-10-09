@@ -404,6 +404,38 @@ void main() {
     });
   });
 
+  test('a guest who takes their bid back is waited for, even when the host '
+      'bids last', () async {
+    final theHost = host(config: const GameConfig(players: 2, seed: 0));
+    await theHost.open('ROOM');
+    final bob = guest('g1');
+    await bob.join('ROOM');
+    await pause(fast * 3);
+    final hostFeed = theHost.start(Random(7))..open();
+    final (seating, feed) = await bob.started;
+    await pause(fast * 3);
+    final revealed = <BidsRevealed>[];
+    void drain() =>
+        revealed.addAll(feed.takeEvents().whereType<BidsRevealed>());
+
+    feed.answer(BidAnswer(seat: seating.seat, bid: 1));
+    await pause(fast * 2);
+    feed.answer(WithdrawBidAnswer(seat: seating.seat));
+    await pause(fast * 2);
+    expect(feed.question, isA<BidQuestion>(), reason: 'asked again');
+
+    hostFeed.answer(BidAnswer(seat: hostFeed.seat, bid: 0));
+    await pause(fast * 2);
+    drain();
+    expect(revealed, isEmpty, reason: 'not on the bid given up');
+
+    feed.answer(BidAnswer(seat: seating.seat, bid: 0));
+    await pause(fast * 2);
+    drain();
+    expect(revealed.single.bids.take(2), [0, 0]);
+    await theHost.close();
+  });
+
   test('a guest who drops out is counted down, then replaced; the host may '
       'wait for them instead, or put the bot at once', () async {
     final theHost = host(grace: const Duration(milliseconds: 60));

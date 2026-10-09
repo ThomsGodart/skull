@@ -9,7 +9,7 @@ import 'room_transport.dart';
 
 /// Bumped whenever phones of different versions could no longer play the
 /// same game together.
-const onlineProtocol = 3;
+const onlineProtocol = 4;
 
 /// How long an absent player is waited for before a bot plays in their place.
 const absenceGrace = Duration(seconds: 30);
