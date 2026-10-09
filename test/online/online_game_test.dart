@@ -436,6 +436,67 @@ void main() {
     await theHost.close();
   });
 
+  test('playing again keeps the room: same people at the same seats, new '
+      'cards, and the guests follow without rejoining', () async {
+    final (theHost, guests, players) = await startGame(2);
+    final seen = <(Seating, SeatFeed)>[];
+    final seenByOther = <(Seating, SeatFeed)>[];
+    guests.first.games.listen(seen.add);
+    guests[1].games.listen(seenByOther.add);
+    await untilOver(players);
+    final before = theHost.currentOccupants;
+    final firstSeed = theHost.config.seed;
+    final (firstSeating, firstFeed) = await guests.first.started;
+
+    final hostFeed = theHost.rematch(Random(9));
+    await pause(fast * 3);
+
+    expect(theHost.currentOccupants, before);
+    expect(theHost.config.seed, isNot(firstSeed));
+    expect(theHost.config.players, firstSeating.config.players);
+    final (seating, feed) = seen.single;
+    expect(feed, isNot(same(firstFeed)));
+    expect(seating.seat, firstSeating.seat);
+    expect(seating.config.seed, theHost.config.seed);
+    expect(
+      seating.occupants.map((p) => p?.id),
+      firstSeating.occupants.map((p) => p?.id),
+    );
+
+    // The new game is played to its end by the same phones.
+    final again = [Player(hostFeed, 200), Player(feed, 201)];
+    again.add(Player(seenByOther.single.$2, 202));
+    hostFeed.open();
+    await untilOver(again);
+    expect(
+      again.map((player) => '${player.result!.scores}').toSet(),
+      hasLength(1),
+    );
+    await theHost.close();
+  });
+
+  test('an answer left over from the game before is not taken for the new '
+      'one', () async {
+    final (theHost, guests, players) = await startGame(1);
+    await untilOver(players);
+    final (_, oldFeed) = await guests.single.started;
+
+    final hostFeed = theHost.rematch(Random(9))..open();
+    await pause(fast * 3);
+    final asked = hostFeed.question;
+    // The guest's phone still answers the old game: nothing may come of it.
+    oldFeed.answer(BidAnswer(seat: oldFeed.seat, bid: 0));
+    await pause(fast * 3);
+
+    expect(hostFeed.question, same(asked));
+    expect(
+      hostFeed.takeEvents().whereType<BidAccepted>().map((e) => e.seat),
+      isNot(contains(oldFeed.seat)),
+      reason: 'the guest has not bid in the new game',
+    );
+    await theHost.close();
+  });
+
   test('a guest who drops out is counted down, then replaced; the host may '
       'wait for them instead, or put the bot at once', () async {
     final theHost = host(grace: const Duration(milliseconds: 60));

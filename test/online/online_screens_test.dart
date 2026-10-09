@@ -4,6 +4,7 @@ import 'package:flutter/material.dart' hide Card;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skull_kings/bots/bot.dart';
 import 'package:skull_kings/engine/engine.dart';
+import 'package:skull_kings/game/seat_feed.dart';
 import 'package:skull_kings/online/online_game.dart';
 import 'package:skull_kings/online/online_screens.dart';
 import 'package:skull_kings/online/room_transport.dart';
@@ -139,6 +140,96 @@ void main() {
     await settle(tester);
     expect(find.text(Strings.onlineClosed), findsWidgets);
 
+    await tester.pumpWidget(const SizedBox());
+    await settle(tester);
+  });
+
+  testWidgets('when the host plays again, the guest is taken to the new '
+      'game without leaving the room', (tester) async {
+    final host = OnlineHost(
+      transport: hub.transport('host'),
+      self: const RoomPlayer(id: 'host', name: 'Zoé', color: 2),
+      config: const GameConfig(players: 3, seed: 0),
+      bot: randomBot(Random(1)),
+    );
+    host.open('WXYZ');
+    await openOnline(tester, name: 'Bob');
+    await tester.enterText(find.byKey(const Key('online-code')), 'wxyz');
+    await tester.tap(find.byKey(const Key('online-join')));
+    await settle(tester);
+    final first = host.start(Random(2), bots: 1)..open();
+    await settle(tester);
+    expect(find.byKey(const Key('bid-0')), findsOneWidget);
+
+    // The host ends the game: the guest sees the standings, and is told to
+    // stay for the next one. Only the host can start it.
+    first.finishEarly();
+    await settle(tester);
+    expect(find.text(Strings.gameOver), findsOneWidget);
+    expect(find.byKey(const Key('game-over-note')), findsOneWidget);
+    expect(find.byKey(const Key('play-again')), findsNothing);
+
+    host.rematch(Random(5)).open();
+    await settle(tester);
+
+    expect(find.text(Strings.gameOver), findsNothing);
+    expect(find.text(Strings.roundTitle(1, 1)), findsOneWidget);
+    expect(find.byKey(const Key('bid-0')), findsOneWidget);
+    expect(find.byKey(const Key('table-room-code')), findsOneWidget);
+    expect(find.text('Zoé'), findsOneWidget);
+
+    host.close();
+    await tester.pumpWidget(const SizedBox());
+    await settle(tester);
+  });
+
+  testWidgets('the host plays again from the final standings, in the same '
+      'room', (tester) async {
+    await openOnline(tester);
+    await tester.tap(find.byKey(const Key('online-create')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('launch')));
+    await settle(tester);
+    final code = tester
+        .widget<SelectableText>(find.byKey(const Key('online-room-code')))
+        .data!;
+    final guest = OnlineGuest(
+      transport: hub.transport('guest'),
+      self: const RoomPlayer(id: 'guest', name: 'Bob', color: 1),
+      retry: const Duration(milliseconds: 10),
+    );
+    final games = <(Seating, SeatFeed)>[];
+    guest.games.listen(games.add);
+    guest.join(code);
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('online-start')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('online-bots-confirm')));
+    await settle(tester);
+    expect(games, hasLength(1));
+
+    // The host ends the game from the pause menu, then plays again.
+    await tester.tap(find.byTooltip(Strings.pause));
+    await settle(tester);
+    await tester.tap(find.text(Strings.finishEarly));
+    await settle(tester);
+    expect(find.text(Strings.finishEarlyConfirm), findsOneWidget);
+    await tester.tap(find.text(Strings.finishEarly).last);
+    await settle(tester);
+    expect(find.text(Strings.gameOver), findsOneWidget);
+    await tester.tap(find.byKey(const Key('play-again')));
+    await settle(tester);
+
+    expect(find.text(Strings.gameOver), findsNothing);
+    expect(find.byKey(const Key('bid-0')), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('table-room-code'))).data,
+      contains(code),
+    );
+    expect(games, hasLength(2));
+    expect(games.last.$1.seat, games.first.$1.seat);
+
+    guest.leave();
     await tester.pumpWidget(const SizedBox());
     await settle(tester);
   });

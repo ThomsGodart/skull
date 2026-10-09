@@ -311,6 +311,8 @@ Widget _onlineTable({
   String? roomCode,
   bool canFinishEarly = false,
   RoomChat? chat,
+  VoidCallback? onPlayAgain,
+  String? gameOverNote,
   void Function(String id)? onKeepWaiting,
   void Function(String id)? onReplaceNow,
 }) => TableScreen(
@@ -329,6 +331,8 @@ Widget _onlineTable({
   roomCode: roomCode,
   canFinishEarly: canFinishEarly,
   chat: chat,
+  onPlayAgain: onPlayAgain,
+  gameOverNote: gameOverNote,
 );
 
 /// Says who dropped out of the game and what becomes of their seat: the
@@ -572,10 +576,25 @@ class _HostRoomScreenState extends State<HostRoomScreen> {
   Future<void> _start() async {
     final bots = await _askBots();
     if (bots == null || !mounted) return;
-    final feed = widget.host.start(widget.random, bots: bots);
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
+    var feed = widget.host.start(widget.random, bots: bots);
+    // One table per game of the room: « Rejouer » closes the table of the
+    // game that is over, and the next one is dealt to the same seats.
+    while (true) {
+      final again = await _playGame(feed);
+      if (!again || !mounted) break;
+      feed = widget.host.rematch(widget.random);
+    }
+    // The table was left: so is the room.
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  /// Shows the table of the game [feed] is for until it is left. True when
+  /// it was left to play again.
+  Future<bool> _playGame(SeatFeed feed) async {
+    final again = await Navigator.of(context).push(
+      MaterialPageRoute<bool>(
         builder: (context) => _onlineTable(
+          onPlayAgain: () => Navigator.of(context).pop(true),
           seating: Seating(
             config: feed.config,
             seat: feed.seat,
@@ -599,8 +618,7 @@ class _HostRoomScreenState extends State<HostRoomScreen> {
         ),
       ),
     );
-    // The table was left: so is the room.
-    if (mounted) Navigator.of(context).pop();
+    return again ?? false;
   }
 
   @override
@@ -726,19 +744,30 @@ class _GuestRoomScreenState extends State<GuestRoomScreen> {
     guest.join(widget.code).catchError((Object _) {
       if (mounted) setState(() => _problem = Strings.onlineCannotConnect);
     });
-    guest.started.then(_openTable);
+    _subscriptions.add(guest.games.listen(_openTable));
   }
 
+  /// How many games of the room this phone has been shown a table for.
+  int _tables = 0;
+
+  /// Opens the table of a game that starts: the first, or the next when the
+  /// host plays again, which then takes the place of the one before.
   Future<void> _openTable((Seating, SeatFeed) start) async {
     if (!mounted) return;
     final (seating, feed) = start;
-    await Navigator.of(context).push(
+    final table = ++_tables;
+    final navigator = Navigator.of(context);
+    final room = ModalRoute.of(context);
+    // Whatever is open over the room belongs to the game that is over.
+    navigator.popUntil((route) => route == room || route.isFirst);
+    await navigator.push(
       MaterialPageRoute<void>(
         builder: (context) => _onlineTable(
           seating: seating,
           feed: feed,
           speed: widget.speed,
           settings: widget.settings,
+          gameOverNote: Strings.onlineRematchWait,
           leaveWarning: Strings.onlineLeaveGuest,
           banner: _banner,
           roomCode: widget.code,
@@ -751,7 +780,8 @@ class _GuestRoomScreenState extends State<GuestRoomScreen> {
         ),
       ),
     );
-    if (mounted) Navigator.of(context).pop();
+    // Left by the player, not replaced by the next game: so is the room.
+    if (mounted && table == _tables) navigator.pop();
   }
 
   @override

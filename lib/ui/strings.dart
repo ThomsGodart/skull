@@ -621,6 +621,8 @@ abstract final class Strings {
           'l\'hôte.',
     _ => 'Impossible de rejoindre cette partie.',
   };
+  static const onlineRematchWait =
+      'L\'hôte peut relancer une partie : reste ici pour la suivre.';
   static const onlineHostAway =
       'L\'hôte est déconnecté : la partie est en pause.';
   static const onlineClosed = 'L\'hôte a mis fin à la partie.';

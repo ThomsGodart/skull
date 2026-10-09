@@ -240,6 +240,10 @@ class OnlineHost {
 
   LocalTable? _table;
 
+  /// Which game of the room is being played: one, then one more with each
+  /// [rematch]. What a guest says of an earlier game is ignored.
+  int _gameNumber = 0;
+
   /// Who sits where once the game has started (bots as null).
   List<RoomPlayer?> _occupants = const [];
 
@@ -411,11 +415,15 @@ class OnlineHost {
         case 'sync':
           final seat = _seatOf(message.from);
           if (seat != null) {
-            _sendFeed(seat, from: onlineInt(payload['have']) ?? 0);
+            // Asked about a game that is over: everything of this one.
+            final have = _isThisGame(payload)
+                ? onlineInt(payload['have']) ?? 0
+                : 0;
+            _sendFeed(seat, from: have);
           }
         case 'answer':
           final seat = _seatOf(message.from);
-          if (seat != null) _onAnswer(seat, payload);
+          if (seat != null && _isThisGame(payload)) _onAnswer(seat, payload);
       }
     } on Object {
       // A bad wire message must not stop the host hearing the next hello.
@@ -451,6 +459,9 @@ class OnlineHost {
     if (seat != null && started) _sendFeed(seat, from: 0);
   }
 
+  bool _isThisGame(Json payload) =>
+      (onlineInt(payload['game']) ?? 1) == _gameNumber;
+
   int? _seatOf(String id) {
     if (!started) return null;
     final seat = _occupants.indexWhere((player) => player?.id == id);
@@ -468,11 +479,46 @@ class OnlineHost {
       seed: SeededRandom.newSeed(random),
       players: (_players.length + bots).clamp(minPlayers, maxPlayers),
     );
-    final occupants = <RoomPlayer?>[
+    _occupants = <RoomPlayer?>[
       ..._players,
       for (var i = 0; i < config.players - _players.length; i++) null,
     ]..shuffle(random);
-    _occupants = occupants;
+    final own = _deal(config);
+    // Someone who left a moment ago is still listed: from here on they are
+    // waited for like anyone who drops out of the game.
+    for (final timer in _lobbyLeaves.values) {
+      timer.cancel();
+    }
+    _lobbyLeaves.clear();
+    _checkAbsences();
+    return own;
+  }
+
+  /// Plays again in the same room: the same people and bots at the same
+  /// seats, the same options, new cards. Returns the host's own seat feed;
+  /// the guests are taken to the new game without leaving the room.
+  SeatFeed rematch(Random random) {
+    if (!started) throw StateError('no game to play again');
+    final config = this.config = this.config.copyWith(
+      seed: SeededRandom.newSeed(random),
+    );
+    final own = _deal(config);
+    // Whoever a bot was standing in for still is not back.
+    for (final absence in _away.values) {
+      if (absence.state != AbsenceState.replaced) continue;
+      if (_seatOf(absence.id) case final seat?) {
+        _table!.setAutopilot(seat, on: true);
+      }
+    }
+    return own;
+  }
+
+  /// Deals a game of [config] to [_occupants] and sends each guest their
+  /// seat's feed. Returns the host's own.
+  SeatFeed _deal(GameConfig config) {
+    final occupants = _occupants;
+    _gameNumber++;
+    _logs.clear();
     final humanSeats = {
       for (final (seat, person) in occupants.indexed)
         if (person != null) seat,
@@ -496,13 +542,6 @@ class OnlineHost {
       if (seat == hostSeat) continue;
       _sendFeed(seat, from: 0);
     }
-    // Someone who left a moment ago is still listed: from here on they are
-    // waited for like anyone who drops out of the game.
-    for (final timer in _lobbyLeaves.values) {
-      timer.cancel();
-    }
-    _lobbyLeaves.clear();
-    _checkAbsences();
     return own;
   }
 
@@ -522,6 +561,7 @@ class OnlineHost {
     final person = _occupants[seat]!;
     transport.send({
       'type': 'feed',
+      'game': _gameNumber,
       'seating': Seating(
         config: table.config,
         seat: seat,
@@ -595,6 +635,8 @@ class OnlineGuest {
   final _closed = Completer<void>();
   final List<StreamSubscription<Object?>> _subscriptions = [];
   final _started = Completer<(Seating, SeatFeed)>();
+  final _games = StreamController<(Seating, SeatFeed)>.broadcast();
+  int _gameNumber = 0;
   Timer? _nudge;
   Timer? _silence;
   String? _hostId;
@@ -624,6 +666,11 @@ class OnlineGuest {
   /// Completes when the game starts, with who sits where and this seat's
   /// feed.
   Future<(Seating, SeatFeed)> get started => _started.future;
+
+  /// Every game of the room as it starts: the first, then one for each
+  /// time the host plays again. A game's feed goes quiet once the next one
+  /// has started.
+  Stream<(Seating, SeatFeed)> get games => _games.stream;
 
   Future<void> join(String room) async {
     _subscriptions
@@ -660,6 +707,7 @@ class OnlineGuest {
 
   void _sync() => transport.send({
     'type': 'sync',
+    'game': _gameNumber,
     'have': _feed?.received ?? 0,
   }, to: _hostId);
 
@@ -702,15 +750,34 @@ class OnlineGuest {
   void _onFeed(Json payload) {
     final seating = Seating.fromJson(payload['seating']! as Json);
     final from = onlineInt(payload['from'])!;
-    final feed = _feed ??= _RemoteFeed(
-      seating.config,
-      seating.seat,
-      (answer) => transport.send({
-        'type': 'answer',
-        'answer': answerToJson(answer),
-      }, to: _hostId),
-    );
-    if (!_started.isCompleted) _started.complete((seating, feed));
+    final number = onlineInt(payload['game']) ?? 1;
+    // Late news of a game the room has moved on from.
+    if (number < _gameNumber) return;
+    if (number > _gameNumber) {
+      if (from > 0) {
+        // The start of this game was missed: ask for all of it.
+        _gameNumber = number;
+        _feed = null;
+        _sync();
+        return;
+      }
+      _gameNumber = number;
+      _feed = null;
+    }
+    var feed = _feed;
+    if (feed == null) {
+      feed = _feed = _RemoteFeed(
+        seating.config,
+        seating.seat,
+        (answer) => transport.send({
+          'type': 'answer',
+          'game': number,
+          'answer': answerToJson(answer),
+        }, to: _hostId),
+      );
+      if (!_started.isCompleted) _started.complete((seating, feed));
+      _games.add((seating, feed));
+    }
     if (from > feed.received) {
       // Something was missed: ask for it again.
       _sync();
@@ -733,6 +800,7 @@ class OnlineGuest {
     }
     await transport.disconnect();
     await _lobby.close();
+    await _games.close();
     await _refused.close();
     await _hostPresent.close();
     await _absent.close();

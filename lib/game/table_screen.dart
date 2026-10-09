@@ -39,6 +39,7 @@ class TableScreen extends StatefulWidget {
     this.settings,
     this.roomCode,
     this.canFinishEarly = true,
+    this.gameOverNote,
     this.chat,
     this.screenAwake = const WakelockScreenAwake(),
   });
@@ -77,6 +78,10 @@ class TableScreen extends StatefulWidget {
 
   /// Whether the pause menu offers ending the game early.
   final bool canFinishEarly;
+
+  /// Said under the final standings: that the host may play again, for a
+  /// guest who can only wait for it.
+  final String? gameOverNote;
 
   /// In-game chat for an online table.
   final RoomChat? chat;
@@ -1387,8 +1392,19 @@ class _TableScreenState extends State<TableScreen> {
     ],
     body: Standings(scores: result.scores, seats: _scoringSeats),
     actions: [
+      if (widget.gameOverNote case final note?)
+        Padding(
+          padding: const EdgeInsets.only(bottom: Tokens.space2),
+          child: Text(
+            note,
+            key: const Key('game-over-note'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Tokens.mutedText),
+          ),
+        ),
       if (widget.onPlayAgain case final playAgain?)
         FilledButton(
+          key: const Key('play-again'),
           onPressed: playAgain,
           child: const Text(Strings.playAgain),
         ),
