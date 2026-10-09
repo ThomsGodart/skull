@@ -10,6 +10,7 @@ import 'package:skull_kings/online/online_screens.dart';
 import 'package:skull_kings/online/room_transport.dart';
 import 'package:skull_kings/settings/app_settings.dart';
 import 'package:skull_kings/theme/tokens.dart';
+import 'package:skull_kings/ui/rules_content.dart';
 import 'package:skull_kings/ui/strings.dart';
 
 import '../support/memory_stores.dart';
@@ -230,6 +231,76 @@ void main() {
     expect(games.last.$1.seat, games.first.$1.seat);
 
     guest.leave();
+    await tester.pumpWidget(const SizedBox());
+    await settle(tester);
+  });
+
+  testWidgets('while it waits, a room shows a turning wheel, what it waits '
+      'for in large gold letters, and the rules in brief', (tester) async {
+    await openOnline(tester);
+    await tester.tap(find.byKey(const Key('online-create')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('launch')));
+    await settle(tester);
+
+    expect(find.byKey(const Key('pirate-loader')), findsOneWidget);
+    final waiting = tester.widget<Text>(find.text(Strings.onlineNeedGuest));
+    expect(waiting.textAlign, TextAlign.center);
+    expect(waiting.style!.color, Tokens.gold);
+    expect(waiting.style!.fontSize, greaterThanOrEqualTo(20));
+    expect(find.byKey(const Key('rules-reminder')), findsOneWidget);
+    expect(find.text(RulesContent.reminder.first), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    // The wheel turns.
+    double angle() => tester
+        .widget<RotationTransition>(
+          find.descendant(
+            of: find.byKey(const Key('pirate-loader')),
+            matching: find.byType(RotationTransition),
+          ),
+        )
+        .turns
+        .value;
+    final before = angle();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(angle(), isNot(before));
+
+    // All the rules are one tap away, and the room is still there after.
+    await tester.ensureVisible(find.text(Strings.rulesReminderMore));
+    await tester.tap(find.text(Strings.rulesReminderMore));
+    await settle(tester);
+    expect(find.text(Strings.rulesTitle), findsOneWidget);
+    await tester.pageBack();
+    await settle(tester);
+    expect(find.byKey(const Key('online-room-code')), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await settle(tester);
+  });
+
+  testWidgets('a guest waiting for the host sees the same', (tester) async {
+    final host = OnlineHost(
+      transport: hub.transport('host'),
+      self: const RoomPlayer(id: 'host', name: 'Zoé', color: 2),
+      config: const GameConfig(players: 3, seed: 0),
+      bot: randomBot(Random(1)),
+    );
+    host.open('WXYZ');
+    await openOnline(tester, name: 'Bob');
+    await tester.enterText(find.byKey(const Key('online-code')), 'wxyz');
+    await tester.tap(find.byKey(const Key('online-join')));
+    await settle(tester);
+
+    expect(find.byKey(const Key('pirate-loader')), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text(Strings.onlineWaitingHost)).style!.color,
+      Tokens.gold,
+    );
+    expect(find.byKey(const Key('rules-reminder')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    host.close();
     await tester.pumpWidget(const SizedBox());
     await settle(tester);
   });

@@ -586,6 +586,9 @@ abstract final class Strings {
   static const onlineShareCode = 'Donne ce code aux autres joueurs.';
   static const onlineWaitingHost = 'En attente que l\'hôte lance la partie…';
   static const onlineConnecting = 'Connexion…';
+  static const onlineWaitingGuests = 'En attente des autres joueurs…';
+  static const rulesReminderTitle = 'Les règles en bref';
+  static const rulesReminderMore = 'Toutes les règles';
   static String onlineSeats(int people, int seats) =>
       '$people joueur${people > 1 ? 's' : ''} · $seats au maximum';
   static const onlineBotsTitle = 'Ajouter des bots ?';

@@ -10,10 +10,13 @@ import '../game/game_controller.dart';
 import '../game/seat_feed.dart';
 import '../game/seat_identity.dart';
 import '../game/table_screen.dart';
+import '../rules/rules_screen.dart';
 import '../settings/app_settings.dart';
 import '../settings/profile_dialog.dart';
 import '../setup/setup_screen.dart';
 import '../theme/tokens.dart';
+import '../ui/pirate_loader.dart';
+import '../ui/rules_content.dart';
 import '../ui/strings.dart';
 import 'online_game.dart';
 import 'room_chat.dart';
@@ -293,6 +296,85 @@ class _Notice extends StatelessWidget {
           ),
         ],
       ),
+    ),
+  );
+}
+
+/// What a room says while it waits: a turning wheel and a line, large and
+/// in the app's gold, in the middle.
+class _Waiting extends StatelessWidget {
+  const _Waiting(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(Tokens.space4),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const PirateLoader(key: Key('pirate-loader')),
+        const SizedBox(height: Tokens.space3),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Tokens.gold,
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// The rules in a few lines, to read while the others arrive.
+class _RulesReminder extends StatelessWidget {
+  const _RulesReminder();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const Key('rules-reminder'),
+    margin: const EdgeInsets.symmetric(horizontal: Tokens.space4),
+    padding: const EdgeInsets.all(Tokens.space4),
+    decoration: BoxDecoration(
+      color: Tokens.panel,
+      borderRadius: BorderRadius.circular(Tokens.radiusButton),
+      border: Border.all(color: Tokens.outline),
+    ),
+    child: Column(
+      children: [
+        const Text(
+          Strings.rulesReminderTitle,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Tokens.gold,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: Tokens.space2),
+        for (final line in RulesContent.reminder)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: Tokens.space1),
+            child: Text(
+              line,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Tokens.text,
+                fontSize: 15,
+                height: 1.35,
+              ),
+            ),
+          ),
+        TextButton(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (context) => const RulesScreen()),
+          ),
+          child: const Text(Strings.rulesReminderMore),
+        ),
+      ],
     ),
   );
 }
@@ -647,27 +729,31 @@ class _HostRoomScreenState extends State<HostRoomScreen> {
                         ),
                         const Text(
                           Strings.onlineShareCode,
-                          style: TextStyle(color: Tokens.mutedText),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Tokens.text, fontSize: 16),
                         ),
                       ],
                     ),
                   ),
                   Expanded(
                     child: SingleChildScrollView(
-                      child: _PlayerList(
-                        lobby: _lobby,
-                        selfId: widget.host.self.id,
+                      child: Column(
+                        children: [
+                          _PlayerList(
+                            lobby: _lobby,
+                            selfId: widget.host.self.id,
+                          ),
+                          _Waiting(
+                            guests == 0
+                                ? Strings.onlineNeedGuest
+                                : Strings.onlineWaitingGuests,
+                          ),
+                          const _RulesReminder(),
+                          const SizedBox(height: Tokens.space4),
+                        ],
                       ),
                     ),
                   ),
-                  if (guests == 0)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: Tokens.space4),
-                      child: Text(
-                        Strings.onlineNeedGuest,
-                        style: TextStyle(color: Tokens.mutedText),
-                      ),
-                    ),
                   Padding(
                     padding: const EdgeInsets.all(Tokens.space4),
                     child: SizedBox(
@@ -803,25 +889,16 @@ class _GuestRoomScreenState extends State<GuestRoomScreen> {
         child: _problem != null
             ? _Notice(_problem!)
             : lobby == null
-            ? const Center(child: Text(Strings.onlineConnecting))
-            : Column(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: _PlayerList(
-                        lobby: lobby,
-                        selfId: widget.guest.self.id,
-                      ),
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.all(Tokens.space4),
-                    child: Text(
-                      Strings.onlineWaitingHost,
-                      style: TextStyle(color: Tokens.mutedText),
-                    ),
-                  ),
-                ],
+            ? const Center(child: _Waiting(Strings.onlineConnecting))
+            : SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _PlayerList(lobby: lobby, selfId: widget.guest.self.id),
+                    const _Waiting(Strings.onlineWaitingHost),
+                    const _RulesReminder(),
+                    const SizedBox(height: Tokens.space4),
+                  ],
+                ),
               ),
       ),
     );

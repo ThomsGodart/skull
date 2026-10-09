@@ -8,6 +8,20 @@
 abstract final class RulesContent {
   static const cardsMark = '[cartes] ';
 
+  /// What a player needs in mind to sit down at a table, in a few lines:
+  /// read while waiting for the others.
+  static const reminder = [
+    'Parie le nombre exact de plis que tu vas remporter.',
+    'Pari tenu : +20 par pli. Pari raté : −10 par pli d\'écart.',
+    'Pari de 0 : +10 par carte distribuée s\'il est tenu, −10 par carte '
+        'sinon.',
+    'Le noir est l\'atout. Suis la couleur demandée si tu l\'as, ou joue '
+        'une carte spéciale.',
+    'Le Pirate bat la Sirène, la Sirène bat le Skull King, le Skull King '
+        'bat le Pirate.',
+    'Les bonus (14, captures) ne comptent que si le pari est tenu.',
+  ];
+
   static const sections = [
     (
       title: 'Le but',
