@@ -21,7 +21,11 @@ final class ChatLine {
 
 /// A small chat shared by everyone in an online room.
 class RoomChat extends ChangeNotifier {
-  RoomChat({required this.transport, required this.selfId, this.selfName = ''}) {
+  RoomChat({
+    required this.transport,
+    required this.selfId,
+    this.selfName = '',
+  }) {
     _subscription = transport.messages.listen(_onMessage);
   }
 
@@ -55,11 +59,7 @@ class RoomChat extends ChangeNotifier {
       at: DateTime.now(),
     );
     _lines.add(line);
-    transport.send({
-      'type': 'chat',
-      'name': fromName,
-      'text': trimmed,
-    });
+    transport.send({'type': 'chat', 'name': fromName, 'text': trimmed});
     notifyListeners();
   }
 

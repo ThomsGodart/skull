@@ -302,10 +302,7 @@ Widget _onlineTable({
   void Function(String id)? onReplaceNow,
 }) => TableScreen(
   controller: GameController.onFeed(feed, speed: speed),
-  seatIdentities: onlineSeats(
-    seating,
-    random: Random(seating.config.seed),
-  ),
+  seatIdentities: onlineSeats(seating, random: Random(seating.config.seed)),
   settings: settings,
   banner: banner,
   notices: AbsenceNotices(

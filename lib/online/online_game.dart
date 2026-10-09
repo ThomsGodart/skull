@@ -16,7 +16,9 @@ const absenceGrace = Duration(seconds: 30);
 
 /// How long a guest may vanish from presence before the lobby drops them.
 /// Presence flaps right after hello; without this the host loses the guest.
-const defaultLobbyGrace = Duration(seconds: 2);
+/// Longer than a guest's hello retry, so that a phone presence has lost but
+/// which still talks is always heard in time.
+const defaultLobbyGrace = Duration(seconds: 5);
 
 /// Reads a wire integer that may arrive as [int] or [num] (JSON / JS).
 int? onlineInt(Object? value) => switch (value) {
@@ -99,7 +101,8 @@ final class Seating {
 
   factory Seating.fromJson(Json json) {
     final config = GameConfig.fromJson(json['config']! as Json);
-    final raw = json['occupants'] as List? ?? json['people'] as List? ?? const [];
+    final raw =
+        json['occupants'] as List? ?? json['people'] as List? ?? const [];
     // Older hosts sent people packed at the front; pad with bots.
     final packed = [
       for (final entry in raw)
@@ -107,7 +110,7 @@ final class Seating {
     ];
     return Seating(
       config: config,
-      seat: onlineInt(json['seat']) ?? 0,
+      seat: onlineInt(json['seat'])!,
       occupants: [
         for (var seat = 0; seat < config.players; seat++)
           seat < packed.length ? packed[seat] : null,
@@ -136,9 +139,7 @@ final class Seating {
   Json toJson() => {
     'config': config.toJson(),
     'seat': seat,
-    'occupants': [
-      for (final occupant in occupants) occupant?.toJson(),
-    ],
+    'occupants': [for (final occupant in occupants) occupant?.toJson()],
   };
 }
 
@@ -360,17 +361,9 @@ class OnlineHost {
   void _onPresence(Set<String> present) {
     _present = present;
     _everPresent.addAll(present);
-    for (final player in _players) {
-      if (player.id == self.id || !started) continue;
-      if (present.contains(player.id)) {
-        if (_away.containsKey(player.id)) _setAbsence(player, null);
-      } else if (!_away.containsKey(player.id)) {
-        // A bot takes over if they are not back in time — unless the host
-        // says otherwise.
-        _setAbsence(player, AbsenceState.counting);
-      }
-    }
-    if (!started) {
+    if (started) {
+      _checkAbsences();
+    } else {
       // Presence often blanks a guest for a moment after hello: wait before
       // giving their place back, and cancel if they reappear or say hello.
       for (final player in List.of(_players)) {
@@ -380,18 +373,33 @@ class OnlineHost {
         } else if (_everPresent.contains(player.id)) {
           _lobbyLeaves.putIfAbsent(
             player.id,
+            // Still pending means neither seen again nor heard from.
             () => Timer(lobbyGrace, () {
               _lobbyLeaves.remove(player.id);
-              if (started || _present.contains(player.id)) return;
-              final before = _players.length;
               _players.removeWhere((p) => p.id == player.id);
-              if (_players.length != before) _announce();
+              _announce();
             }),
           );
         }
       }
     }
     _announce();
+  }
+
+  /// Starts or ends the absence of each player of the started game, from
+  /// who is present.
+  void _checkAbsences() {
+    for (final player in _players) {
+      if (player.id == self.id) continue;
+      if (_present.contains(player.id)) {
+        if (_away.containsKey(player.id)) _setAbsence(player, null);
+      } else if (!_away.containsKey(player.id) &&
+          _everPresent.contains(player.id)) {
+        // A bot takes over if they are not back in time — unless the host
+        // says otherwise.
+        _setAbsence(player, AbsenceState.counting);
+      }
+    }
   }
 
   void _onMessage(RoomMessage message) {
@@ -488,6 +496,13 @@ class OnlineHost {
       if (seat == hostSeat) continue;
       _sendFeed(seat, from: 0);
     }
+    // Someone who left a moment ago is still listed: from here on they are
+    // waited for like anyone who drops out of the game.
+    for (final timer in _lobbyLeaves.values) {
+      timer.cancel();
+    }
+    _lobbyLeaves.clear();
+    _checkAbsences();
     return own;
   }
 
@@ -680,7 +695,7 @@ class OnlineGuest {
       }, to: _hostId),
     );
     if (!_started.isCompleted) _started.complete((seating, feed));
-    final from = onlineInt(payload['from']) ?? 0;
+    final from = onlineInt(payload['from'])!;
     if (from > feed.received) {
       // Something was missed: ask for it again.
       _sync();

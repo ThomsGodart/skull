@@ -148,23 +148,74 @@ void main() {
     test('a brief presence gap after hello does not drop the guest', () async {
       final theHost = host(lobbyGrace: const Duration(milliseconds: 40));
       await theHost.open('ROOM');
-      final bob = guest('g1', name: 'Bob');
+      // Too slow to say hello again in time: presence alone must save him.
+      final bob = OnlineGuest(
+        transport: hub.transport('g1'),
+        self: const RoomPlayer(id: 'g1', name: 'Bob', color: 1),
+        retry: const Duration(seconds: 1),
+      );
       await bob.join('ROOM');
       await pause(fast * 3);
       expect(theHost.currentLobby.players.map((p) => p.id), ['host', 'g1']);
 
+      var dropped = false;
+      theHost.lobby.listen((lobby) => dropped |= lobby.players.length < 2);
+
       // Same flap Supabase often does: gone from presence, still in the room.
       await bob.transport.disconnect();
       await pause(const Duration(milliseconds: 10));
-      expect(
-        theHost.currentLobby.players.map((p) => p.id),
-        ['host', 'g1'],
-        reason: 'still within lobby grace',
-      );
+      expect(theHost.currentLobby.players.map((p) => p.id), [
+        'host',
+        'g1',
+      ], reason: 'still within lobby grace');
       await bob.transport.connect('ROOM');
-      // The guest's nudge timer says hello again once the channel is back.
       await pause(const Duration(milliseconds: 60));
       expect(theHost.currentLobby.players.map((p) => p.id), ['host', 'g1']);
+      expect(dropped, isFalse, reason: 'not even for a moment');
+      await bob.leave();
+    });
+
+    test('a guest whose presence stays blank but who keeps saying hello '
+        'is kept', () async {
+      final theHost = host(lobbyGrace: const Duration(milliseconds: 40));
+      await theHost.open('ROOM');
+      final bob = guest('g1', name: 'Bob');
+      await bob.join('ROOM');
+      await pause(fast * 3);
+
+      var dropped = false;
+      theHost.lobby.listen((lobby) => dropped |= lobby.players.length < 2);
+
+      // Presence loses Bob for good, yet his phone still talks to the room.
+      hub.blank('ROOM', 'g1');
+      await pause(const Duration(milliseconds: 120));
+
+      expect(theHost.currentLobby.players.map((p) => p.id), ['host', 'g1']);
+      expect(dropped, isFalse, reason: 'not even for a moment');
+    });
+
+    test('a guest who left just before the start is counted down like '
+        'anyone who drops out of the game', () async {
+      final theHost = host(
+        config: const GameConfig(players: 2, seed: 0),
+        grace: const Duration(milliseconds: 30),
+        lobbyGrace: const Duration(milliseconds: 60),
+      );
+      await theHost.open('ROOM');
+      final leaving = guest('g1');
+      await leaving.join('ROOM');
+      await pause(fast * 3);
+
+      await leaving.leave();
+      await pause(fast);
+      // Still within the lobby grace: the host starts with them listed.
+      theHost.start(Random(7)).open();
+      expect(theHost.currentAbsences.single.state, AbsenceState.counting);
+
+      await pause(const Duration(milliseconds: 100));
+      expect(theHost.currentLobby.players, hasLength(2));
+      expect(theHost.currentAbsences.single.state, AbsenceState.replaced);
+      await theHost.close();
     });
 
     test('whoever comes plays: the game has as many seats as people in the '
@@ -409,6 +460,37 @@ void main() {
     await pause(fast);
 
     expect(told, isTrue);
+  });
+
+  test('a feed without its seat or its starting point is dropped, not '
+      'guessed', () async {
+    final theHost = host(config: const GameConfig(players: 2, seed: 0));
+    await theHost.open('ROOM');
+    final bob = guest('g1');
+    await bob.join('ROOM');
+    await pause(fast * 3);
+    theHost.start(Random(7)).open();
+    final (seating, feed) = await bob.started;
+    await pause(fast * 3);
+    final asked = feed.question;
+    expect(asked, isA<BidQuestion>());
+
+    expect(
+      () => Seating.fromJson(seating.toJson()..remove('seat')),
+      throwsA(isA<TypeError>()),
+    );
+    hub.transport('other')
+      ..connect('ROOM')
+      ..send({
+        'type': 'feed',
+        'seating': seating.toJson(),
+        'events': <Object?>[],
+        'question': null,
+      }, to: 'g1');
+    await pause(fast);
+
+    expect(feed.question, same(asked));
+    await theHost.close();
   });
 
   test('a room code is four letters that cannot be confused', () {

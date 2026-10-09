@@ -63,22 +63,8 @@ class SupabaseRoomTransport implements RoomTransport {
   };
 
   void _onBroadcast(Map<String, dynamic> message) {
-    final from = message['from'];
-    final to = message['to'];
-    // Flat envelope from our sends; some builds nest under `payload`.
-    final body = message['body'] ?? message['payload'];
-    if (from is! String || body is! Map) return;
-    if (to != null && to != selfId) return;
-    try {
-      _messages.add(
-        RoomMessage(from, {
-          for (final entry in body.entries)
-            if (entry.key is String) entry.key as String: entry.value,
-        }),
-      );
-    } on Object {
-      // A malformed broadcast is dropped; the next hello/sync retries.
-    }
+    final received = roomMessageFrom(message, selfId: selfId);
+    if (received != null) _messages.add(received);
   }
 
   @override
@@ -100,4 +86,29 @@ class SupabaseRoomTransport implements RoomTransport {
     _channel = null;
     if (channel != null) await _client.removeChannel(channel);
   }
+}
+
+/// The room message a broadcast carries for [selfId], or null when it is
+/// meant for another phone or is not one of ours.
+///
+/// A broadcast sent over the socket arrives as it was sent. The client
+/// falls back to REST while its channel is rejoining, and such a broadcast
+/// may arrive wrapped under `payload`: both are read.
+RoomMessage? roomMessageFrom(
+  Map<String, dynamic> broadcast, {
+  required String selfId,
+}) {
+  final Map<Object?, Object?> envelope = switch (broadcast['payload']) {
+    final Map<Object?, Object?> inner when broadcast['from'] == null => inner,
+    _ => broadcast,
+  };
+  final from = envelope['from'];
+  final to = envelope['to'];
+  final body = envelope['body'];
+  if (from is! String || body is! Map) return null;
+  if (to != null && to != selfId) return null;
+  return RoomMessage(from, {
+    for (final entry in body.entries)
+      if (entry.key is String) entry.key as String: entry.value,
+  });
 }

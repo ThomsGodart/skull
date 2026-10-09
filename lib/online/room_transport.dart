@@ -37,9 +37,18 @@ class MemoryRoomHub {
 
   MemoryRoomTransport transport(String id) => MemoryRoomTransport._(this, id);
 
+  final Map<String, Set<String>> _blanked = {};
+
+  /// Presence loses sight of [id] in [room], as it does at times, though the
+  /// phone is still connected and its messages still go through.
+  void blank(String room, String id) {
+    (_blanked[room] ??= {}).add(id);
+    _presenceChanged(room);
+  }
+
   void _presenceChanged(String room) {
     final members = _rooms[room] ?? const {};
-    final ids = members.keys.toSet();
+    final ids = members.keys.toSet().difference(_blanked[room] ?? const {});
     for (final member in members.values.toList()) {
       member._presence.add(ids);
     }
