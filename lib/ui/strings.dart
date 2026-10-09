@@ -18,8 +18,9 @@ abstract final class Strings {
       'ne parie pas, ne marque pas, mais prend des plis. Le Butin et la '
       'deuxième extension ne sont pas utilisés.';
 
-  /// Pool of pirate-style names: bots (and a random player name) are drawn
-  /// from here without repeating at the same table.
+  /// Pool of seafaring names: bots (and a random player name) are drawn
+  /// from here without repeating at the same table. None is the name of a
+  /// card or of a named pirate: a seat must not read like a card.
   static const botNames = [
     'Mako',
     'Corail',
@@ -41,7 +42,7 @@ abstract final class Strings {
     'Harpon',
     'Houle',
     'Jolly',
-    'Kraken',
+    'Mistral',
     'Lagon',
     'Lame',
     'Marée',
@@ -50,14 +51,14 @@ abstract final class Strings {
     'Nerée',
     'Ouragan',
     'Perle',
-    'Pirate',
+    'Boussole',
     'Plume',
     'Poseidon',
     'Requins',
     'Rhum',
     'Sabre',
     'Salée',
-    'Sirène',
+    'Sextant',
     'Tempête',
     'Timon',
     'Tortue',
@@ -66,7 +67,7 @@ abstract final class Strings {
     'Vigie',
     'Vortex',
     'Alizé',
-    'Baleine',
+    'Hamac',
     'Boucan',
     'Cabestan',
     'Flibuste',
