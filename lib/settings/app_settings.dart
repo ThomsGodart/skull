@@ -29,6 +29,7 @@ class AppSettings extends ChangeNotifier {
   static const _opponentsKey = 'opponents';
   static const _setupKey = 'lastSetup';
   static const _onlineIdKey = 'onlineId';
+  static const _roomCodeKey = 'lastRoomCode';
   static const _knownPlayersKey = 'counterPlayers';
   static const _botSpeedKey = 'botSpeed';
   static const _botLevelKey = 'botLevel';
@@ -91,6 +92,7 @@ class AppSettings extends ChangeNotifier {
       settings._knownPlayers = const [];
     }
     settings._onlineId = values[_onlineIdKey];
+    settings._lastRoomCode = values[_roomCodeKey] ?? '';
     settings._botSpeed =
         BotSpeed.values.asNameMap()[values[_botSpeedKey]] ?? BotSpeed.normal;
     settings._botLevel =
@@ -115,6 +117,7 @@ class AppSettings extends ChangeNotifier {
   GameConfig _lastSetup = const GameConfig(players: 4, seed: 0);
   List<String> _knownPlayers = const [];
   String? _onlineId;
+  String _lastRoomCode = '';
   BotSpeed _botSpeed = BotSpeed.normal;
   BotLevel _botLevel = BotLevel.normal;
   BotLevel _activeGameBotLevel = BotLevel.normal;
@@ -237,6 +240,15 @@ class AppSettings extends ChangeNotifier {
     } on Object {
       // Ignored: the next toggle will try again.
     }
+  }
+
+  /// The code of the last room this phone joined, offered again to join.
+  String get lastRoomCode => _lastRoomCode;
+
+  Future<void> setLastRoomCode(String code) {
+    if (code == _lastRoomCode) return Future.value();
+    _lastRoomCode = code;
+    return _changed(_roomCodeKey, code);
   }
 
   Future<void> setAutoHarry(bool value) {

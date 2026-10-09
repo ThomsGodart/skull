@@ -70,11 +70,24 @@ class OnlineHomeScreen extends StatefulWidget {
 }
 
 class _OnlineHomeScreenState extends State<OnlineHomeScreen> {
-  final _code = TextEditingController();
+  late final _code = TextEditingController(text: widget.settings.lastRoomCode);
   late final Random _random = widget.random ?? Random();
 
   @override
+  void initState() {
+    super.initState();
+    widget.settings.addListener(_onSettings);
+  }
+
+  /// The room just joined is offered again once the player is back here.
+  void _onSettings() {
+    final code = widget.settings.lastRoomCode;
+    if (code.isNotEmpty && _code.text != code) _code.text = code;
+  }
+
+  @override
   void dispose() {
+    widget.settings.removeListener(_onSettings);
     _code.dispose();
     super.dispose();
   }
@@ -687,7 +700,13 @@ class _GuestRoomScreenState extends State<GuestRoomScreen> {
     super.initState();
     final guest = widget.guest;
     _subscriptions
-      ..add(guest.lobby.listen((lobby) => setState(() => _lobby = lobby)))
+      ..add(
+        guest.lobby.listen((lobby) {
+          // A room that answers is one worth coming back to.
+          unawaited(widget.settings.setLastRoomCode(widget.code));
+          setState(() => _lobby = lobby);
+        }),
+      )
       ..add(
         guest.refused.listen(
           (reason) => setState(() => _problem = Strings.onlineRefused(reason)),

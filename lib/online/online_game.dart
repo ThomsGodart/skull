@@ -572,6 +572,7 @@ class OnlineGuest {
     required this.transport,
     required this.self,
     this.retry = const Duration(seconds: 2),
+    this.patience = const Duration(seconds: 6),
   });
 
   final RoomTransport transport;
@@ -579,6 +580,10 @@ class OnlineGuest {
 
   /// How long to wait for the host before asking again.
   final Duration retry;
+
+  /// How long nobody may answer before the room is taken not to exist: any
+  /// code opens a channel, so silence is the only sign of a wrong one.
+  final Duration patience;
 
   final _lobby = StreamController<Lobby>.broadcast();
   final _refused = StreamController<String>.broadcast();
@@ -591,6 +596,7 @@ class OnlineGuest {
   final List<StreamSubscription<Object?>> _subscriptions = [];
   final _started = Completer<(Seating, SeatFeed)>();
   Timer? _nudge;
+  Timer? _silence;
   String? _hostId;
   Set<String>? _present;
   _RemoteFeed? _feed;
@@ -605,7 +611,8 @@ class OnlineGuest {
 
   Stream<Lobby> get lobby => _lobby.stream;
 
-  /// Why the host would not let this phone in: `full`, `started`, `version`.
+  /// Why this phone is not let in: `full`, `started` or `version` when the
+  /// host said so, `unknown` when no host ever answered under this code.
   Stream<String> get refused => _refused.stream;
 
   /// Whether the host is connected: the game is paused while it is not.
@@ -629,6 +636,9 @@ class OnlineGuest {
       );
     await transport.connect(room);
     _hello();
+    _silence = Timer(patience, () {
+      if (!_refused.isClosed) _refused.add('unknown');
+    });
     // Messages get lost: keep asking until the host has answered, and after
     // that whenever it has been silent for too long.
     _nudge = Timer.periodic(retry, (_) {
@@ -656,6 +666,11 @@ class OnlineGuest {
   void _onMessage(RoomMessage message) {
     final payload = message.payload;
     try {
+      switch (payload['type']) {
+        case 'lobby' || 'refused' || 'feed':
+          // Someone holds this room.
+          _silence?.cancel();
+      }
       switch (payload['type']) {
         case 'lobby':
           if (onlineInt(payload['protocol']) != onlineProtocol) {
@@ -712,6 +727,7 @@ class OnlineGuest {
 
   Future<void> leave() async {
     _nudge?.cancel();
+    _silence?.cancel();
     for (final subscription in _subscriptions) {
       await subscription.cancel();
     }

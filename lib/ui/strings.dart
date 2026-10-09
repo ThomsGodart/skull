@@ -616,6 +616,9 @@ abstract final class Strings {
     'full' => 'Cette partie est complète.',
     'started' => 'Cette partie a déjà commencé.',
     'version' => 'Vos applis n\'ont pas la même version : mettez-les à jour.',
+    'unknown' =>
+      'Aucune partie avec ce code. Vérifie les quatre lettres auprès de '
+          'l\'hôte.',
     _ => 'Impossible de rejoindre cette partie.',
   };
   static const onlineHostAway =

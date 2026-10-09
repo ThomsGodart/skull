@@ -172,6 +172,93 @@ void main() {
     expect(find.byKey(const Key('launch')), findsOneWidget);
   });
 
+  testWidgets('a code nobody holds is said to be unknown, not left on an '
+      'empty page', (tester) async {
+    await openOnline(tester, name: 'Bob');
+
+    await tester.enterText(find.byKey(const Key('online-code')), 'NOPE');
+    await tester.tap(find.byKey(const Key('online-join')));
+    await settle(tester);
+    expect(find.text(Strings.onlineConnecting), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 7));
+    expect(find.text(Strings.onlineRefused('unknown')), findsOneWidget);
+    expect(
+      Strings.onlineRefused('unknown'),
+      isNot(
+        anyOf([
+          Strings.onlineRefused('full'),
+          Strings.onlineRefused('started'),
+          Strings.onlineRefused('version'),
+        ]),
+      ),
+    );
+
+    // Back to the way in: a code that led nowhere is not remembered.
+    await tester.tap(find.text(Strings.close));
+    await settle(tester);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('online-code')))
+          .controller!
+          .text,
+      'NOPE',
+      reason: 'still what was typed',
+    );
+    await tester.pumpWidget(const SizedBox());
+    await settle(tester);
+  });
+
+  testWidgets('the code of a room joined is offered again after leaving it', (
+    tester,
+  ) async {
+    final host = OnlineHost(
+      transport: hub.transport('host'),
+      self: const RoomPlayer(id: 'host', name: 'Zoé', color: 2),
+      config: const GameConfig(players: 2, seed: 0),
+      bot: randomBot(Random(1)),
+    );
+    host.open('ABCD');
+    final store = MemorySettingsStore({'playerName': 'Bob'});
+    Future<void> open() async {
+      final settings = await AppSettings.load(store);
+      await tester.pumpWidget(
+        MaterialApp(
+          key: UniqueKey(),
+          theme: Tokens.theme(),
+          home: OnlineHomeScreen(settings: settings, transports: hub.transport),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await open();
+    await tester.enterText(find.byKey(const Key('online-code')), 'abcd');
+    await tester.tap(find.byKey(const Key('online-join')));
+    await settle(tester);
+    expect(find.text('Zoé'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 7));
+    expect(find.text(Strings.onlineRefused('unknown')), findsNothing);
+
+    await tester.pageBack();
+    await settle(tester);
+    expect(store.values['lastRoomCode'], 'ABCD');
+
+    // The app is opened again another day.
+    await open();
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('online-code')))
+          .controller!
+          .text,
+      'ABCD',
+    );
+
+    host.close();
+    await tester.pumpWidget(const SizedBox());
+    await settle(tester);
+  });
+
   testWidgets('a full game is refused with a message', (tester) async {
     final host = OnlineHost(
       transport: hub.transport('host'),
