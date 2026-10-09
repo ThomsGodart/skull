@@ -523,8 +523,12 @@ class _TableScreenState extends State<TableScreen> {
           game.skipHold();
         }
       },
-      child: Center(
-        child: SingleChildScrollView(child: _center(maxCard: maxCard)),
+      child: LayoutBuilder(
+        builder: (context, room) => Center(
+          child: SingleChildScrollView(
+            child: _center(maxCard: maxCard, room: room.biggest),
+          ),
+        ),
       ),
     ),
   );
@@ -607,8 +611,10 @@ class _TableScreenState extends State<TableScreen> {
   /// True while the human is choosing a bid, or waiting on the others'.
   bool get _bidding => _game.bidQuestion != null || _game.placedBid != null;
 
-  /// Phone held upright: opponents on top, the trick, then the hand.
-  Widget _portraitBody(GameController game) => Column(
+  /// Phone held upright: opponents on top, the trick, then the hand. The
+  /// hand gives way on a short screen, a browser with its bars on show for
+  /// instance, so that the trick keeps room.
+  Widget _portraitBody(GameController game, double height) => Column(
     children: [
       _opponents(),
       _trickZone(game),
@@ -617,7 +623,15 @@ class _TableScreenState extends State<TableScreen> {
       SizedBox(width: 220, child: _seatChip(game.humanSeat, showCards: false)),
       const SizedBox(height: Tokens.space2),
       // Compact hand while bidding so the bid panel stays reachable.
-      _hand(game, cardWidth: _bidding ? 52 : null),
+      _hand(
+        game,
+        cardWidth: _bidding
+            ? 52
+            : min(
+                _handCardWidth(game.hand.length),
+                (height * 0.22 / CardView.aspect).clamp(56.0, 96.0),
+              ),
+      ),
     ],
   );
 
@@ -748,7 +762,7 @@ class _TableScreenState extends State<TableScreen> {
                         builder: (context, constraints) =>
                             _isLandscape(constraints)
                             ? _landscapeBody(game, constraints.maxHeight)
-                            : _portraitBody(game),
+                            : _portraitBody(game, constraints.maxHeight),
                       ),
                     ),
                     if (game.roundSummary case final summary?)
@@ -1156,7 +1170,8 @@ class _TableScreenState extends State<TableScreen> {
             _game.result == null,
       );
 
-  Widget _center({double maxCard = 104}) {
+  /// What lies on the table. The trick is sized to show whole in [room].
+  Widget _center({double maxCard = 104, required Size room}) {
     // Nothing is on the table while bids are open: the bid goes there.
     if (_game.bidQuestion case final question?) {
       return BidPanel(
@@ -1197,18 +1212,25 @@ class _TableScreenState extends State<TableScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            // Three or four cards to a row, as wide as the table allows.
-            final perRow = _game.trick.length.clamp(3, 4);
-            const gap = Tokens.space2;
-            final width = ((constraints.maxWidth - gap * (perRow - 1)) / perRow)
-                .clamp(44.0, maxCard);
+        Builder(
+          builder: (context) {
+            // Sized for the whole trick from its first card, so the cards
+            // do not shrink as it fills, and for the lines said under it.
+            final notes =
+                _game.trickAlliances.length +
+                _game.trickSideBonuses.length +
+                (bonuses.isEmpty ? 0 : 1);
+            final fit = TrickArea.fit(
+              room: Size(room.width, room.height - 24.0 * notes),
+              cards: max(_game.trickSize, _game.trick.length),
+              maxCard: maxCard,
+            );
             return TrickArea(
               plays: _game.trick,
               seats: _seats,
               winner: _game.trickDestroyed ? null : _game.trickWinner,
-              cardWidth: width,
+              cardWidth: fit.cardWidth,
+              perRow: fit.perRow,
               namedPirates: _namedPirates,
               overboard: _game.trickOverboard,
               slideFromBelow: _game.humanSeat,

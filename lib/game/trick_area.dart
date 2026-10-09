@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart' hide Card;
 
+import 'dart:math';
+
 import '../engine/engine.dart';
 import '../theme/tokens.dart';
 import '../ui/cards/card_view.dart';
@@ -14,6 +16,7 @@ class TrickArea extends StatelessWidget {
     required this.seats,
     this.winner,
     this.cardWidth = 54,
+    this.perRow,
     this.namedPirates = false,
     this.overboard,
     this.slideFromBelow,
@@ -27,7 +30,42 @@ class TrickArea extends StatelessWidget {
   /// The seat that takes the trick, once it is complete.
   final int? winner;
   final double cardWidth;
+
+  /// How many cards go on a row; as many as fit when null.
+  final int? perRow;
   final bool namedPirates;
+
+  static const _gap = Tokens.space2;
+
+  /// What the name under a card takes of the height.
+  static const _labelHeight = 22.0;
+
+  /// The widest cards, and how many to a row, that show a trick of [cards]
+  /// cards whole in [room]: the rows are chosen so that nothing is cut off
+  /// or needs scrolling, in a tall room as in a short one. Never wider than
+  /// [maxCard]; never narrower than [minCard], even if the trick then
+  /// overflows the room.
+  static ({double cardWidth, int perRow}) fit({
+    required Size room,
+    required int cards,
+    double maxCard = 104,
+    double minCard = 40,
+  }) {
+    var best = (cardWidth: 0.0, perRow: 1);
+    for (var perRow = 1; perRow <= max(1, cards); perRow++) {
+      final rows = (max(1, cards) / perRow).ceil();
+      final wide = (room.width - _gap * (perRow - 1)) / perRow;
+      final tall =
+          ((room.height - _gap * (rows - 1)) / rows - _labelHeight) /
+          CardView.aspect;
+      final width = min(wide, tall);
+      if (width > best.cardWidth) best = (cardWidth: width, perRow: perRow);
+    }
+    return (
+      cardWidth: best.cardWidth.clamp(minCard, max(minCard, maxCard)),
+      perRow: best.perRow,
+    );
+  }
 
   /// The pirate the plank threw out of the trick.
   final Card? overboard;
@@ -55,10 +93,23 @@ class TrickArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final winning = _winning;
+    final wrap = _cards(winning);
+    final perRow = this.perRow;
+    if (perRow == null) return wrap;
+    // No wider than its rows: the cards wrap where they were meant to.
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: cardWidth * perRow + _gap * (perRow - 1) + 0.5,
+      ),
+      child: wrap,
+    );
+  }
+
+  Widget _cards(Play? winning) {
     return Wrap(
       alignment: WrapAlignment.center,
-      spacing: Tokens.space2,
-      runSpacing: Tokens.space2,
+      spacing: _gap,
+      runSpacing: _gap,
       children: [
         for (final play in plays)
           _slideIn(
@@ -77,22 +128,33 @@ class TrickArea extends StatelessWidget {
                     namedPirates: namedPirates,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    [
-                      seats[play.seat].name,
-                      if (play.tigressAs case final mode?)
-                        Strings.playedAs(mode),
-                      if (play.declaredValue case final value?) '$value',
-                      if (play.jokerSuit case final suit?)
-                        Strings.suitName(suit),
-                      if (play.card == overboard) Strings.overboard,
-                    ].join(' · '),
-                    style: TextStyle(
-                      color: play == winning ? Tokens.gold : Tokens.mutedText,
-                      fontSize: 13,
-                      fontWeight: play == winning
-                          ? FontWeight.w800
-                          : FontWeight.w500,
+                  // No wider than its card, or a long name would push the
+                  // next card to another row.
+                  SizedBox(
+                    width: cardWidth,
+                    height: _labelHeight - 2,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        [
+                          seats[play.seat].name,
+                          if (play.tigressAs case final mode?)
+                            Strings.playedAs(mode),
+                          if (play.declaredValue case final value?) '$value',
+                          if (play.jokerSuit case final suit?)
+                            Strings.suitName(suit),
+                          if (play.card == overboard) Strings.overboard,
+                        ].join(' · '),
+                        style: TextStyle(
+                          color: play == winning
+                              ? Tokens.gold
+                              : Tokens.mutedText,
+                          fontSize: 13,
+                          fontWeight: play == winning
+                              ? FontWeight.w800
+                              : FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ),
                 ],

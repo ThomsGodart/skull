@@ -204,6 +204,9 @@ class GameController extends ChangeNotifier {
     return _order.elementAtOrNull(trick.length);
   }
 
+  /// How many cards the trick on the table holds once everyone has played.
+  int get trickSize => _order.isEmpty ? seats : _order.length;
+
   /// The suit to follow in the trick on the table, if any.
   Suit? get leadSuit => engine.leadSuit(trick);
 

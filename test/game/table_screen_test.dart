@@ -14,6 +14,8 @@ import 'package:skull_kings/game/table_screen.dart';
 import 'package:skull_kings/game/trick_area.dart';
 import 'package:skull_kings/settings/app_settings.dart';
 import 'package:skull_kings/theme/tokens.dart';
+import 'package:skull_kings/ui/cards/card_view.dart';
+import 'package:skull_kings/ui/cards/hand_fan.dart';
 import 'package:skull_kings/ui/strings.dart';
 
 import '../support/memory_stores.dart';
@@ -649,6 +651,114 @@ void main() {
     });
   }
 
+  group('upright, whatever height the browser leaves', () {
+    /// The table of an eight-card round with a complete trick held on it,
+    /// and what was measured there.
+    Future<({double handCard, double trickCard, double trick, double zone})>
+    measure(WidgetTester tester, Size size, int players) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final controller = GameController(
+        config: GameConfig(players: players, seed: 3, startingRound: 8),
+        bot: randomBot(Random(3)),
+        speed: const TableSpeed(
+          botPlay: Duration.zero,
+          trickHold: Duration(seconds: 30),
+          bidReveal: Duration.zero,
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: Tokens.theme(),
+          home: TableScreen(controller: controller),
+        ),
+      );
+      await tester.pump();
+      controller.bid(0);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 50));
+      final card = controller.playQuestion!.legalCards.first;
+      controller.play(card, tigressAs: tigressModeFor(card));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(controller.trick, hasLength(players), reason: 'a whole trick');
+      expect(tester.takeException(), isNull);
+
+      final area = find.byType(TrickArea);
+      CardView first(Finder within) => tester.widget<CardView>(
+        find.descendant(of: within, matching: find.byType(CardView)).first,
+      );
+      final measured = (
+        handCard: first(find.byType(HandFan)).width,
+        trickCard: first(area).width,
+        trick: tester.getSize(area).height,
+        zone: tester
+            .getSize(
+              find
+                  .ancestor(
+                    of: area,
+                    matching: find.byType(SingleChildScrollView),
+                  )
+                  .first,
+            )
+            .height,
+      );
+      // Taking the table down lets the held trick go.
+      await tester.pumpWidget(const SizedBox());
+      return measured;
+    }
+
+    for (final (size, players) in const [
+      (Size(360, 600), 4),
+      (Size(360, 700), 4),
+      (Size(360, 700), 8),
+      (Size(360, 780), 8),
+      (Size(412, 915), 8),
+    ]) {
+      testWidgets('a trick of $players shows whole at '
+          '${size.width.round()}×${size.height.round()}', (tester) async {
+        final table = await measure(tester, size, players);
+
+        expect(table.trick, lessThanOrEqualTo(table.zone + 1));
+        expect(table.trickCard, greaterThanOrEqualTo(40));
+        expect(table.handCard, greaterThanOrEqualTo(56));
+      });
+    }
+
+    testWidgets('the hand is as large with the browser bars on show as in '
+        'full screen', (tester) async {
+      final windowed = await measure(tester, const Size(360, 700), 4);
+      final fullScreen = await measure(tester, const Size(360, 780), 4);
+
+      expect(windowed.handCard, fullScreen.handCard);
+    });
+  });
+
+  group('the cards of a trick', () {
+    test('are as wide as the room lets a whole trick be', () {
+      // Plenty of room: one row, as large as allowed.
+      expect(TrickArea.fit(room: const Size(800, 400), cards: 4), (
+        cardWidth: 104.0,
+        perRow: 4,
+      ));
+      // A narrow table: four to a row.
+      final narrow = TrickArea.fit(room: const Size(344, 400), cards: 8);
+      expect(narrow.perRow, 4);
+      expect(narrow.cardWidth, 80);
+      // A short one: the height decides, and a single row is larger.
+      final short = TrickArea.fit(room: const Size(344, 110), cards: 4);
+      expect(short.perRow, 4);
+      expect(short.cardWidth, lessThan(80));
+      expect(short.cardWidth * CardView.aspect, lessThanOrEqualTo(110));
+    });
+
+    test('never go below a size that can still be read', () {
+      final fit = TrickArea.fit(room: const Size(344, 40), cards: 8);
+      expect(fit.cardWidth, 40);
+    });
+  });
+
   testWidgets('on its side, the phone shows every seat, and larger than '
       'upright', (tester) async {
     double nameSize() =>
@@ -890,3 +1000,6 @@ class _RecordingScreenAwake implements ScreenAwake {
     on = false;
   }
 }
+
+TigressMode? tigressModeFor(Card card) =>
+    card.kind == CardKind.tigress ? TigressMode.pirate : null;
