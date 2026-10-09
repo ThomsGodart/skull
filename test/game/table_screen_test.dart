@@ -96,7 +96,7 @@ void main() {
 
     await tapCard(tester, card);
     expect(controller.playQuestion, isNotNull, reason: 'put back, not played');
-    // « Jouer » stays on screen, disabled until a card is selected again.
+    // On our turn « Jouer » stays, disabled until a card is selected again.
     expect(
       tester.widget<FilledButton>(find.byKey(const Key('play-card'))).onPressed,
       isNull,
@@ -506,10 +506,7 @@ void main() {
     expect(controller.playQuestion, isNull, reason: 'still revealing bids');
     final card = controller.hand.first;
     await tapCard(tester, card);
-    expect(
-      tester.widget<FilledButton>(find.byKey(const Key('play-card'))).onPressed,
-      isNull,
-    );
+    expect(find.byKey(const Key('play-card')), findsNothing);
 
     await tester.pump(const Duration(milliseconds: 450));
     expect(controller.playQuestion, isNotNull);
@@ -570,10 +567,9 @@ void main() {
     await tapCard(tester, card);
 
     expect(find.byKey(const Key('card-hint')), findsOneWidget);
-    expect(find.byKey(const Key('play-card')), findsOneWidget);
     expect(
-      tester.widget<FilledButton>(find.byKey(const Key('play-card'))).onPressed,
-      isNull,
+      find.byKey(const Key('play-card')),
+      findsNothing,
       reason: 'not our turn to play while bidding',
     );
     expect(find.byKey(const Key('place-bid')), findsOneWidget);
@@ -594,13 +590,10 @@ void main() {
     final controller = await openTable(tester, settings: settings);
     final card = controller.hand.single;
 
-    // While bidding the card cannot be played: the button stays disabled.
+    // While bidding the card cannot be played: no button at all.
     await tapCard(tester, card);
     expect(find.byKey(const Key('card-hint')), findsNothing);
-    expect(
-      tester.widget<FilledButton>(find.byKey(const Key('play-card'))).onPressed,
-      isNull,
-    );
+    expect(find.byKey(const Key('play-card')), findsNothing);
     await tapCard(tester, card);
 
     await tester.tap(find.byKey(const Key('bid-0')));

@@ -529,16 +529,24 @@ class _TableScreenState extends State<TableScreen> {
     ),
   );
 
-  /// Always shows « Jouer »: disabled until it is our turn and a card is
-  /// selected. Effects text sits beside it when a card is lifted.
-  Widget _statusLine() {
+  /// What is going on, or what the lifted card does. « Jouer » is there
+  /// only on our turn to play, disabled until a card is selected.
+  Widget _statusLine() => ConstrainedBox(
+    // As tall with the button as without: the table does not jump.
+    constraints: const BoxConstraints(minHeight: 48),
+    child: _statusContent(),
+  );
+
+  Widget _statusContent() {
     final card = _table.shown;
     final effects = widget.settings?.cardEffects ?? true;
-    final playButton = FilledButton(
-      key: const Key('play-card'),
-      onPressed: _table.canPlay ? () => _play(_table.selected!) : null,
-      child: const Text(Strings.playCard),
-    );
+    final playButton = _game.playQuestion == null
+        ? null
+        : FilledButton(
+            key: const Key('play-card'),
+            onPressed: _table.canPlay ? () => _play(_table.selected!) : null,
+            child: const Text(Strings.playCard),
+          );
     if (card != null && effects) {
       final name = Strings.cardName(card, namedPirates: _namedPirates);
       final hint = Strings.cardHint(card, powers: _namedPirates);
@@ -561,8 +569,10 @@ class _TableScreenState extends State<TableScreen> {
                 style: const TextStyle(color: Tokens.text, fontSize: 13),
               ),
             ),
-            const SizedBox(width: Tokens.space2),
-            playButton,
+            if (playButton != null) ...[
+              const SizedBox(width: Tokens.space2),
+              playButton,
+            ],
           ],
         ),
       );
@@ -579,7 +589,7 @@ class _TableScreenState extends State<TableScreen> {
             ),
           ),
         ),
-        playButton,
+        ?playButton,
       ],
     );
   }
