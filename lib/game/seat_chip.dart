@@ -20,6 +20,7 @@ class SeatChip extends StatelessWidget {
     this.emphasizeBid = false,
     this.bidAccepted = false,
     this.wager,
+    this.bonus = 0,
     this.hasHarry = false,
     this.showTokens = false,
     this.scale = 1,
@@ -50,6 +51,10 @@ class SeatChip extends StatelessWidget {
 
   /// What the seat staked with Rascal this round, once it did.
   final int? wager;
+
+  /// The bonus points the seat stands to score this round if it makes its
+  /// bid. Nothing is shown for zero.
+  final int bonus;
 
   /// The seat won a trick with Harry: it may move its bid at the end.
   final bool hasHarry;
@@ -138,11 +143,19 @@ class SeatChip extends StatelessWidget {
             ),
           ),
           if (showTokens && bid != null && !identity.isGhost) _tokens(bid!),
-          if (wager != null || hasHarry)
+          if (wager != null || hasHarry || bonus != 0)
             _fitted(
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (bonus != 0)
+                    KeyedSubtree(
+                      key: const Key('bonus-in-play'),
+                      child: _badge(
+                        Strings.bonusBadge(bonus),
+                        Strings.bonusBadgeHelp,
+                      ),
+                    ),
                   if (wager case final amount?)
                     _badge(
                       Strings.wagerBadge(amount),

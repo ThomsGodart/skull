@@ -437,6 +437,59 @@ void main() {
 
     expect(notified, greaterThan(0));
   });
+
+  test('the bonus in play of a seat is what it scores as bonus when it makes '
+      'its bid', () async {
+    var made = 0;
+    var withBonus = 0;
+    for (var seed = 0; seed < 6; seed++) {
+      final controller = GameController(
+        config: GameConfig(
+          players: 4,
+          seed: seed,
+          kraken: true,
+          whiteWhale: true,
+          loot: true,
+        ),
+        speed: TableSpeed.instant,
+        bot: randomBot(Random(seed)),
+      )..start();
+      RoundScored? checked;
+      await playUntil(
+        controller,
+        () => controller.result != null,
+        onStep: () {
+          final summary = controller.roundSummary;
+          if (summary == null || identical(summary, checked)) return;
+          checked = summary;
+          for (final (seat, result) in summary.results.indexed) {
+            if (result.bid != result.tricksWon) continue;
+            made++;
+            final inPlay = controller.bonusInPlay[seat];
+            if (inPlay != 0) withBonus++;
+            // An alliance only pays when the ally made their bid too.
+            expect(result.score.bonusPoints, lessThanOrEqualTo(inPlay));
+            expect(
+              (inPlay -
+                      result.score.bonusPoints -
+                      result.score.alliancePoints) %
+                  allianceBonus,
+              0,
+            );
+            if (!summary.results.any((r) => r.bid != r.tricksWon)) {
+              expect(
+                result.score.bonusPoints + result.score.alliancePoints,
+                inPlay,
+              );
+            }
+          }
+        },
+      );
+      controller.dispose();
+    }
+    expect(made, greaterThan(20));
+    expect(withBonus, greaterThan(3));
+  });
 }
 
 TigressMode? tigressModeFor(Card card) =>

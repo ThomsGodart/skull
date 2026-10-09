@@ -138,6 +138,11 @@ class GameController extends ChangeNotifier {
   /// away. They explain why the tricks taken fall short of the cards dealt.
   int destroyedTricks = 0;
 
+  /// The bonus points each seat stands to score this round if it makes its
+  /// bid: those of the tricks it took, and of its alliances, which also
+  /// need the ally's bid.
+  List<int> bonusInPlay = const [];
+
   /// What each seat staked with Rascal this round.
   Map<int, int> wagers = const {};
 
@@ -385,11 +390,16 @@ class GameController extends ChangeNotifier {
         placedBid = null;
         acceptedBids = {};
         destroyedTricks = 0;
+        bonusInPlay = List.filled(seats, 0);
         wagers = const {};
         harrySeats = const {};
         _order = const [];
       case TurnsSet():
         _order = event.order;
+        // Whoever won the last trick may hold no card: the lead then goes
+        // to the seat after.
+        if (trick.isEmpty && event.order.isNotEmpty)
+          _leader = event.order.first;
       case HandDealt():
         hand = sortedHand(event.cards);
       case BidAccepted():
@@ -432,6 +442,18 @@ class GameController extends ChangeNotifier {
         trickOverboard = event.overboard;
         trickSideBonuses = event.sideBonuses;
         if (event.destroyed) destroyedTricks++;
+        final gained = List.of(bonusInPlay);
+        for (final bonus in event.bonuses) {
+          gained[event.winner] += bonus.points;
+        }
+        for (final (seat, bonus) in event.sideBonuses) {
+          gained[seat] += bonus.points;
+        }
+        for (final alliance in event.alliances) {
+          gained[alliance.lootSeat] += allianceBonus;
+          gained[alliance.winnerSeat] += allianceBonus;
+        }
+        bonusInPlay = gained;
         if (!event.destroyed) {
           tricksWon = [
             for (var seat = 0; seat < seats; seat++)

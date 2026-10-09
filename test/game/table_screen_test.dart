@@ -692,6 +692,37 @@ void main() {
     expect(tapped?.card, card);
   });
 
+  testWidgets('a seat shows the bonus it stands to score, and nothing '
+      'when there is none', (tester) async {
+    Widget chip(int bonus) => MaterialApp(
+      home: Center(
+        child: SizedBox(
+          width: 80,
+          child: SeatChip(
+            identity: const SeatIdentity('Capitaine Morgane', Tokens.gold),
+            bid: 2,
+            tricksWon: 1,
+            score: 120,
+            wager: 20,
+            hasHarry: true,
+            bonus: bonus,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(chip(0));
+    expect(find.byKey(const Key('bonus-in-play')), findsNothing);
+
+    // Narrow, with every badge at once: it shrinks rather than overflow.
+    await tester.pumpWidget(chip(50));
+    expect(find.text('Bonus +50'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(chip(-5));
+    expect(find.text('Bonus −5'), findsOneWidget);
+  });
+
   testWidgets('in landscape while bidding, the place-bid button stays '
       'clear of the hand', (tester) async {
     await openTable(tester, size: const Size(800, 360));

@@ -1145,6 +1145,7 @@ class _TableScreenState extends State<TableScreen> {
             _game.acceptedBids.contains(seat) &&
             _game.bids.elementAtOrNull(seat) == null,
         wager: _game.wagers[seat],
+        bonus: _game.bonusInPlay.elementAtOrNull(seat) ?? 0,
         hasHarry: _game.harrySeats.contains(seat),
         showTokens: widget.settings?.trickTokens ?? false,
         // Between two tricks, and while bids are open: who plays first.

@@ -109,6 +109,10 @@ abstract final class Strings {
       '$count pli${count > 1 ? 's' : ''} détruit${count > 1 ? 's' : ''} : '
       'personne ne l${count > 1 ? 'es' : '\''} a remporté${count > 1 ? 's' : ''}';
   static String wagerBadge(int amount) => 'Mise $amount';
+  static String bonusBadge(int points) =>
+      'Bonus ${points > 0 ? '+' : '−'}${points.abs()}';
+  static const bonusBadgeHelp =
+      'Points de bonus de la manche, marqués si le pari est réussi';
   static const harryBadge = 'Harry ±1';
   static const harryBadgeHelp =
       'A gagné un pli avec Harry : pourra modifier son pari de 1 à la fin '
