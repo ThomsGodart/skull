@@ -756,6 +756,15 @@ void main() {
       expect(short.cardWidth * CardView.aspect, lessThanOrEqualTo(110));
     });
 
+    test('go on as few rows as show them just as large', () {
+      // Three cards at their largest fit on one row: no reason for two.
+      expect(TrickArea.fit(room: const Size(360, 420), cards: 3), (
+        cardWidth: 104.0,
+        perRow: 3,
+      ));
+      expect(TrickArea.fit(room: const Size(360, 420), cards: 2).perRow, 2);
+    });
+
     test('never go below a size that can still be read', () {
       final fit = TrickArea.fit(room: const Size(344, 40), cards: 8);
       expect(fit.cardWidth, 40);
@@ -778,6 +787,7 @@ void main() {
       await theirs.connect('ROOM');
       chat = RoomChat(transport: mine, selfId: 'me');
       other = RoomChat(transport: theirs, selfId: 'them');
+      addTearDown(chat.dispose);
       addTearDown(other.dispose);
       await tester.pumpWidget(
         MaterialApp(

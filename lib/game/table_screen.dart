@@ -146,9 +146,8 @@ class _TableScreenState extends State<TableScreen> {
   @override
   void dispose() {
     if (--_openTables == 0) widget.screenAwake.release();
-    widget.chat
-      ?..removeListener(_onChatChanged)
-      ..dispose();
+    // The chat is the room's: it outlives this table when one plays again.
+    widget.chat?.removeListener(_onChatChanged);
     _table
       ..removeListener(_onTableChanged)
       ..dispose();

@@ -51,6 +51,7 @@ class TrickArea extends StatelessWidget {
     double maxCard = 104,
     double minCard = 40,
   }) {
+    final widest = max(minCard, maxCard);
     var best = (cardWidth: 0.0, perRow: 1);
     for (var perRow = 1; perRow <= max(1, cards); perRow++) {
       final rows = (max(1, cards) / perRow).ceil();
@@ -58,11 +59,13 @@ class TrickArea extends StatelessWidget {
       final tall =
           ((room.height - _gap * (rows - 1)) / rows - _labelHeight) /
           CardView.aspect;
-      final width = min(wide, tall);
-      if (width > best.cardWidth) best = (cardWidth: width, perRow: perRow);
+      // Compared at the size the cards will really have; of two layouts
+      // as large, the one with fewer rows wins.
+      final width = min(min(wide, tall), widest);
+      if (width >= best.cardWidth) best = (cardWidth: width, perRow: perRow);
     }
     return (
-      cardWidth: best.cardWidth.clamp(minCard, max(minCard, maxCard)),
+      cardWidth: best.cardWidth.clamp(minCard, widest),
       perRow: best.perRow,
     );
   }

@@ -29,6 +29,7 @@ typedef TransportFactory = RoomTransport Function(String selfId);
 /// Who sits at each seat of an online game. [Seating.occupants] mixes people
 /// and bots; the ghost sits in when two play.
 List<SeatIdentity> onlineSeats(Seating seating, {Random? random}) {
+  random ??= Random(roomIdentitySeed(seating));
   final seats = tableHands(seating.config.players);
   final ghost = seats > seating.config.players ? seats - 1 : null;
   final botCount = [
@@ -55,6 +56,20 @@ List<SeatIdentity> onlineSeats(Seating seating, {Random? random}) {
           icon: botIcons[bots++],
         ),
   ];
+}
+
+/// What the bots of a room are named and drawn from: the same on every
+/// phone and for every game of the room, since it comes from who sits
+/// where, which playing again does not change.
+int roomIdentitySeed(Seating seating) {
+  var seed = seating.occupants.length;
+  for (final occupant in seating.occupants) {
+    // Kept small enough to be the same number on the web.
+    for (final unit in (occupant?.id ?? '-').codeUnits) {
+      seed = (seed * 31 + unit) & 0x3fffffff;
+    }
+  }
+  return seed;
 }
 
 /// The way into online play: create a room, or join one with its code.
@@ -89,8 +104,14 @@ class _OnlineHomeScreenState extends State<OnlineHomeScreen> {
   /// The room just joined is offered again once the player is back here.
   void _onSettings() {
     final code = widget.settings.lastRoomCode;
-    if (code.isNotEmpty && _code.text != code) _code.text = code;
+    // Only when it is the code that changed: any other setting leaves what
+    // is being typed alone.
+    if (code == _remembered) return;
+    _remembered = code;
+    if (code.isNotEmpty) _code.text = code;
   }
+
+  late String _remembered = widget.settings.lastRoomCode;
 
   @override
   void dispose() {
@@ -389,8 +410,7 @@ class _RulesReminder extends StatelessWidget {
 /// The table of an online game, for the seat [feed] is for.
 Widget _onlineTable({
   required Seating seating,
-  required SeatFeed feed,
-  required TableSpeed speed,
+  required GameController controller,
   required AppSettings settings,
   required String leaveWarning,
   ValueListenable<String?>? banner,
@@ -405,8 +425,8 @@ Widget _onlineTable({
   void Function(String id)? onKeepWaiting,
   void Function(String id)? onReplaceNow,
 }) => TableScreen(
-  controller: GameController.onFeed(feed, speed: speed),
-  seatIdentities: onlineSeats(seating, random: Random(seating.config.seed)),
+  controller: controller,
+  seatIdentities: onlineSeats(seating),
   settings: settings,
   banner: banner,
   notices: AbsenceNotices(
@@ -559,6 +579,12 @@ class HostRoomScreen extends StatefulWidget {
 class _HostRoomScreenState extends State<HostRoomScreen> {
   late Lobby _lobby = widget.host.currentLobby;
   StreamSubscription<Lobby>? _subscription;
+
+  /// The room's chat: one for every game played in it.
+  late final _chat = RoomChat(
+    transport: widget.host.transport,
+    selfId: widget.host.self.id,
+  );
   bool _connected = false;
   bool _failed = false;
 
@@ -581,6 +607,7 @@ class _HostRoomScreenState extends State<HostRoomScreen> {
   @override
   void dispose() {
     _subscription?.cancel();
+    _chat.dispose();
     // Closing the room is what ends the game for everyone.
     unawaited(widget.host.close());
     super.dispose();
@@ -680,6 +707,7 @@ class _HostRoomScreenState extends State<HostRoomScreen> {
   /// Shows the table of the game [feed] is for until it is left. True when
   /// it was left to play again.
   Future<bool> _playGame(SeatFeed feed) async {
+    final controller = GameController.onFeed(feed, speed: widget.speed);
     final again = await Navigator.of(context).push(
       MaterialPageRoute<bool>(
         builder: (context) => _onlineTable(
@@ -689,16 +717,12 @@ class _HostRoomScreenState extends State<HostRoomScreen> {
             seat: feed.seat,
             occupants: widget.host.currentOccupants,
           ),
-          feed: feed,
-          speed: widget.speed,
+          controller: controller,
           settings: widget.settings,
           leaveWarning: Strings.onlineLeaveHost,
           roomCode: widget.code,
           canFinishEarly: true,
-          chat: RoomChat(
-            transport: widget.host.transport,
-            selfId: widget.host.self.id,
-          ),
+          chat: _chat,
           absences: widget.host.absences,
           initialAbsences: widget.host.currentAbsences,
           selfId: widget.host.self.id,
@@ -815,7 +839,11 @@ class _GuestRoomScreenState extends State<GuestRoomScreen> {
         guest.lobby.listen((lobby) {
           // A room that answers is one worth coming back to.
           unawaited(widget.settings.setLastRoomCode(widget.code));
-          setState(() => _lobby = lobby);
+          setState(() {
+            _lobby = lobby;
+            // The host was only slow to answer: the room does exist.
+            if (_problem == Strings.onlineRefused('unknown')) _problem = null;
+          });
         }),
       )
       ..add(
@@ -837,11 +865,37 @@ class _GuestRoomScreenState extends State<GuestRoomScreen> {
     guest.join(widget.code).catchError((Object _) {
       if (mounted) setState(() => _problem = Strings.onlineCannotConnect);
     });
-    _subscriptions.add(guest.games.listen(_openTable));
+    _subscriptions.add(guest.games.listen(_onGame));
   }
+
+  /// The room's chat: one for every game played in it.
+  late final _chat = RoomChat(
+    transport: widget.guest.transport,
+    selfId: widget.guest.self.id,
+  );
 
   /// How many games of the room this phone has been shown a table for.
   int _tables = 0;
+
+  /// The table on screen, and the game the host started after it while
+  /// this phone had not yet seen the end of its own.
+  GameController? _current;
+  final _next = ValueNotifier<(Seating, SeatFeed)?>(null);
+
+  /// A game of the room starts. This phone shows its events at its own
+  /// pace and may be behind the host: the game it is still watching is left
+  /// to end, standings included, and the next one waits for a tap there.
+  void _onGame((Seating, SeatFeed) start) {
+    final current = _current;
+    final over =
+        current == null ||
+        (current.result != null && current.roundSummary == null);
+    if (over) {
+      _openTable(start);
+    } else {
+      _next.value = start;
+    }
+  }
 
   /// Opens the table of a game that starts: the first, or the next when the
   /// host plays again, which then takes the place of the one before.
@@ -849,27 +903,33 @@ class _GuestRoomScreenState extends State<GuestRoomScreen> {
     if (!mounted) return;
     final (seating, feed) = start;
     final table = ++_tables;
+    _next.value = null;
+    final controller = _current = GameController.onFeed(
+      feed,
+      speed: widget.speed,
+    );
     final navigator = Navigator.of(context);
     final room = ModalRoute.of(context);
     // Whatever is open over the room belongs to the game that is over.
     navigator.popUntil((route) => route == room || route.isFirst);
     await navigator.push(
       MaterialPageRoute<void>(
-        builder: (context) => _onlineTable(
-          seating: seating,
-          feed: feed,
-          speed: widget.speed,
-          settings: widget.settings,
-          gameOverNote: Strings.onlineRematchWait,
-          leaveWarning: Strings.onlineLeaveGuest,
-          banner: _banner,
-          roomCode: widget.code,
-          chat: RoomChat(
-            transport: widget.guest.transport,
+        builder: (context) => ValueListenableBuilder(
+          valueListenable: _next,
+          builder: (context, next, _) => _onlineTable(
+            seating: seating,
+            controller: controller,
+            settings: widget.settings,
+            // The host has dealt again meanwhile: one tap to follow.
+            onPlayAgain: next == null ? null : () => _openTable(next),
+            gameOverNote: next == null ? Strings.onlineRematchWait : null,
+            leaveWarning: Strings.onlineLeaveGuest,
+            banner: _banner,
+            roomCode: widget.code,
+            chat: _chat,
+            absences: widget.guest.absences,
             selfId: widget.guest.self.id,
           ),
-          absences: widget.guest.absences,
-          selfId: widget.guest.self.id,
         ),
       ),
     );
@@ -883,6 +943,8 @@ class _GuestRoomScreenState extends State<GuestRoomScreen> {
       subscription.cancel();
     }
     unawaited(widget.guest.leave());
+    _chat.dispose();
+    _next.dispose();
     _banner.dispose();
     super.dispose();
   }

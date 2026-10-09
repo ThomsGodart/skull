@@ -47,6 +47,11 @@ Le code, les identifiants et les tests sont en anglais ; tout ce que voit le jou
 | `Table interaction` | — | Ce que le joueur fait à la table : la carte levée ou regardée, si elle peut être jouée, et ce que la partie demande de lui poser ou de lui montrer (`TableInteraction`). L'écran de table n'écoute que lui. |
 | `Room` | salon | Le lieu d'une partie en ligne, rejoint par un code de quatre lettres. |
 | `Host` / `Guest` | hôte / invité | Le téléphone qui fait tourner la partie en ligne, et ceux qui la suivent. |
+| `Rematch` | Rejouer | Une nouvelle partie dans le même salon : mêmes personnes et bots aux mêmes sièges, mêmes options, nouvelles cartes (`OnlineHost.rematch`). Chaque partie d'un salon porte un numéro. |
+| `Reaction` | réaction | Un visage choisi dans le menu, montré un instant sur la table de tous les téléphones du salon (`RoomChat.react`). |
+| `Emblem` | emblème | Le pictogramme pirate d'un joueur, choisi dans son profil et montré à son siège (`PlayerIcons`). |
+| `Withdraw bid` | Modifier mon pari | Reprendre un pari déjà posé : la partie l'oublie et attend le nouveau avant de retourner les paris (`WithdrawBidAnswer`). |
+| `Bonus in play` | bonus | Les points de bonus qu'un siège marquera dans la manche s'il tient son pari (`GameController.bonusInPlay`). |
 | `Bot level` | niveau des adversaires | `easy`, `normal`, `hard`. |
 | `Scoring` | calcul des points | `classic` (livret) ou `rascal` (score Rascal). |
 | `Question` / `Answer` / `Event` | — | Contrat entre le moteur et ce qui le pilote (voir `docs/REFERENCE_RTAROT.md`). |

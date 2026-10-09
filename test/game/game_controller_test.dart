@@ -490,6 +490,53 @@ void main() {
     expect(made, greaterThan(20));
     expect(withBonus, greaterThan(3));
   });
+
+  test('the ghost stands to score nothing, whatever it takes', () async {
+    for (var seed = 0; seed < 4; seed++) {
+      final controller = GameController(
+        config: GameConfig(players: 2, seed: seed),
+        speed: TableSpeed.instant,
+        bot: randomBot(Random(seed)),
+      )..start();
+      var ghostTricks = 0;
+      await playUntil(
+        controller,
+        () => controller.result != null,
+        onStep: () {
+          final ghost = controller.ghostSeat!;
+          if (controller.bonusInPlay.isEmpty) return;
+          expect(controller.bonusInPlay[ghost], 0);
+          ghostTricks += controller.tricksWon[ghost];
+        },
+      );
+      expect(ghostTricks, greaterThan(0));
+      controller.dispose();
+    }
+  });
+
+  test('a destroyed trick is remembered as won by nobody', () async {
+    var destroyed = 0;
+    for (var seed = 0; seed < 8; seed++) {
+      final controller = GameController(
+        config: GameConfig(players: 4, seed: seed, kraken: true),
+        speed: TableSpeed.instant,
+        bot: randomBot(Random(seed)),
+      )..start();
+      await playUntil(
+        controller,
+        () => controller.result != null,
+        onStep: () {
+          final last = controller.lastTrick;
+          if (last == null) return;
+          final kraken = last.any((p) => p.card.kind == CardKind.kraken);
+          if (kraken) destroyed++;
+          expect(controller.lastTrickWinner == null, kraken);
+        },
+      );
+      controller.dispose();
+    }
+    expect(destroyed, greaterThan(0));
+  });
 }
 
 TigressMode? tigressModeFor(Card card) =>

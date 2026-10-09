@@ -401,8 +401,9 @@ class GameController extends ChangeNotifier {
         _order = event.order;
         // Whoever won the last trick may hold no card: the lead then goes
         // to the seat after.
-        if (trick.isEmpty && event.order.isNotEmpty)
+        if (trick.isEmpty && event.order.isNotEmpty) {
           _leader = event.order.first;
+        }
       case HandDealt():
         hand = sortedHand(event.cards);
       case BidAccepted():
@@ -446,8 +447,11 @@ class GameController extends ChangeNotifier {
         trickSideBonuses = event.sideBonuses;
         if (event.destroyed) destroyedTricks++;
         final gained = List.of(bonusInPlay);
-        for (final bonus in event.bonuses) {
-          gained[event.winner] += bonus.points;
+        // The ghost scores nothing: what it takes is lost.
+        if (event.winner != ghostSeat) {
+          for (final bonus in event.bonuses) {
+            gained[event.winner] += bonus.points;
+          }
         }
         for (final (seat, bonus) in event.sideBonuses) {
           gained[seat] += bonus.points;
@@ -466,7 +470,8 @@ class GameController extends ChangeNotifier {
         _notify();
         await _holdFor(speed.trickHold);
         lastTrick = event.plays;
-        lastTrickWinner = event.winner;
+        // Nobody won a destroyed trick: its seat is only the next to lead.
+        lastTrickWinner = event.destroyed ? null : event.winner;
         lastTrickOverboard = event.overboard;
         trickOverboard = null;
         trickSideBonuses = const [];

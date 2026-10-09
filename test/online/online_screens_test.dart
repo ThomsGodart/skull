@@ -173,7 +173,7 @@ void main() {
     expect(find.byKey(const Key('game-over-note')), findsOneWidget);
     expect(find.byKey(const Key('play-again')), findsNothing);
 
-    host.rematch(Random(5)).open();
+    final second = host.rematch(Random(5))..open();
     await settle(tester);
 
     expect(find.text(Strings.gameOver), findsNothing);
@@ -181,6 +181,64 @@ void main() {
     expect(find.byKey(const Key('bid-0')), findsOneWidget);
     expect(find.byKey(const Key('table-room-code')), findsOneWidget);
     expect(find.text('Zoé'), findsOneWidget);
+
+    // This time the host deals again while this phone is still reading the
+    // summary of a round: it is left its game to the end, standings
+    // included, and follows with one tap from there.
+    await tester.tap(find.byKey(const Key('bid-0')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('place-bid')));
+    second.answer(BidAnswer(seat: second.seat, bid: 0));
+    await settle(tester);
+    for (var turn = 0; turn < 4; turn++) {
+      if (second.question case PlayQuestion(:final legalCards)) {
+        final card = legalCards.first;
+        second.answer(
+          PlayAnswer(
+            seat: second.seat,
+            card: card,
+            tigressAs: card.kind == CardKind.tigress
+                ? TigressMode.escape
+                : null,
+          ),
+        );
+      }
+      await settle(tester);
+      final play = find.byKey(const Key('play-card'));
+      if (play.evaluate().isNotEmpty) {
+        await tester.tap(
+          find.byWidgetPredicate(
+            (widget) => switch (widget.key) {
+              ValueKey<String>(:final value) => value.startsWith('hand-'),
+              _ => false,
+            },
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 200));
+        final choice = find.byKey(const Key('tigress-escape'));
+        await tester.tap(play);
+        await settle(tester);
+        if (choice.evaluate().isNotEmpty) {
+          await tester.tap(choice);
+          await settle(tester);
+        }
+      }
+    }
+    expect(find.byKey(const Key('continue')), findsOneWidget);
+
+    second.finishEarly();
+    host.rematch(Random(7)).open();
+    await settle(tester);
+    expect(find.byKey(const Key('continue')), findsOneWidget, reason: 'left');
+
+    await tester.tap(find.byKey(const Key('continue')));
+    await settle(tester);
+    expect(find.text(Strings.gameOver), findsOneWidget);
+    expect(find.byKey(const Key('game-over-note')), findsNothing);
+    await tester.tap(find.byKey(const Key('play-again')));
+    await settle(tester);
+    expect(find.text(Strings.gameOver), findsNothing);
+    expect(find.byKey(const Key('bid-0')), findsOneWidget);
 
     host.close();
     await tester.pumpWidget(const SizedBox());
@@ -334,8 +392,7 @@ void main() {
 
     final hostFeed = host.start(Random(3), bots: 2);
     final (guestSeating, _) = await guest.started;
-    List<SeatIdentity> seats(Seating seating) =>
-        onlineSeats(seating, random: Random(seating.config.seed));
+    List<SeatIdentity> seats(Seating seating) => onlineSeats(seating);
     final atHost = seats(
       Seating(
         config: hostFeed.config,
@@ -352,6 +409,14 @@ void main() {
     expect(bob.color, Tokens.playerColors[6]);
     expect(atHost.map((seat) => seat.icon), everyElement(isNotNull));
     expect(atHost.map((seat) => seat.icon).toSet(), hasLength(4));
+
+    // Playing again changes the cards, not who the bots are.
+    final games = <(Seating, SeatFeed)>[];
+    guest.games.listen(games.add);
+    host.rematch(Random(8));
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(games.single.$1.config.seed, isNot(guestSeating.config.seed));
+    expect(seats(games.single.$1).map(look), atHost.map(look));
 
     await guest.leave();
     await host.close();
@@ -432,7 +497,62 @@ void main() {
       ),
     );
 
-    // Back to the way in: a code that led nowhere is not remembered.
+    // The host was only late: once it answers, the room shows after all.
+    final late = OnlineHost(
+      transport: hub.transport('late'),
+      self: const RoomPlayer(id: 'late', name: 'Zoé', color: 2),
+      config: const GameConfig(players: 2, seed: 0),
+      bot: randomBot(Random(1)),
+    );
+    late.open('NOPE');
+    await tester.pump(const Duration(seconds: 3));
+    await settle(tester);
+    expect(find.text(Strings.onlineRefused('unknown')), findsNothing);
+    expect(find.text('Zoé'), findsOneWidget);
+    late.close();
+    await settle(tester);
+    await tester.pageBack();
+    await settle(tester);
+    await tester.pumpWidget(const SizedBox());
+    await settle(tester);
+  });
+
+  testWidgets('a code being typed is left alone when another setting '
+      'changes', (tester) async {
+    final settings = await AppSettings.load(
+      MemorySettingsStore({'playerName': 'Bob', 'lastRoomCode': 'ABCD'}),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: Tokens.theme(),
+        home: OnlineHomeScreen(settings: settings, transports: hub.transport),
+      ),
+    );
+    await tester.pumpAndSettle();
+    String typed() => tester
+        .widget<TextField>(find.byKey(const Key('online-code')))
+        .controller!
+        .text;
+    expect(typed(), 'ABCD');
+
+    await tester.enterText(find.byKey(const Key('online-code')), 'WX');
+    await settings.setHaptics(false);
+    await tester.pump();
+    expect(typed(), 'WX');
+
+    await settings.setLastRoomCode('EFGH');
+    await tester.pump();
+    expect(typed(), 'EFGH');
+  });
+
+  testWidgets('a code that led nowhere is still what was typed, back on '
+      'the way in', (tester) async {
+    await openOnline(tester, name: 'Bob');
+    await tester.enterText(find.byKey(const Key('online-code')), 'NOPE');
+    await tester.tap(find.byKey(const Key('online-join')));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 7));
+
     await tester.tap(find.text(Strings.close));
     await settle(tester);
     expect(

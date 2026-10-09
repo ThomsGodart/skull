@@ -253,6 +253,9 @@ class OnlineHost {
   /// Who sits where once the game has started (bots as null).
   List<RoomPlayer?> _occupants = const [];
 
+  /// The guests' feeds of the game being played.
+  final List<SeatFeed> _guestFeeds = [];
+
   /// For each human seat, every event sent to it so far, as JSON.
   final Map<int, List<Json>> _logs = {};
 
@@ -526,6 +529,11 @@ class OnlineHost {
   SeatFeed _deal(GameConfig config) {
     final occupants = _occupants;
     _gameNumber++;
+    // The game before has nothing more to say to anyone.
+    for (final feed in _guestFeeds) {
+      feed.onUpdate = null;
+    }
+    _guestFeeds.clear();
     _logs.clear();
     final humanSeats = {
       for (final (seat, person) in occupants.indexed)
@@ -542,6 +550,7 @@ class OnlineHost {
       if (seat == hostSeat) continue;
       _logs[seat] = [];
       final feed = table.feedFor(seat);
+      _guestFeeds.add(feed);
       feed.onUpdate = () => _forward(seat, feed);
     }
     _announce();
