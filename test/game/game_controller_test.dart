@@ -27,6 +27,22 @@ void main() {
     expect(controller.bids, [null, null, null, null]);
   });
 
+  test('the other seats are listed the way play goes round from the human, '
+      'whichever seat the human holds', () {
+    GameController at(int humanSeat, {int players = 5}) => GameController(
+      config: GameConfig(players: players, seed: 1),
+      bot: randomBot(Random(1)),
+      humanSeat: humanSeat,
+    );
+
+    expect(at(0).opponents, [1, 2, 3, 4]);
+    expect(at(2).opponents, [3, 4, 0, 1]);
+    expect(at(4).opponents, [0, 1, 2, 3]);
+    // With two players the ghost holds the third seat.
+    expect(at(0, players: 2).opponents, [1, 2]);
+    expect(at(1, players: 2).opponents, [2, 0]);
+  });
+
   test('once the human bids, every bid is shown', () async {
     final controller = controllerFor()..start();
     await settle();

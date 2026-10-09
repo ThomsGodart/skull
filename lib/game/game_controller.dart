@@ -61,6 +61,12 @@ class GameController extends ChangeNotifier {
   /// The seats that bid and score: every one but the ghost's.
   int get scoringSeats => config.players;
 
+  /// Every other seat, in the order the table goes round starting after the
+  /// human: the way they are laid out, whichever seat the human holds.
+  List<int> get opponents => [
+    for (var step = 1; step < seats; step++) (humanSeat + step) % seats,
+  ];
+
   final Queue<Event> _events = Queue();
   bool _running = false;
 

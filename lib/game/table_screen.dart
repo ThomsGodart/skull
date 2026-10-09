@@ -1058,8 +1058,8 @@ class _TableScreenState extends State<TableScreen> {
     );
   }
 
-  /// The opponents, in rows of two to four so that each tile stays wide
-  /// enough to read at a glance.
+  /// The opponents, in the order play goes round from the human, in rows of
+  /// two to four so that each tile stays wide enough to read at a glance.
   Widget _opponents() => LayoutBuilder(
     builder: (context, constraints) {
       final opponents = _game.seats - 1;
@@ -1076,9 +1076,8 @@ class _TableScreenState extends State<TableScreen> {
         spacing: gap,
         runSpacing: gap,
         children: [
-          for (var seat = 0; seat < _game.seats; seat++)
-            if (seat != _game.humanSeat)
-              SizedBox(width: width, child: _seatChip(seat, showCards: true)),
+          for (final seat in _game.opponents)
+            SizedBox(width: width, child: _seatChip(seat, showCards: true)),
         ],
       );
     },
@@ -1089,11 +1088,7 @@ class _TableScreenState extends State<TableScreen> {
   /// easy to read, but little height.
   Widget _landscapeSeats(BoxConstraints room) {
     const gap = Tokens.space2;
-    final seats = [
-      for (var seat = 0; seat < _game.seats; seat++)
-        if (seat != _game.humanSeat) seat,
-      _game.humanSeat,
-    ];
+    final seats = [..._game.opponents, _game.humanSeat];
     final tokens = widget.settings?.trickTokens ?? false;
     final height = _seatHeight + (tokens ? _tokensHeight : 0);
     var perRow = 1;

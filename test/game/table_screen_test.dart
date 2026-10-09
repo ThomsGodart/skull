@@ -609,6 +609,46 @@ void main() {
     );
   });
 
+  for (final size in const [Size(360, 720), Size(760, 360)]) {
+    testWidgets('the seats follow the order of play from the human, who '
+        'comes last, at the bottom (${size.width > size.height ? 'on '
+                  'its side' : 'upright'})', (tester) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final controller = GameController(
+        config: const GameConfig(players: 5, seed: 3),
+        bot: randomBot(Random(3)),
+        speed: TableSpeed.instant,
+        humanSeat: 2,
+      );
+      final seats = [
+        for (var seat = 0; seat < 5; seat++)
+          SeatIdentity('Seat$seat', Tokens.botColors[seat]),
+      ];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: Tokens.theme(),
+          home: TableScreen(controller: controller, seatIdentities: seats),
+        ),
+      );
+      await tester.pump();
+
+      final chips = tester.widgetList<SeatChip>(find.byType(SeatChip));
+      expect(chips.map((chip) => chip.identity.name), [
+        'Seat3',
+        'Seat4',
+        'Seat0',
+        'Seat1',
+        'Seat2',
+      ]);
+      final own = tester.getCenter(find.text('Seat2'));
+      for (final other in ['Seat3', 'Seat4', 'Seat0', 'Seat1']) {
+        expect(own.dy, greaterThan(tester.getCenter(find.text(other)).dy));
+      }
+    });
+  }
+
   testWidgets('on its side, the phone shows every seat, and larger than '
       'upright', (tester) async {
     double nameSize() =>
