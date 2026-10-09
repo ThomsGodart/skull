@@ -159,8 +159,8 @@ abstract final class RulesContent {
           '[cartes] pirate-5\n'
           '• Harry le Géant : à la fin de la manche, une fois tous les plis '
           'joués, modifie ton pari de plus ou moins 1.\n\n'
-          'Les autres pouvoirs s\'utilisent tout de suite, et ne servent '
-          'plus à rien après le dernier pli.',
+          'Les autres pouvoirs s\'utilisent tout de suite. Après le dernier '
+          'pli, seule la mise de Rascal sert encore.',
     ),
     (
       title: 'Deuxième extension',

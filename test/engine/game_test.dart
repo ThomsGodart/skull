@@ -62,10 +62,11 @@ void main() {
       game.answer(const BidAnswer(seat: 1, bid: 0));
       game.answer(const BidAnswer(seat: 2, bid: 1));
 
-      expect(
-        game.takeEvents().whereType<BidAccepted>().map((e) => e.seat),
-        [0, 1, 2],
-      );
+      expect(game.takeEvents().whereType<BidAccepted>().map((e) => e.seat), [
+        0,
+        1,
+        2,
+      ]);
       expect(game.pending.single.seat, 3);
 
       game.answer(const BidAnswer(seat: 3, bid: 0));

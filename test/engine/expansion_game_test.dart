@@ -408,28 +408,133 @@ void main() {
       expect(seen, greaterThan(5));
     });
 
-    test('after the last trick of a round only Harry is asked', () {
+    test('after the last trick of a round only Rascal and Harry are asked, '
+        'Rascal first', () {
       var harryAtTheEnd = 0;
+      var rascalAtTheEnd = 0;
       for (var seed = 0; seed < seeds; seed++) {
         final game = Game(withSeed(powers, seed));
+        var harryAsked = false;
         play(
           game,
           botSeed: seed,
+          onEvent: (event) {
+            if (event is RoundStarted) harryAsked = false;
+          },
           onQuestion: (question) {
             final handsEmpty = game
                 .viewFor(0)
                 .handSizes
                 .every((size) => size == 0);
             if (handsEmpty && game.viewFor(0).trick.isEmpty) {
-              expect(question, isA<AdjustBidQuestion>());
-              harryAtTheEnd++;
+              expect(
+                question,
+                anyOf(isA<AdjustBidQuestion>(), isA<WagerQuestion>()),
+              );
+              if (question is AdjustBidQuestion) {
+                harryAsked = true;
+                harryAtTheEnd++;
+              } else {
+                expect(harryAsked, isFalse, reason: 'the stake comes first');
+                rascalAtTheEnd++;
+              }
             }
             return null;
           },
         );
       }
       expect(harryAtTheEnd, greaterThan(0));
+      expect(rascalAtTheEnd, greaterThan(0));
     });
+
+    test('a stake placed on the last trick counts in the score of the '
+        'round', () {
+      var staked = 0;
+      for (var seed = 0; seed < seeds; seed++) {
+        final game = Game(withSeed(powers, seed));
+        (int seat, int amount)? stake;
+        play(
+          game,
+          botSeed: seed,
+          onQuestion: (question) {
+            final view = game.viewFor(question.seat);
+            if (question is WagerQuestion &&
+                view.handSizes.every((size) => size == 0)) {
+              expect(question.amounts, [0, 10, 20]);
+              stake = (question.seat, 20);
+              return WagerAnswer(seat: question.seat, amount: 20);
+            }
+            return null;
+          },
+          onEvent: (event) {
+            if (event is! RoundScored) return;
+            if (stake case (final seat, final amount)?) {
+              final result = event.results[seat];
+              expect(
+                result.score.wagerPoints,
+                result.bid == result.tricksWon ? amount : -amount,
+              );
+              staked++;
+            }
+            stake = null;
+          },
+        );
+      }
+      expect(staked, greaterThan(0));
+    });
+  });
+
+  test('after a destroyed trick, the seat it names is the one that leads '
+      'the next, even when whoever would have won holds no card', () {
+    var destroyed = 0;
+    var passedOn = 0;
+    for (final players in [2, 3, 4, 7]) {
+      for (var seed = 0; seed < 80; seed++) {
+        final game = Game(
+          GameConfig(
+            players: players,
+            seed: seed,
+            kraken: true,
+            whiteWhale: true,
+            loot: true,
+            piratePowers: true,
+            secondExpansion: true,
+          ),
+        );
+        final random = Random(seed);
+        int? mustLead;
+        play(
+          game,
+          botSeed: seed,
+          onQuestion: (question) => randomAnswer(
+            question,
+            random,
+            trick: game.viewFor(question.seat).trick,
+          ),
+          onEvent: (event) {
+            switch (event) {
+              case TrickWon(destroyed: true):
+                destroyed++;
+                mustLead = event.winner;
+                // Whoever would have won without the sea monsters.
+                final wouldHaveWon = resolveTrick(
+                  event.plays,
+                  overboard: event.overboard,
+                ).winner;
+                if (wouldHaveWon != event.winner) passedOn++;
+              case TrickWon() || RoundStarted():
+                mustLead = null;
+              case CardPlayed(:final play):
+                if (mustLead != null) expect(play.seat, mustLead);
+                mustLead = null;
+              default:
+            }
+          },
+        );
+      }
+    }
+    expect(destroyed, greaterThan(100));
+    expect(passedOn, greaterThan(0));
   });
 
   test('a game with every option, saved as JSON half-way, resumes at the '

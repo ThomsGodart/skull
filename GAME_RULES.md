@@ -314,7 +314,7 @@ Mode optionnel. Un pouvoir se déclenche **chaque fois qu'on remporte un pli gr�
 |---|---|
 | **Rosie la Douce** | Choisir le joueur (soi-même compris) qui entamera le prochain pli. |
 | **Will le Bandit** | Ajouter 2 cartes de la pioche à sa main, puis défausser 2 cartes. |
-| **Rascal le Flambeur** | Miser 0, 10 ou 20 points. Gagnés si le pari de début de manche est réussi, perdus sinon. |
+| **Rascal le Flambeur** | Miser 0, 10 ou 20 points. Gagnés si le pari de début de manche est réussi, perdus sinon. **Dans ce projet, la mise est aussi proposée après le dernier pli de la manche**, contre le livret et la FAQ (décision de Thomas, 2026-10-09 ; `docs/DECISIONS.md` R23). |
 | **Juanita Jade** | Regarder secrètement les cartes non distribuées pour savoir ce qui n'est pas en jeu. |
 | **Harry le Géant** | Modifier son pari de +1 ou −1, ou le laisser tel quel. **Dans ce projet, il s'utilise à la fin de la manche**, une fois tous les plis joués (décision de Thomas, 2026-10-06 ; `docs/DECISIONS.md` R16). |
 
@@ -373,6 +373,7 @@ Le livret ne tranche pas ces points. **Les lectures ci-dessous ont été validé
 | 21 | Pouvoir de pirate quand le pli est détruit par le Kraken | Pas de pouvoir : le pli n'est pas remporté. |
 | 22 | Baleine blanche jouée en cours de pli : faut-il encore suivre la couleur déjà établie ? | **Sources contradictoires.** Livret français : non, plus d'obligation à partir de cette carte. FAQ officielle anglaise : oui, les joueurs restants suivent la couleur établie (ou jouent une spéciale). Décision : suivre le livret français, puisque c'est l'édition de référence du projet. |
 | 23 | Départage : le livret dit seulement « une nouvelle manche ». | Le dépôt SiloCityLabs joue des manches supplémentaires à 10 cartes tant qu'il y a égalité **pour la première place** uniquement. Choix raisonnable, non officiel. |
+| 24 | Rascal le Flambeur gagne le dernier pli de la manche : la mise est-elle proposée ? | **Oui, contre le livret et la FAQ**, qui réservent l'après-dernier-pli à Harry le Géant. Décision de Thomas du 2026-10-09 : la mise porte sur le pari, elle garde donc un sens. Elle est demandée avant le pouvoir de Harry. |
 
 ## 13. Clarifications officielles (FAQ éditeur)
 
@@ -475,4 +476,4 @@ Pouvoir (si les pouvoirs sont utilisés) : si elle gagne un pli, le joueur **cho
 | E14 | 15 Joker joué alors qu'un personnage a déjà été joué, ou après une entame noire | Il ne prend aucune couleur et ne choisit rien ; il garde sa valeur de 15 pour la Baleine blanche et la Raie Tachetée. |
 | E15 | Mary Thorne : la carte imposée quand le joueur visé saute le pli suivant, ou la défausse avec Will le Bandit | Elle reste imposée jusqu'à son prochain tour de jeu ; défaussée, elle n'impose plus rien. Le pouvoir ne sert à rien après le dernier pli. |
 | E16 | Raie Tachetée en entame : le livret la dit « comme la Baleine blanche » (pas de couleur à suivre) mais aussi que le joueur suivant choisit la couleur | En entame, la carte Couleur suivante fixe la couleur à suivre ; jouée en cours de pli, elle lève l'obligation de suivre, comme la Baleine blanche. |
-| E17 | Dernière Salve : un joueur qui n'a plus de carte alors que d'autres en ont encore | Il ne joue pas le pli ; s'il devait l'entamer, c'est le joueur suivant qui entame. |
+| E17 | Dernière Salve : un joueur qui n'a plus de carte alors que d'autres en ont encore | Il ne joue pas le pli ; s'il devait l'entamer, c'est le joueur suivant qui entame. Après un pli détruit, c'est ce joueur suivant que la table annonce. |

@@ -67,6 +67,7 @@ Numéros entre parenthèses = lignes de `GAME_RULES.md` §12. Une fois validées
 | **R20** | Variante « Cannonball » du score Rascal | Non incluse. | Aucune source officielle ne la décrit. |
 | **R21** | Demi-points du score Rascal | Division par deux, sans arrondi à prévoir. | Le potentiel (10 × cartes) et tous les bonus sont des multiples de 10 : leur moitié est toujours un entier. |
 | **R22** | (6, 7) Barbe Grise, à 2 joueurs | Ne parie pas, ne marque pas. Joue en deuxième ; s'il gagne un pli il entame le suivant, puis le joueur qui a entamé la manche, puis l'autre. Les bonus d'un pli qu'il remporte sont perdus, et un pirate avec lequel il gagne ne déclenche aucun pouvoir. | Lecture directe du livret ; les deux derniers points en découlent, puisqu'il ne marque pas et ne décide rien. |
+| **R23** | Rascal le Flambeur au dernier pli | La mise (0, 10 ou 20) est proposée aussi quand Rascal gagne le **dernier pli** de la manche, avant le pouvoir de Harry (demandé par Thomas le 2026-10-09). | Écart assumé avec le livret et la FAQ, qui réservent l'après-dernier-pli à Harry : la mise porte sur le pari, elle garde un sens une fois la manche jouée. |
 
 ## 3. Modes de jeu et configuration
 

@@ -308,9 +308,7 @@ final class Game {
     _finished = true;
     _power = null;
     _powersLeft.clear();
-    final best = _scores.isEmpty
-        ? 0
-        : _scores.reduce((a, b) => a > b ? a : b);
+    final best = _scores.isEmpty ? 0 : _scores.reduce((a, b) => a > b ? a : b);
     final winner =
         soleLeader(_scores) ??
         _scores.indexWhere((score) => score == best).clamp(0, _players - 1);
@@ -455,17 +453,6 @@ final class Game {
     for (final (seat, bonus) in result.sideBonuses) {
       _bonuses[seat].add(bonus);
     }
-    _events.add(
-      TrickWon(
-        winner: result.winner,
-        plays: plays,
-        bonuses: result.bonuses,
-        alliances: result.alliances,
-        destroyed: result.destroyed,
-        overboard: overboard,
-        sideBonuses: result.sideBonuses,
-      ),
-    );
     // Whoever sat this trick out is back; whoever fired the salvo in it
     // sits out next.
     if (_sitsOut != null && !_order.contains(_sitsOut)) _sitsOut = null;
@@ -476,6 +463,21 @@ final class Game {
     _leader = result.winner;
     _trick = [];
     _startTrick();
+    _events.add(
+      TrickWon(
+        // Nobody won a destroyed trick: it only names who leads the next
+        // one, and that is the seat after when the one meant has no card.
+        winner: result.destroyed && _order.isNotEmpty
+            ? _order.first
+            : result.winner,
+        plays: plays,
+        bonuses: result.bonuses,
+        alliances: result.alliances,
+        destroyed: result.destroyed,
+        overboard: overboard,
+        sideBonuses: result.sideBonuses,
+      ),
+    );
     _announceTurns();
     // The ghost decides nothing: a pirate it wins with has no power.
     final winning = result.winningPlay;
@@ -504,10 +506,13 @@ final class Game {
 
   /// Lets [seat] use the power of [pirate], which just won it a trick.
   ///
-  /// After the last trick of a round only Harry still serves a purpose; his
-  /// question is in fact always asked then (see [_afterTrick]).
+  /// After the last trick of a round only two still serve a purpose: Rascal,
+  /// whose stake is on the bid, and Harry, whose question is in fact always
+  /// asked then (see [_afterTrick]).
   void _usePower(Pirate pirate, int seat) {
-    if (_roundOver && pirate != Pirate.harry) return;
+    if (_roundOver && pirate != Pirate.harry && pirate != Pirate.rascal) {
+      return;
+    }
     switch (pirate) {
       case Pirate.rosie:
         _power = ChooseLeaderQuestion(
