@@ -12,6 +12,8 @@ import 'package:skull_kings/game/seat_identity.dart';
 import 'package:skull_kings/game/power_dialog.dart';
 import 'package:skull_kings/game/table_screen.dart';
 import 'package:skull_kings/game/trick_area.dart';
+import 'package:skull_kings/online/room_chat.dart';
+import 'package:skull_kings/online/room_transport.dart';
 import 'package:skull_kings/settings/app_settings.dart';
 import 'package:skull_kings/theme/tokens.dart';
 import 'package:skull_kings/ui/cards/card_view.dart';
@@ -756,6 +758,107 @@ void main() {
     test('never go below a size that can still be read', () {
       final fit = TrickArea.fit(room: const Size(344, 40), cards: 8);
       expect(fit.cardWidth, 40);
+    });
+  });
+
+  group('at an online table', () {
+    late MemoryRoomHub hub;
+    late RoomChat chat;
+    late RoomChat other;
+
+    Future<void> openOnlineTable(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(360, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      hub = MemoryRoomHub();
+      final mine = hub.transport('me');
+      final theirs = hub.transport('them');
+      await mine.connect('ROOM');
+      await theirs.connect('ROOM');
+      chat = RoomChat(transport: mine, selfId: 'me');
+      other = RoomChat(transport: theirs, selfId: 'them');
+      addTearDown(other.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: Tokens.theme(),
+          home: TableScreen(
+            controller: GameController(
+              config: const GameConfig(players: 4, seed: 3),
+              bot: randomBot(Random(3)),
+              speed: TableSpeed.instant,
+            ),
+            human: const SeatIdentity('Anne', Tokens.gold),
+            chat: chat,
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('a face picked from the menu shows over the table for a '
+        'moment, on every phone', (tester) async {
+      await openOnlineTable(tester);
+      final seenByOther = <Reaction>[];
+      other.reactions.listen(seenByOther.add);
+
+      await tester.tap(find.byKey(const Key('reaction-open')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('reaction-👍')));
+      // The menu closes, and the face pops in.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+
+      expect(find.byKey(const Key('reaction-shown-0')), findsOneWidget);
+      expect(seenByOther.single.emoji, '👍');
+      expect(seenByOther.single.fromName, 'Anne');
+      // Still there after two seconds, gone after three.
+      await tester.pump(const Duration(milliseconds: 1700));
+      expect(find.byKey(const Key('reaction-shown-0')), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byKey(const Key('reaction-shown-0')), findsNothing);
+      expect(find.byKey(const Key('reaction-👍')), findsNothing);
+    });
+
+    testWidgets('a face someone else pulls shows too, with their name', (
+      tester,
+    ) async {
+      await openOnlineTable(tester);
+
+      other.react('😂', fromName: 'Bob');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('😂'), findsOneWidget);
+      expect(find.text('Bob'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.text('😂'), findsNothing);
+    });
+
+    testWidgets('the chat opens on its last message and stays there when '
+        'another comes', (tester) async {
+      await openOnlineTable(tester);
+      for (var i = 1; i <= 40; i++) {
+        other.send('message $i', fromName: 'Bob');
+      }
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('chat-open')));
+      await tester.pumpAndSettle();
+      expect(find.text('message 40'), findsOneWidget);
+      expect(find.text('message 1'), findsNothing);
+
+      other.send('the latest', fromName: 'Bob');
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('the latest'), findsOneWidget);
+
+      // A face can be pulled from the chat too; it closes to show it.
+      await tester.tap(find.byKey(const Key('chat-reaction-😡')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('chat-lines')), findsNothing);
+      expect(find.text('😡'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 3));
     });
   });
 

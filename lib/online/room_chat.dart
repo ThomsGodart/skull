@@ -19,6 +19,19 @@ final class ChatLine {
   final DateTime at;
 }
 
+/// A face someone pulled at the table, for everyone to see for a moment.
+final class Reaction {
+  const Reaction({
+    required this.fromId,
+    required this.fromName,
+    required this.emoji,
+  });
+
+  final String fromId;
+  final String fromName;
+  final String emoji;
+}
+
 /// A small chat shared by everyone in an online room.
 class RoomChat extends ChangeNotifier {
   RoomChat({
@@ -32,6 +45,14 @@ class RoomChat extends ChangeNotifier {
   final RoomTransport transport;
   final String selfId;
   String selfName;
+
+  /// The faces that can be pulled. Anything else a phone sends is dropped.
+  static const emojis = ['👍', '👏', '😄', '😂', '😱', '😢', '😡', '🏴‍☠️'];
+
+  final _reactions = StreamController<Reaction>.broadcast();
+
+  /// Each reaction as it happens, this phone's own included.
+  Stream<Reaction> get reactions => _reactions.stream;
 
   final List<ChatLine> _lines = [];
   int _unread = 0;
@@ -63,8 +84,27 @@ class RoomChat extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Shows [emoji] to everyone at the table, this phone included.
+  void react(String emoji, {required String fromName}) {
+    if (!emojis.contains(emoji)) return;
+    transport.send({'type': 'reaction', 'name': fromName, 'emoji': emoji});
+    _reactions.add(Reaction(fromId: selfId, fromName: fromName, emoji: emoji));
+  }
+
   void _onMessage(RoomMessage message) {
     final payload = message.payload;
+    if (payload['type'] == 'reaction') {
+      final emoji = payload['emoji'];
+      if (emoji is! String || !emojis.contains(emoji)) return;
+      _reactions.add(
+        Reaction(
+          fromId: message.from,
+          fromName: payload['name'] as String? ?? '?',
+          emoji: emoji,
+        ),
+      );
+      return;
+    }
     if (payload['type'] != 'chat') return;
     final text = (payload['text'] as String?)?.trim() ?? '';
     if (text.isEmpty) return;
@@ -83,6 +123,7 @@ class RoomChat extends ChangeNotifier {
   @override
   void dispose() {
     _subscription?.cancel();
+    _reactions.close();
     super.dispose();
   }
 }

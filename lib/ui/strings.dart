@@ -289,6 +289,7 @@ abstract final class Strings {
   static String startingRoundOption(int round, int cards) =>
       'Manche $round · $cards carte${cards > 1 ? 's' : ''}';
   static const chatTitle = 'Discussion';
+  static const reactionTitle = 'Réagir';
   static const chatHint = 'Écrire un message…';
   static const chatSend = 'Envoyer';
   static const chatEmpty = 'Aucun message pour l\'instant.';

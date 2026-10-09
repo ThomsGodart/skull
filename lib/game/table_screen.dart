@@ -18,6 +18,7 @@ import '../ui/fullscreen_button.dart';
 import 'bid_panel.dart';
 import 'game_controller.dart';
 import 'power_dialog.dart';
+import 'reaction_overlay.dart';
 import 'score_views.dart';
 import 'screen_awake.dart';
 import 'seat_chip.dart';
@@ -770,6 +771,11 @@ class _TableScreenState extends State<TableScreen> {
                             : _portraitBody(game, constraints.maxHeight),
                       ),
                     ),
+                    if (widget.chat case final chat?)
+                      ReactionOverlay(
+                        reactions: chat.reactions,
+                        animate: !(widget.settings?.reduceMotion ?? false),
+                      ),
                     if (game.roundSummary case final summary?)
                       _roundOver(summary),
                     if (over) _gameOver(game.result!),
@@ -872,7 +878,7 @@ class _TableScreenState extends State<TableScreen> {
             ],
           ),
         ),
-        if (widget.chat != null) _chatButton(),
+        if (widget.chat != null) ...[_reactionButton(), _chatButton()],
         if (widget.settings != null)
           FullscreenButton(settings: widget.settings!),
         IconButton(
@@ -888,6 +894,49 @@ class _TableScreenState extends State<TableScreen> {
       ],
     );
   }
+
+  String get _chatName => widget.settings?.playerName ?? widget.human.name;
+
+  /// The faces to pull at the table, one tap away.
+  Widget _reactionButton() => IconButton(
+    key: const Key('reaction-open'),
+    tooltip: Strings.reactionTitle,
+    icon: const Icon(Icons.emoji_emotions_outlined),
+    onPressed: () async {
+      final emoji = await showModalBottomSheet<String>(
+        context: context,
+        backgroundColor: Tokens.panel,
+        builder: (context) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(Tokens.space3),
+            child: _reactionRow(
+              (emoji) => Navigator.of(context).pop(emoji),
+              key: 'reaction',
+            ),
+          ),
+        ),
+      );
+      if (emoji != null) widget.chat?.react(emoji, fromName: _chatName);
+    },
+  );
+
+  /// Every face in a row or two, each calling [onPick].
+  Widget _reactionRow(ValueChanged<String> onPick, {required String key}) =>
+      Wrap(
+        alignment: WrapAlignment.center,
+        children: [
+          for (final emoji in RoomChat.emojis)
+            InkWell(
+              key: Key('$key-$emoji'),
+              borderRadius: BorderRadius.circular(Tokens.radiusButton),
+              onTap: () => onPick(emoji),
+              child: Padding(
+                padding: const EdgeInsets.all(Tokens.space2),
+                child: Text(emoji, style: const TextStyle(fontSize: 26)),
+              ),
+            ),
+        ],
+      );
 
   Widget _chatButton() {
     final chat = widget.chat!;
@@ -950,13 +999,17 @@ class _TableScreenState extends State<TableScreen> {
                           ),
                         );
                       }
+                      // Upside down: the view rests on the last message,
+                      // when it opens and each time one comes.
                       return ListView.builder(
+                        key: const Key('chat-lines'),
+                        reverse: true,
                         padding: const EdgeInsets.symmetric(
                           horizontal: Tokens.space3,
                         ),
                         itemCount: lines.length,
                         itemBuilder: (context, index) {
-                          final line = lines[index];
+                          final line = lines[lines.length - 1 - index];
                           return Padding(
                             padding: const EdgeInsets.only(
                               bottom: Tokens.space3,
@@ -989,6 +1042,10 @@ class _TableScreenState extends State<TableScreen> {
                     },
                   ),
                 ),
+                _reactionRow((emoji) {
+                  chat.react(emoji, fromName: _chatName);
+                  Navigator.of(context).pop();
+                }, key: 'chat-reaction'),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     Tokens.space3,
