@@ -21,6 +21,7 @@ import '../ui/rules_content.dart';
 import '../ui/strings.dart';
 import 'online_game.dart';
 import 'room_chat.dart';
+import 'room_chat_view.dart';
 import 'room_transport.dart';
 
 /// Makes the connection a phone known as `selfId` uses to reach its room.
@@ -594,6 +595,8 @@ class _HostRoomScreenState extends State<HostRoomScreen> {
     _subscription = widget.host.lobby.listen(
       (lobby) => setState(() => _lobby = lobby),
     );
+    // On show in the room from the start: nothing said there is unread.
+    _chat.markOpen(true);
     widget.host
         .open(widget.code)
         .then((_) {
@@ -693,6 +696,8 @@ class _HostRoomScreenState extends State<HostRoomScreen> {
     final bots = await _askBots();
     if (bots == null || !mounted) return;
     var feed = widget.host.start(widget.random, bots: bots);
+    // At the table the chat is behind its button again.
+    _chat.markOpen(false);
     // One table per game of the room: « Rejouer » closes the table of the
     // game that is over, and the next one is dealt to the same seats.
     while (true) {
@@ -779,6 +784,10 @@ class _HostRoomScreenState extends State<HostRoomScreen> {
                                 ? Strings.onlineNeedGuest
                                 : Strings.onlineWaitingGuests,
                           ),
+                          LobbyChat(
+                            chat: _chat,
+                            fromName: widget.host.self.name,
+                          ),
                           const _RulesReminder(),
                           const SizedBox(height: Tokens.space4),
                         ],
@@ -834,6 +843,8 @@ class _GuestRoomScreenState extends State<GuestRoomScreen> {
   void initState() {
     super.initState();
     final guest = widget.guest;
+    // On show in the room from the start: nothing said there is unread.
+    _chat.markOpen(true);
     _subscriptions
       ..add(
         guest.lobby.listen((lobby) {
@@ -904,6 +915,8 @@ class _GuestRoomScreenState extends State<GuestRoomScreen> {
     final (seating, feed) = start;
     final table = ++_tables;
     _next.value = null;
+    // At the table the chat is behind its button again.
+    _chat.markOpen(false);
     final controller = _current = GameController.onFeed(
       feed,
       speed: widget.speed,
@@ -964,6 +977,7 @@ class _GuestRoomScreenState extends State<GuestRoomScreen> {
                   children: [
                     _PlayerList(lobby: lobby, selfId: widget.guest.self.id),
                     const _Waiting(Strings.onlineWaitingHost),
+                    LobbyChat(chat: _chat, fromName: widget.guest.self.name),
                     const _RulesReminder(),
                     const SizedBox(height: Tokens.space4),
                   ],

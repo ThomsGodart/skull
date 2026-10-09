@@ -8,6 +8,7 @@ import 'package:skull_kings/game/seat_feed.dart';
 import 'package:skull_kings/game/seat_identity.dart';
 import 'package:skull_kings/online/online_game.dart';
 import 'package:skull_kings/online/online_screens.dart';
+import 'package:skull_kings/online/room_chat.dart';
 import 'package:skull_kings/online/room_transport.dart';
 import 'package:skull_kings/settings/app_settings.dart';
 import 'package:skull_kings/settings/profile_dialog.dart';
@@ -340,6 +341,68 @@ void main() {
     await settle(tester);
   });
 
+  testWidgets('those who wait can talk: the chat is laid out in the room '
+      'itself, for host and guest, and follows them to the table', (
+    tester,
+  ) async {
+    await openOnline(tester);
+    await tester.tap(find.byKey(const Key('online-create')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('launch')));
+    await settle(tester);
+    final code = tester
+        .widget<SelectableText>(find.byKey(const Key('online-room-code')))
+        .data!;
+    // No button to find it behind: it is there.
+    expect(find.byKey(const Key('lobby-chat')), findsOneWidget);
+    expect(find.byKey(const Key('chat-open')), findsNothing);
+
+    // A guest's phone, seen from its chat.
+    final guest = OnlineGuest(
+      transport: hub.transport('guest'),
+      self: const RoomPlayer(id: 'guest', name: 'Bob', color: 1),
+      retry: const Duration(milliseconds: 10),
+    );
+    guest.join(code);
+    final bob = RoomChat(transport: guest.transport, selfId: 'guest');
+    await settle(tester);
+
+    bob.send('Salut, on attend qui ?', fromName: 'Bob');
+    await settle(tester);
+    expect(find.text('Salut, on attend qui ?'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const Key('chat-input')));
+    await tester.enterText(find.byKey(const Key('chat-input')), 'Chloé !');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settle(tester);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('chat-lines')),
+        matching: find.text('Chloé !'),
+      ),
+      findsOneWidget,
+    );
+    expect(bob.lines.map((line) => '${line.fromName}: ${line.text}'), [
+      'Bob: Salut, on attend qui ?',
+      'Anne: Chloé !',
+    ]);
+    expect(tester.takeException(), isNull);
+
+    // At the table, what was said while waiting is still in the chat.
+    await tester.tap(find.byKey(const Key('online-start')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('online-bots-confirm')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('chat-open')));
+    await settle(tester);
+    expect(find.text('Salut, on attend qui ?'), findsOneWidget);
+
+    bob.dispose();
+    guest.leave();
+    await tester.pumpWidget(const SizedBox());
+    await settle(tester);
+  });
+
   testWidgets('a guest waiting for the host sees the same', (tester) async {
     final host = OnlineHost(
       transport: hub.transport('host'),
@@ -359,6 +422,7 @@ void main() {
       Tokens.gold,
     );
     expect(find.byKey(const Key('rules-reminder')), findsOneWidget);
+    expect(find.byKey(const Key('lobby-chat')), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     host.close();

@@ -14,6 +14,7 @@ import '../ui/cards/hand_fan.dart';
 import '../ui/pictogram.dart';
 import '../ui/strings.dart';
 import '../online/room_chat.dart';
+import '../online/room_chat_view.dart';
 import '../ui/fullscreen_button.dart';
 import 'bid_panel.dart';
 import 'game_controller.dart';
@@ -956,7 +957,6 @@ class _TableScreenState extends State<TableScreen> {
     final chat = widget.chat;
     if (chat == null) return;
     chat.markOpen(true);
-    final input = TextEditingController();
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Tokens.panel,
@@ -982,114 +982,12 @@ class _TableScreenState extends State<TableScreen> {
                     ),
                   ),
                 ),
-                Expanded(
-                  child: ListenableBuilder(
-                    listenable: chat,
-                    builder: (context, _) {
-                      final lines = chat.lines;
-                      if (lines.isEmpty) {
-                        return const Center(
-                          child: Text(
-                            Strings.chatEmpty,
-                            style: TextStyle(
-                              color: Tokens.mutedText,
-                              fontSize: 16,
-                            ),
-                          ),
-                        );
-                      }
-                      // Upside down: the view rests on the last message,
-                      // when it opens and each time one comes.
-                      return ListView.builder(
-                        key: const Key('chat-lines'),
-                        reverse: true,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: Tokens.space3,
-                        ),
-                        itemCount: lines.length,
-                        itemBuilder: (context, index) {
-                          final line = lines[lines.length - 1 - index];
-                          return Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: Tokens.space3,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  line.fromName,
-                                  style: const TextStyle(
-                                    color: Tokens.gold,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  line.text,
-                                  style: const TextStyle(
-                                    color: Tokens.text,
-                                    fontSize: 17,
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
+                Expanded(child: ChatLines(chat: chat)),
                 _reactionRow((emoji) {
                   chat.react(emoji, fromName: _chatName);
                   Navigator.of(context).pop();
                 }, key: 'chat-reaction'),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    Tokens.space3,
-                    Tokens.space2,
-                    Tokens.space2,
-                    Tokens.space3,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          key: const Key('chat-input'),
-                          controller: input,
-                          style: const TextStyle(fontSize: 17),
-                          decoration: const InputDecoration(
-                            hintText: Strings.chatHint,
-                          ),
-                          onSubmitted: (text) {
-                            chat.send(
-                              text,
-                              fromName:
-                                  widget.settings?.playerName ??
-                                  widget.human.name,
-                            );
-                            input.clear();
-                          },
-                        ),
-                      ),
-                      IconButton(
-                        key: const Key('chat-send'),
-                        onPressed: () {
-                          chat.send(
-                            input.text,
-                            fromName:
-                                widget.settings?.playerName ??
-                                widget.human.name,
-                          );
-                          input.clear();
-                        },
-                        icon: const Icon(Icons.send),
-                        tooltip: Strings.chatSend,
-                      ),
-                    ],
-                  ),
-                ),
+                ChatInput(chat: chat, fromName: _chatName),
               ],
             ),
           ),
@@ -1097,7 +995,6 @@ class _TableScreenState extends State<TableScreen> {
       },
     );
     chat.markOpen(false);
-    input.dispose();
   }
 
   /// What a card in the trick does, for anyone who taps it.
