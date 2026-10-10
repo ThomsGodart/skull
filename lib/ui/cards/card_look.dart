@@ -22,7 +22,9 @@ final class CardLook {
     },
     CardKind.escape => const CardLook(Color(0xFF6C7A89), '\u{1F3F3}'),
     CardKind.pirate => const CardLook(Color(0xFFC0392B), '\u{2694}'),
-    CardKind.tigress => const CardLook(Color(0xFFD9822B), '\u{1F42F}'),
+    // Well away from the yellow suit: a vermilion, between it and the
+    // pirates' crimson.
+    CardKind.tigress => const CardLook(Color(0xFFE0481E), '\u{1F42F}'),
     CardKind.skullKing => const CardLook(Color(0xFF7A1420), '\u{1F451}'),
     CardKind.mermaid => const CardLook(Color(0xFF16897C), '\u{1F9DC}'),
     CardKind.loot => const CardLook(Color(0xFF9A7B1F), '\u{1F48E}'),

@@ -96,17 +96,18 @@ class CardView extends StatelessWidget {
               color: look.color,
             ),
           ),
-          // Extra 7/8: the bonus in both corners so a crowded hand still shows
-          // it (top-right alone is easy to miss under an overlapping card).
-          if (card.isExtraNumber)
-            Align(alignment: Alignment.topRight, child: _extraBonus(look)),
+          // What the card is worth to whoever takes it, in both corners so a
+          // crowded hand still shows it (top-right alone is easy to miss
+          // under an overlapping card).
+          if (_bonus != null)
+            Align(alignment: Alignment.topRight, child: _bonusMark(look)),
           Align(
             alignment: Alignment.bottomLeft,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (card.isExtraNumber) _extraBonus(look),
+                if (_bonus != null) _bonusMark(look),
                 if (card.suit == Suit.black)
                   Text(
                     Strings.trump,
@@ -125,10 +126,21 @@ class CardView extends StatelessWidget {
     );
   }
 
-  Widget _extraBonus(CardLook look) => Text(
-    Strings.signed(
-      (card.value == 8 ? Bonus.extraEight : Bonus.extraSeven).points,
-    ),
+  /// The bonus the card carries by itself: a 14 of the base game, or an
+  /// extra 7 or 8. The 0/14 is worth nothing, even played as a 14.
+  Bonus? get _bonus {
+    if (card.kind != CardKind.number) return null;
+    if (card.isExtraNumber) {
+      return card.value == 8 ? Bonus.extraEight : Bonus.extraSeven;
+    }
+    if (card.value != 14) return null;
+    return card.suit == Suit.black
+        ? Bonus.blackFourteen
+        : Bonus.standardFourteen;
+  }
+
+  Widget _bonusMark(CardLook look) => Text(
+    Strings.signed(_bonus!.points),
     style: TextStyle(
       color: look.color,
       fontSize: width * 0.16,

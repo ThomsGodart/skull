@@ -864,12 +864,27 @@ void main() {
       await tester.pump();
       expect(find.text('the latest'), findsOneWidget);
 
-      // A face can be pulled from the chat too; it closes to show it.
-      await tester.tap(find.byKey(const Key('chat-reaction-😡')));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('chat-lines')), findsNothing);
-      expect(find.text('😡'), findsOneWidget);
-      await tester.pump(const Duration(seconds: 3));
+      // Emojis go into the message itself, where the cursor is.
+      await tester.enterText(find.byKey(const Key('chat-input')), 'Bien joué');
+      await tester.tap(find.byKey(const Key('chat-emoji-👍')));
+      await tester.pump();
+      await tester.ensureVisible(find.byKey(const Key('chat-emoji-😇')));
+      await tester.tap(find.byKey(const Key('chat-emoji-😇')));
+      await tester.pump();
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('chat-input')))
+            .controller!
+            .text,
+        'Bien joué👍😇',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      await tester.pump();
+
+      expect(other.lines.last.text, 'Bien joué👍😇');
+      expect(other.lines.last.fromName, 'Anne');
+      expect(find.byKey(const Key('chat-lines')), findsOneWidget);
     });
   });
 

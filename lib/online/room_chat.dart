@@ -46,8 +46,17 @@ class RoomChat extends ChangeNotifier {
   final String selfId;
   String selfName;
 
-  /// The faces that can be pulled. Anything else a phone sends is dropped.
-  static const emojis = ['👍', '👏', '😄', '😂', '😱', '😢', '😡', '🏴‍☠️'];
+  /// The faces and signs that can be shown at the table as a reaction, or
+  /// slipped into a message. As a reaction, anything else a phone sends is
+  /// dropped.
+  static const emojis = [
+    // Hands: well played, badly played, thanks, hello, deal.
+    '👍', '👎', '👏', '🙏', '👋', '🤝',
+    // Faces: glad, laughing, innocent, smug, thinking, shocked, sad, angry.
+    '😄', '😂', '😇', '😎', '🤔', '😱', '😢', '😡',
+    // The game: luck, a hot hand, sunk, the flag, a win, cheers.
+    '🍀', '🔥', '💀', '🏴‍☠️', '🎉', '🍻',
+  ];
 
   final _reactions = StreamController<Reaction>.broadcast();
 

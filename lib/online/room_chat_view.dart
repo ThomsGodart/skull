@@ -82,6 +82,18 @@ class _ChatInputState extends State<ChatInput> {
     _input.clear();
   }
 
+  /// Slips [emoji] into the message where the cursor is, or at its end.
+  void _insert(String emoji) {
+    final text = _input.text;
+    final selection = _input.selection;
+    final start = selection.isValid ? selection.start : text.length;
+    final end = selection.isValid ? selection.end : text.length;
+    _input.value = TextEditingValue(
+      text: text.replaceRange(start, end, emoji),
+      selection: TextSelection.collapsed(offset: start + emoji.length),
+    );
+  }
+
   @override
   void dispose() {
     _input.dispose();
@@ -89,32 +101,57 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(
-      Tokens.space3,
-      Tokens.space2,
-      Tokens.space2,
-      Tokens.space3,
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: TextField(
-            key: const Key('chat-input'),
-            controller: _input,
-            style: const TextStyle(fontSize: 17),
-            decoration: const InputDecoration(hintText: Strings.chatHint),
-            onSubmitted: (_) => _send(),
-          ),
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      // One line of emojis to slip into the message, scrolled sideways.
+      SingleChildScrollView(
+        key: const Key('chat-emojis'),
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: Tokens.space2),
+        child: Row(
+          children: [
+            for (final emoji in RoomChat.emojis)
+              InkWell(
+                key: Key('chat-emoji-$emoji'),
+                borderRadius: BorderRadius.circular(Tokens.radiusButton),
+                onTap: () => _insert(emoji),
+                child: Padding(
+                  padding: const EdgeInsets.all(Tokens.space2),
+                  child: Text(emoji, style: const TextStyle(fontSize: 22)),
+                ),
+              ),
+          ],
         ),
-        IconButton(
-          key: const Key('chat-send'),
-          onPressed: _send,
-          icon: const Icon(Icons.send),
-          tooltip: Strings.chatSend,
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(
+          Tokens.space3,
+          0,
+          Tokens.space2,
+          Tokens.space3,
         ),
-      ],
-    ),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                key: const Key('chat-input'),
+                controller: _input,
+                style: const TextStyle(fontSize: 17),
+                decoration: const InputDecoration(hintText: Strings.chatHint),
+                onSubmitted: (_) => _send(),
+              ),
+            ),
+            IconButton(
+              key: const Key('chat-send'),
+              onPressed: _send,
+              icon: const Icon(Icons.send),
+              tooltip: Strings.chatSend,
+            ),
+          ],
+        ),
+      ),
+    ],
   );
 }
 

@@ -983,10 +983,6 @@ class _TableScreenState extends State<TableScreen> {
                   ),
                 ),
                 Expanded(child: ChatLines(chat: chat)),
-                _reactionRow((emoji) {
-                  chat.react(emoji, fromName: _chatName);
-                  Navigator.of(context).pop();
-                }, key: 'chat-reaction'),
                 ChatInput(chat: chat, fromName: _chatName),
               ],
             ),
