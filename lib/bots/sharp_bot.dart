@@ -70,7 +70,7 @@ BidAnswer _bid(
     for (final bid in [guess, guess - 1, guess + 1])
       if (bid >= 0 && bid <= question.maxBid) bid,
   }.toList();
-  final totals = List.filled(candidates.length, 0);
+  final totals = List.filled(candidates.length, 0.0);
   final leader = (view.dealer + 1) % players;
   final samples = _samplesFor(
     work,
@@ -142,7 +142,7 @@ PlayAnswer _play(
   ];
   if (options.length == 1) return plain;
   final bids = [for (final bid in view.bids) bid ?? 0];
-  final totals = List.filled(options.length, 0);
+  final totals = List.filled(options.length, 0.0);
   final samples = _samplesFor(
     work,
     choices: options.length,

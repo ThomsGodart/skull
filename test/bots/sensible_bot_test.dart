@@ -13,6 +13,7 @@ GameView view({
   List<Play> trick = const [],
   int bid = 0,
   int tricksWon = 0,
+  List<Card> deck = const [],
 }) => GameView(
   seat: 0,
   round: hand.length,
@@ -24,6 +25,7 @@ GameView view({
   tricksWon: [tricksWon, 0, 0, 0],
   trick: trick,
   scores: List.filled(4, 0),
+  deck: deck,
 );
 
 /// Cards played before seat 0 by seats 1, 2, …
@@ -146,6 +148,36 @@ void main() {
       final answer = playFor(view(hand: [skullKing, b(13), g(2)], bid: 2));
 
       expect(answer.card, b(13));
+    });
+
+    test('needing tricks and leading, it keeps back a 14 that a pirate '
+        'could still take', () {
+      final answer = playFor(
+        view(hand: [b(14), b(10), g(2)], bid: 2, deck: baseDeck()),
+      );
+
+      expect(answer.card, b(10));
+    });
+
+    test('with no other number to lead, it risks a character rather than '
+        'the black 14', () {
+      final answer = playFor(
+        view(hand: [b(14), pirate()], bid: 2, deck: baseDeck()),
+      );
+
+      expect(answer.card, pirate());
+    });
+
+    test('it leads the 14 when nothing left unseen can take it', () {
+      final answer = playFor(
+        view(
+          hand: [b(14), b(10), g(2)],
+          bid: 2,
+          deck: [b(14), b(10), g(2), g(5)],
+        ),
+      );
+
+      expect(answer.card, b(14));
     });
 
     test('ducking under a skull king, it does not hand over a pirate', () {

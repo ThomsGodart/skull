@@ -128,18 +128,18 @@ void main() {
     );
   });
 
-  test('the bot level is normal to begin with; launching a game fixes it '
+  test('the bot level is hard to begin with; launching a game fixes it '
       'for that game and offers it again for the next', () async {
     final store = MemorySettingsStore();
     final settings = await AppSettings.load(store);
-    expect(settings.botLevel, BotLevel.normal);
-    expect(settings.activeGameBotLevel, BotLevel.normal);
+    expect(settings.botLevel, BotLevel.hard);
+    expect(settings.activeGameBotLevel, BotLevel.hard);
 
-    await settings.setLaunchedBotLevel(BotLevel.hard);
+    await settings.setLaunchedBotLevel(BotLevel.normal);
 
     final reloaded = await AppSettings.load(store);
-    expect(reloaded.botLevel, BotLevel.hard);
-    expect(reloaded.activeGameBotLevel, BotLevel.hard);
+    expect(reloaded.botLevel, BotLevel.normal);
+    expect(reloaded.activeGameBotLevel, BotLevel.normal);
   });
 
   test('an unknown bot speed falls back to normal', () async {

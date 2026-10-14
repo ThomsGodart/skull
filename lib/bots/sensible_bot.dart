@@ -19,6 +19,7 @@ Bot sensibleBot() =>
         trick: view.trick,
         needsTricks: _needsTricks(view),
         seats: view.handSizes.length,
+        unseen: _unseen(view),
       ),
       ChooseLeaderQuestion() => ChooseLeaderAnswer(
         seat: question.seat,
@@ -66,6 +67,21 @@ int _victim(ChooseVictimQuestion question, GameView view) {
   return others.reduce(
     (best, seat) => view.scores[seat] > view.scores[best] ? seat : best,
   );
+}
+
+/// The cards of the deck [view]'s seat has not seen this round: in the
+/// others' hands, or not dealt.
+List<Card> _unseen(GameView view) {
+  final seen = {
+    ...view.hand,
+    for (final trick in view.roundTricks)
+      for (final play in trick) play.card,
+    for (final play in view.trick) play.card,
+  };
+  return [
+    for (final card in view.deck)
+      if (!seen.contains(card)) card,
+  ];
 }
 
 bool _needsTricks(GameView view) =>
@@ -193,12 +209,15 @@ List<PlayOption> waysToPlay(Card card, List<Play> trick) {
 
 /// The card the plain rules play for [seat] on [trick]: take the trick while
 /// tricks are still needed, duck it otherwise. [seats] is how many play.
+/// [unseen], the cards [seat] has not seen this round, keeps it from risking
+/// a bonus card someone could take; without it, it takes no such care.
 PlayAnswer sensiblePlay({
   required int seat,
   required List<Card> legalCards,
   required List<Play> trick,
   required bool needsTricks,
   required int seats,
+  List<Card>? unseen,
 }) {
   final options = <PlayOption>[
     for (final card in legalCards) ...waysToPlay(card, trick),
@@ -231,9 +250,26 @@ PlayAnswer sensiblePlay({
       choice = _weakest(winning);
     } else {
       // Others still play: a high number card is tried first, the characters
-      // are kept for a trick they are sure to take.
+      // are kept for a trick they are sure to take. A 14 that one of the
+      // unseen cards could still take is not risked, so as not to hand its
+      // bonus over: another number, or else a character, goes instead.
       final numbers = winning.where((o) => played(o).isNumber).toList();
-      choice = numbers.isEmpty ? _weakest(winning) : _strongest(numbers);
+      final exposed = [
+        for (final option in numbers)
+          if (unseen != null &&
+              _carriesBonus(played(option)) &&
+              _canBeTaken([...trick, played(option)], seat, unseen))
+            option,
+      ];
+      final plain = numbers.where((o) => !exposed.contains(o)).toList();
+      final characters = winning.where((o) => !played(o).isNumber).toList();
+      if (plain.isNotEmpty) {
+        choice = _strongest(plain);
+      } else if (characters.isNotEmpty) {
+        choice = _weakest(characters);
+      } else {
+        choice = _strongest(numbers);
+      }
     }
   } else if (losing.isNotEmpty) {
     // Duck, and use the chance to get rid of a card that could win later.
@@ -248,6 +284,31 @@ PlayAnswer sensiblePlay({
     declaredValue: choice.declaredValue,
     jokerSuit: choice.jokerSuit,
   );
+}
+
+/// Whether [play] earns a bonus to whoever takes it.
+bool _carriesBonus(Play play) =>
+    play.card.kind == CardKind.number &&
+    (play.card.value == 14 || play.card.isExtraNumber && play.card.value == 8);
+
+/// Whether one of [unseen], played next on [trick], takes it from [seat].
+bool _canBeTaken(List<Play> trick, int seat, List<Card> unseen) {
+  for (final card in unseen) {
+    for (final way in waysToPlay(card, trick)) {
+      final next = Play(
+        seat: -1,
+        card: card,
+        tigressAs: way.tigressAs,
+        declaredValue: way.declaredValue,
+        jokerSuit: card.kind == CardKind.joker
+            ? way.jokerSuit ?? inheritedJokerSuit(trick)
+            : null,
+      );
+      final result = resolveTrick([...trick, next]);
+      if (result.destroyed || result.winner != seat) return true;
+    }
+  }
+  return false;
 }
 
 /// [losing] without the plays that hand a capture bonus to whoever wins the

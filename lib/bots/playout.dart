@@ -38,14 +38,18 @@ final class Playout {
   final List<int> _won;
   final List<Play> _trick;
   final List<Bonus> _bonuses = [];
+
+  /// The bonus points [me]'s cards brought to the seats that took them.
+  int _given = 0;
   int _leader;
 
   int get _seats => _hands.length;
 
-  /// Plays the round out and gives what [me] scores in it. [first], when
+  /// Plays the round out and gives what [me] scores in it, less [giftWeight]
+  /// times the bonus points its cards brought to others. [first], when
   /// given, is what [me] plays at its first turn; everything else follows
   /// the plain rules.
-  int score({PlayAnswer? first}) {
+  double score({PlayAnswer? first}) {
     var mine = first;
     while (true) {
       // Who still has to play this trick: clockwise from its leader,
@@ -89,7 +93,13 @@ final class Playout {
       final result = resolveTrick(_trick);
       if (!result.destroyed) {
         _won[result.winner]++;
-        if (result.winner == me) _bonuses.addAll(result.bonuses);
+        if (result.winner == me) {
+          _bonuses.addAll(result.bonuses);
+        } else {
+          for (final play in _trick) {
+            if (play.seat == me) _given += _gift(play, result.winningPlay!);
+          }
+        }
       }
       for (final (seat, bonus) in result.sideBonuses) {
         if (seat == me) _bonuses.add(bonus);
@@ -98,14 +108,40 @@ final class Playout {
       _trick.clear();
     }
     return scoreRound(
-      bid: bids[me],
-      tricksWon: _won[me],
-      cardsDealt: cardsDealt,
-      bonuses: _bonuses,
-      scoring: scoring,
-    ).total;
+          bid: bids[me],
+          tricksWon: _won[me],
+          cardsDealt: cardsDealt,
+          bonuses: _bonuses,
+          scoring: scoring,
+        ).total -
+        giftWeight * _given;
   }
 }
+
+/// How much a bonus point handed to someone else costs [Playout.score]
+/// against one of its own. Measured with four players: at 1 the strongest
+/// bot hands over 14 % fewer bonus points and wins as often; above, it
+/// starts losing more games.
+const giftWeight = 1.0;
+
+/// The bonus [play] brings to whoever took the trick with [winning].
+int _gift(Play play, Play winning) => switch (play.card.kind) {
+  CardKind.number when play.card.isExtraNumber => switch (play.card.value) {
+    8 => Bonus.extraEight.points,
+    7 => Bonus.extraSeven.points,
+    _ => 0,
+  },
+  CardKind.number when play.card.value == 14 =>
+    play.card.suit == Suit.black
+        ? Bonus.blackFourteen.points
+        : Bonus.standardFourteen.points,
+  _ when play.isPirate && winning.isSkullKing => Bonus.pirateCaptured.points,
+  CardKind.mermaid when winning.isPirate => Bonus.mermaidCaptured.points,
+  CardKind.skullKing when winning.isMermaid => Bonus.skullKingCaptured.points,
+  CardKind.mat when winning.isSkullKing || winning.isMermaid =>
+    Bonus.matCaptured.points,
+  _ => 0,
+};
 
 /// What [view] does not show, dealt at random: a hand for every other seat,
 /// of the size it holds, from the cards that were neither seen nor played.

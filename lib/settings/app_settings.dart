@@ -100,7 +100,7 @@ class AppSettings extends ChangeNotifier {
     settings._botSpeed =
         BotSpeed.values.asNameMap()[values[_botSpeedKey]] ?? BotSpeed.normal;
     settings._botLevel =
-        BotLevel.values.asNameMap()[values[_botLevelKey]] ?? BotLevel.normal;
+        BotLevel.values.asNameMap()[values[_botLevelKey]] ?? BotLevel.hard;
     settings._activeGameBotLevel =
         BotLevel.values.asNameMap()[values[_activeLevelKey]] ??
         settings._botLevel;
@@ -124,8 +124,8 @@ class AppSettings extends ChangeNotifier {
   String? _onlineId;
   String _lastRoomCode = '';
   BotSpeed _botSpeed = BotSpeed.normal;
-  BotLevel _botLevel = BotLevel.normal;
-  BotLevel _activeGameBotLevel = BotLevel.normal;
+  BotLevel _botLevel = BotLevel.hard;
+  BotLevel _activeGameBotLevel = BotLevel.hard;
   bool _singleTapPlay = false;
   bool _haptics = true;
   bool _reduceMotion = false;

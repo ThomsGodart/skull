@@ -142,7 +142,7 @@ void main() {
       [const Card.number(Suit.green, 3), const Card.number(Suit.green, 4)],
       [const Card.number(Suit.yellow, 5), const Card.number(Suit.yellow, 6)],
     ];
-    int score(int bid) => Playout(
+    double score(int bid) => Playout(
       me: 0,
       hands: hands,
       bids: [bid, 0, 0],
@@ -160,5 +160,28 @@ void main() {
       isTrue,
       reason: 'untouched',
     );
+  });
+
+  test('a round played out in the mind counts against the bot the bonus it '
+      'hands to someone else', () {
+    // Seat 0 leads its black 14; seat 1's pirate takes it.
+    final hands = [
+      [const Card.number(Suit.black, 14)],
+      [const Card.special(CardKind.pirate)],
+      [const Card.number(Suit.yellow, 5)],
+    ];
+    final score = Playout(
+      me: 0,
+      hands: hands,
+      bids: [0, 1, 0],
+      tricksWon: [0, 0, 0],
+      trick: const [],
+      leader: 0,
+      cardsDealt: 1,
+      scoring: Scoring.classic,
+    ).score();
+
+    // The zero bid made, less the black 14's bonus given away.
+    expect(score, 10 - giftWeight * Bonus.blackFourteen.points);
   });
 }
