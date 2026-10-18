@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../bots/bot_level.dart';
 import '../engine/engine.dart';
 import '../game/game_controller.dart';
+import '../game/seat_chip.dart';
 import '../game/seat_feed.dart';
 import '../game/seat_identity.dart';
 import '../game/table_screen.dart';
@@ -437,6 +438,8 @@ Widget _onlineTable({
     onKeepWaiting: onKeepWaiting,
     onReplaceNow: onReplaceNow,
   ),
+  awaySeats: absences.map((list) => awaySeats(seating, list)),
+  initialAwaySeats: awaySeats(seating, initialAbsences),
   leaveWarning: leaveWarning,
   roomCode: roomCode,
   canFinishEarly: canFinishEarly,
@@ -444,6 +447,17 @@ Widget _onlineTable({
   onPlayAgain: onPlayAgain,
   gameOverNote: gameOverNote,
 );
+
+/// The seats of [seating] whose player is among [absences], and whether a
+/// bot plays for them.
+Map<int, SeatAway> awaySeats(Seating seating, List<Absence> absences) => {
+  for (final absence in absences)
+    for (var seat = 0; seat < seating.occupants.length; seat++)
+      if (seating.occupantAt(seat)?.id == absence.id)
+        seat: absence.state == AbsenceState.replaced
+            ? SeatAway.bot
+            : SeatAway.away,
+};
 
 /// Says who dropped out of the game and what becomes of their seat: the
 /// seconds left before a bot takes it, and, for the host, the way to wait

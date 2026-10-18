@@ -117,6 +117,17 @@ abstract final class Strings {
   static const harryBadgeHelp =
       'A gagné un pli avec Harry : pourra modifier son pari de 1 à la fin '
       'de la manche';
+  static const awayBadge = 'Absent';
+  static const awayBadgeHelp = 'Déconnecté : la partie l\'attend';
+  static const botBadge = 'Bot';
+  static const botBadgeHelp =
+      'Déconnecté : un bot joue à sa place jusqu\'à son retour';
+  static const hideHand = 'Cacher mes cartes';
+  static const showHand = 'Montrer mes cartes';
+  static const handHidden = 'Cartes cachées';
+  static const handHiddenYourTurn = 'À toi — montre tes cartes pour jouer';
+  static const foldSeats = 'Réduire les joueurs';
+  static const unfoldSeats = 'Agrandir les joueurs';
   static String wagerBadgeHelp(int amount) =>
       'A misé $amount avec Rascal le Flambeur';
   static const cardEffectsLabel = 'Afficher l\'effet des cartes';

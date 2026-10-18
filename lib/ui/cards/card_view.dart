@@ -181,3 +181,50 @@ class CardView extends StatelessWidget {
     ),
   );
 }
+
+/// A card seen from behind: the hand turned over, so the screen can be
+/// shown to someone else.
+class CardBack extends StatelessWidget {
+  const CardBack({super.key, this.width = 56});
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: width * CardView.aspect,
+      decoration: BoxDecoration(
+        color: Tokens.panelRaised,
+        borderRadius: BorderRadius.circular(width * 0.13),
+        border: Border.all(color: Tokens.gold, width: width * 0.04),
+        boxShadow: const [
+          BoxShadow(
+            color: Tokens.cardShadow,
+            blurRadius: 3,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(width * 0.08),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(width * 0.08),
+            border: Border.all(
+              color: Tokens.gold.withValues(alpha: 0.5),
+              width: width * 0.02,
+            ),
+          ),
+          child: Center(
+            child: Pictogram(
+              CardLook.of(const Card.special(CardKind.skullKing)).emblem,
+              size: width * 0.4,
+              color: Tokens.gold.withValues(alpha: 0.8),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

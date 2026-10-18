@@ -319,6 +319,14 @@ class GameController extends ChangeNotifier {
       while (!_disposed) {
         _events.addAll(_feed.takeEvents());
         if (_events.isNotEmpty) {
+          // Nothing happens at the table while the player is to play, unless
+          // someone played in their place — a bot standing in for an absent
+          // player online. The card is no longer theirs to play; should the
+          // game still want it, it is asked again once the events are shown.
+          if (playQuestion != null) {
+            playQuestion = null;
+            _asked = null;
+          }
           await _show(_events.removeFirst());
           continue;
         }

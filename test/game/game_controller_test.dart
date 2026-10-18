@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:skull_kings/bots/bot.dart';
 import 'package:skull_kings/engine/engine.dart';
 import 'package:skull_kings/game/game_controller.dart';
+import 'package:skull_kings/game/local_table.dart';
 
 GameController controllerFor({int players = 4, int seed = 5}) => GameController(
   config: GameConfig(players: players, seed: seed),
@@ -15,6 +16,7 @@ GameController controllerFor({int players = 4, int seed = 5}) => GameController(
 Future<void> settle() => Future<void>.delayed(Duration.zero);
 
 void main() {
+  stalePlayQuestionTests();
   test('at the start the human holds a sorted hand and is asked to bid, '
       'while the bids of the bots stay hidden', () async {
     final controller = controllerFor()..start();
@@ -568,4 +570,31 @@ Future<void> playUntil(
     }
   }
   fail('the condition was never reached');
+}
+
+void stalePlayQuestionTests() {
+  test('a turn a bot plays in the player\'s place is no longer offered to '
+      'the player', () async {
+    final table = LocalTable(
+      config: const GameConfig(players: 3, seed: 4),
+      bot: randomBot(Random(4)),
+      humanSeats: {1},
+      primarySeat: 1,
+    );
+    final controller = GameController.onFeed(
+      table.feedFor(1),
+      speed: TableSpeed.instant,
+    )..start();
+    await settle();
+    controller.bid(0);
+    await settle();
+    expect(controller.playQuestion, isNotNull);
+
+    // The player is away: a bot plays the card they were asked for.
+    table.setAutopilot(1, on: true);
+    await settle();
+
+    expect(controller.playQuestion, isNull);
+    controller.dispose();
+  });
 }

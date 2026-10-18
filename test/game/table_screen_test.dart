@@ -82,6 +82,116 @@ void main() {
     expect(find.byKey(const Key('bid-2')), findsNothing);
   });
 
+  Future<void> bidZero(WidgetTester tester) async {
+    await tester.tap(find.byKey(const Key('bid-0')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('place-bid')));
+    await tester.pump();
+  }
+
+  double frameOpacity(WidgetTester tester) => tester
+      .widget<AnimatedOpacity>(find.byKey(const Key('turn-frame')))
+      .opacity;
+
+  testWidgets('a gold frame goes round the table on the player\'s turn to '
+      'play only', (tester) async {
+    final controller = await openTable(tester);
+    expect(frameOpacity(tester), 0, reason: 'bidding is no turn');
+
+    await bidZero(tester);
+    expect(controller.playQuestion, isNotNull);
+    expect(frameOpacity(tester), 1);
+  });
+
+  testWidgets('the hand can be turned over to show the screen to someone, '
+      'and nothing of it shows until it is turned back', (tester) async {
+    final controller = await openTable(tester, seed: 9);
+    await bidZero(tester);
+    expect(controller.playQuestion, isNotNull);
+
+    await tester.tap(find.byKey(const Key('hide-hand')));
+    await tester.pump();
+    expect(find.byType(CardBack), findsNWidgets(controller.hand.length));
+    expect(find.byKey(const Key('hand-hidden-status')), findsOneWidget);
+    expect(find.byKey(const Key('play-card')), findsNothing);
+    await tapCard(tester, controller.hand.first);
+    expect(find.byKey(const Key('card-hint')), findsNothing);
+    expect(controller.playQuestion, isNotNull, reason: 'nothing played');
+
+    await tester.tap(find.byKey(const Key('hide-hand')));
+    await tester.pump();
+    expect(find.byType(CardBack), findsNothing);
+    expect(find.byKey(const Key('play-card')), findsOneWidget);
+  });
+
+  testWidgets('the seats that already played the trick are greyed', (
+    tester,
+  ) async {
+    final controller = await openTable(tester, seed: 9);
+    await bidZero(tester);
+    expect(controller.trick, isNotEmpty, reason: 'a seed where bots lead');
+
+    expect(
+      find.byKey(const Key('seat-played')),
+      findsNWidgets(controller.trick.length),
+    );
+  });
+
+  testWidgets('on a short screen the seats fold to one line each, and a tap '
+      'on them unfolds them', (tester) async {
+    await openTable(tester, players: 8, size: const Size(375, 560));
+    await bidZero(tester);
+    expect(find.byKey(const Key('seat-compact')), findsNWidgets(8));
+
+    await tester.tap(find.byKey(const Key('fold-seats')));
+    await tester.pump();
+    expect(find.byKey(const Key('seat-compact')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a tall enough screen keeps the seats unfolded', (tester) async {
+    await openTable(tester);
+    await bidZero(tester);
+    expect(find.byKey(const Key('seat-compact')), findsNothing);
+  });
+
+  testWidgets('the seat of a player who dropped out says so, and whether a '
+      'bot plays for them', (tester) async {
+    tester.view.physicalSize = const Size(360, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: Tokens.theme(),
+        home: TableScreen(
+          controller: GameController(
+            config: const GameConfig(players: 4, seed: 3),
+            bot: randomBot(Random(3)),
+            speed: TableSpeed.instant,
+          ),
+          initialAwaySeats: const {1: SeatAway.bot, 2: SeatAway.away},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('seat-bot')), findsOneWidget);
+    expect(find.byKey(const Key('seat-away')), findsOneWidget);
+  });
+
+  testWidgets('with single-tap play, a tap out of turn only lifts the card', (
+    tester,
+  ) async {
+    final settings = await AppSettings.load(MemorySettingsStore());
+    await settings.setSingleTapPlay(true);
+    final controller = await openTable(tester, settings: settings);
+    final card = controller.hand.first;
+
+    await tapCard(tester, card);
+    expect(find.byType(SimpleDialog), findsNothing);
+    expect(controller.hand, contains(card));
+  });
+
   testWidgets('a tap lifts a card and says what it does; a second tap puts '
       'it back, and only the button plays it', (tester) async {
     final controller = await openTable(tester);

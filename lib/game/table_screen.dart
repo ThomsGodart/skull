@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -16,6 +17,7 @@ import '../ui/strings.dart';
 import '../online/room_chat.dart';
 import '../online/room_chat_view.dart';
 import '../ui/fullscreen_button.dart';
+import '../ui/turn_buzz.dart';
 import 'bid_panel.dart';
 import 'game_controller.dart';
 import 'power_dialog.dart';
@@ -43,8 +45,15 @@ class TableScreen extends StatefulWidget {
     this.canFinishEarly = true,
     this.gameOverNote,
     this.chat,
+    this.awaySeats,
+    this.initialAwaySeats = const {},
     this.screenAwake = const WakelockScreenAwake(),
   });
+
+  /// The seats of an online game whose player dropped out, each time that
+  /// changes, and whether a bot plays for them.
+  final Stream<Map<int, SeatAway>>? awaySeats;
+  final Map<int, SeatAway> initialAwaySeats;
 
   /// The player's play options. Defaults apply when there are none.
   final AppSettings? settings;
@@ -116,15 +125,28 @@ class _TableScreenState extends State<TableScreen> {
           _game,
           autoHarry: () => widget.settings?.autoHarry ?? false,
         )
-        ..onTurn = (() => _vibrate(HapticFeedback.mediumImpact))
+        ..onTurn = (() => _vibrate(turnBuzz))
         ..onPower = _askPower
         ..onStock = _showStock;
+
+  /// The hand is turned over, to show the screen to someone else.
+  bool _handHidden = false;
+
+  /// Whether the player folded the seats down to one line each, or unfolded
+  /// them; null leaves it to the room there is.
+  bool? _foldChoice;
+
+  late Map<int, SeatAway> _away = widget.initialAwaySeats;
+  StreamSubscription<Map<int, SeatAway>>? _awaySubscription;
 
   @override
   void initState() {
     super.initState();
     _table.addListener(_onTableChanged);
     widget.chat?.addListener(_onChatChanged);
+    _awaySubscription = widget.awaySeats?.listen(
+      (away) => setState(() => _away = away),
+    );
     _game.start();
     _openTables++;
     widget.screenAwake.keepOn();
@@ -147,6 +169,7 @@ class _TableScreenState extends State<TableScreen> {
   @override
   void dispose() {
     if (--_openTables == 0) widget.screenAwake.release();
+    _awaySubscription?.cancel();
     // The chat is the room's: it outlives this table when one plays again.
     widget.chat?.removeListener(_onChatChanged);
     _table
@@ -255,12 +278,16 @@ class _TableScreenState extends State<TableScreen> {
   /// second tap puts it back. It is played with the button, never by a tap
   /// meant to put it away — unless the player asked for single-tap play.
   Future<void> _onCardTap(Card card) async {
-    if (_singleTap) return _play(card);
+    // Out of turn, a tap only lifts the card, single-tap play or not: no
+    // tigress or 0/14 question for a card that cannot go yet.
+    if (_singleTap && _game.playQuestion != null) return _play(card);
     _vibrate(HapticFeedback.selectionClick);
     _table.tap(card);
   }
 
   Future<void> _play(Card card) async {
+    bool playable() => _game.playQuestion?.legalCards.contains(card) ?? false;
+    if (!playable()) return;
     TigressMode? mode;
     int? value;
     Suit? suit;
@@ -286,6 +313,8 @@ class _TableScreenState extends State<TableScreen> {
       });
       if (suit == null || !mounted) return;
     }
+    // The turn may have gone while a choice was asked.
+    if (!playable()) return;
     _vibrate(HapticFeedback.lightImpact);
     _game.play(card, tigressAs: mode, declaredValue: value, jokerSuit: suit);
   }
@@ -548,6 +577,44 @@ class _TableScreenState extends State<TableScreen> {
   );
 
   Widget _statusContent() {
+    final row = _statusRow();
+    return Row(
+      children: [
+        IconButton(
+          key: const Key('hide-hand'),
+          tooltip: _handHidden ? Strings.showHand : Strings.hideHand,
+          visualDensity: VisualDensity.compact,
+          onPressed: _toggleHand,
+          icon: Icon(
+            _handHidden ? Icons.visibility_off : Icons.visibility,
+            color: _handHidden ? Tokens.gold : Tokens.mutedText,
+          ),
+        ),
+        Expanded(child: row),
+      ],
+    );
+  }
+
+  void _toggleHand() {
+    _vibrate(HapticFeedback.selectionClick);
+    setState(() => _handHidden = !_handHidden);
+    // Nothing of the hand may show through: no lifted card, no hint.
+    if (_handHidden) _table.clear();
+  }
+
+  Widget _statusRow() {
+    if (_handHidden) {
+      // The status would tell what is held: « pas de jaune », the card Mary
+      // forces.
+      return Text(
+        _game.playQuestion != null
+            ? Strings.handHiddenYourTurn
+            : Strings.handHidden,
+        key: const Key('hand-hidden-status'),
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: Tokens.gold, fontWeight: FontWeight.w700),
+      );
+    }
     final card = _table.shown;
     final effects = widget.settings?.cardEffects ?? true;
     final playButton = _game.playQuestion == null
@@ -612,6 +679,7 @@ class _TableScreenState extends State<TableScreen> {
     onInspect: _table.inspect,
     cardWidth: cardWidth ?? _handCardWidth(game.hand.length),
     namedPirates: _namedPirates,
+    faceDown: _handHidden,
   );
 
   /// True while the human is choosing a bid, or waiting on the others'.
@@ -620,26 +688,65 @@ class _TableScreenState extends State<TableScreen> {
   /// Phone held upright: opponents on top, the trick, then the hand. The
   /// hand gives way on a short screen, a browser with its bars on show for
   /// instance, so that the trick keeps room.
-  Widget _portraitBody(GameController game, double height) => Column(
-    children: [
-      _opponents(),
-      _trickZone(game),
-      _statusLine(),
-      const SizedBox(height: Tokens.space2),
-      SizedBox(width: 220, child: _seatChip(game.humanSeat, showCards: false)),
-      const SizedBox(height: Tokens.space2),
-      // Compact hand while bidding so the bid panel stays reachable.
-      _hand(
-        game,
-        cardWidth: _bidding
-            ? 52
-            : min(
-                _handCardWidth(game.hand.length),
-                (height * 0.22 / CardView.aspect).clamp(56.0, 96.0),
-              ),
-      ),
-    ],
-  );
+  Widget _portraitBody(GameController game, Size room) {
+    final height = room.height;
+    // Compact hand while bidding so the bid panel stays reachable.
+    final handWidth = _bidding
+        ? 52.0
+        : min(
+            _handCardWidth(game.hand.length),
+            (height * 0.22 / CardView.aspect).clamp(56.0, 96.0),
+          );
+    final folded = _foldChoice ?? _foldsByItself(room, handWidth);
+    return Column(
+      children: [
+        GestureDetector(
+          key: const Key('fold-seats'),
+          behavior: HitTestBehavior.opaque,
+          // Folded or not, as the player likes it: a tap on the seats.
+          onTap: () => setState(() => _foldChoice = !folded),
+          child: Tooltip(
+            message: folded ? Strings.unfoldSeats : Strings.foldSeats,
+            triggerMode: TooltipTriggerMode.manual,
+            child: _opponents(compact: folded),
+          ),
+        ),
+        _trickZone(game),
+        _statusLine(),
+        SizedBox(height: folded ? Tokens.space1 : Tokens.space2),
+        SizedBox(
+          width: 220,
+          child: _seatChip(game.humanSeat, showCards: false, compact: folded),
+        ),
+        SizedBox(height: folded ? Tokens.space1 : Tokens.space2),
+        _hand(game, cardWidth: handWidth),
+      ],
+    );
+  }
+
+  /// The least the trick is given in portrait before the seats fold by
+  /// themselves: a small phone, or one with the browser's bars on show,
+  /// would otherwise leave the cards played no room at all.
+  static const _trickRoom = 190.0;
+
+  /// Whether the seats must fold for the trick to keep [_trickRoom], in a
+  /// portrait [room] with a hand of cards [handWidth] wide.
+  bool _foldsByItself(Size room, double handWidth) {
+    final tokens = widget.settings?.trickTokens ?? false;
+    final seatHeight = _seatHeight + (tokens ? _tokensHeight : 0);
+    final rows = (_game.opponents.length / _opponentsPerRow).ceil();
+    final seats = rows * seatHeight + (rows - 1) * Tokens.space2;
+    final hand = handWidth * CardView.aspect + 22;
+    final rest = 48 + Tokens.space2 * 2 + seatHeight + hand;
+    return room.height - seats - rest < _trickRoom;
+  }
+
+  int get _opponentsPerRow => switch (_game.seats - 1) {
+    <= 3 && final opponents => opponents,
+    4 => 2,
+    <= 6 => 3,
+    _ => 4,
+  };
 
   /// Phone on its side: everyone on the left, the trick and the hand on the
   /// right, with cards sized to the little height there is.
@@ -768,9 +875,10 @@ class _TableScreenState extends State<TableScreen> {
                         builder: (context, constraints) =>
                             _isLandscape(constraints)
                             ? _landscapeBody(game, constraints.maxHeight)
-                            : _portraitBody(game, constraints.maxHeight),
+                            : _portraitBody(game, constraints.biggest),
                       ),
                     ),
+                    _turnFrame(),
                     if (widget.chat case final chat?)
                       ReactionOverlay(
                         reactions: chat.reactions,
@@ -783,6 +891,37 @@ class _TableScreenState extends State<TableScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// A gold frame around the table while it is the player's turn to play:
+  /// seen at a glance, wherever the eye is.
+  Widget _turnFrame() {
+    final turn = _game.playQuestion != null;
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: AnimatedOpacity(
+          key: const Key('turn-frame'),
+          opacity: turn ? 1 : 0,
+          duration: (widget.settings?.reduceMotion ?? false)
+              ? Duration.zero
+              : const Duration(milliseconds: 200),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(Tokens.radiusPanel),
+              border: Border.all(color: Tokens.gold, width: 4),
+              gradient: RadialGradient(
+                radius: 1.2,
+                colors: [
+                  Colors.transparent,
+                  Tokens.gold.withValues(alpha: 0.14),
+                ],
+                stops: const [0.7, 1],
+              ),
+            ),
           ),
         ),
       ),
@@ -1028,16 +1167,10 @@ class _TableScreenState extends State<TableScreen> {
 
   /// The opponents, in the order play goes round from the human, in rows of
   /// two to four so that each tile stays wide enough to read at a glance.
-  Widget _opponents() => LayoutBuilder(
+  Widget _opponents({bool compact = false}) => LayoutBuilder(
     builder: (context, constraints) {
-      final opponents = _game.seats - 1;
-      final perRow = switch (opponents) {
-        <= 3 => opponents,
-        4 => 2,
-        <= 6 => 3,
-        _ => 4,
-      };
-      const gap = Tokens.space2;
+      final perRow = _opponentsPerRow;
+      final gap = compact ? Tokens.space1 : Tokens.space2;
       final width = (constraints.maxWidth - gap * (perRow - 1)) / perRow;
       return Wrap(
         alignment: WrapAlignment.center,
@@ -1045,7 +1178,10 @@ class _TableScreenState extends State<TableScreen> {
         runSpacing: gap,
         children: [
           for (final seat in _game.opponents)
-            SizedBox(width: width, child: _seatChip(seat, showCards: true)),
+            SizedBox(
+              width: width,
+              child: _seatChip(seat, showCards: true, compact: compact),
+            ),
         ],
       );
     },
@@ -1098,31 +1234,42 @@ class _TableScreenState extends State<TableScreen> {
   /// The width a seat is drawn for at its usual size.
   static const _seatWidth = 112.0;
 
-  Widget _seatChip(int seat, {required bool showCards, double scale = 1}) =>
-      SeatChip(
-        scale: scale,
-        identity: _seats[seat],
-        bid: _game.bids.elementAtOrNull(seat),
-        tricksWon: _game.tricksWon.elementAtOrNull(seat) ?? 0,
-        score: _game.scores[seat],
-        cardsLeft: showCards ? _game.handSizes.elementAtOrNull(seat) : null,
-        isCurrent: _game.currentSeat == seat,
-        isDealer: _game.dealer == seat,
-        emphasizeBid: _game.revealingBids,
-        bidAccepted:
-            _game.acceptedBids.contains(seat) &&
-            _game.bids.elementAtOrNull(seat) == null,
-        wager: _game.wagers[seat],
-        bonus: _game.bonusInPlay.elementAtOrNull(seat) ?? 0,
-        hasHarry: _game.harrySeats.contains(seat),
-        showTokens: widget.settings?.trickTokens ?? false,
-        // Between two tricks, and while bids are open: who plays first.
-        leadsNext:
-            _game.leader == seat &&
-            _game.trick.isEmpty &&
-            _game.roundSummary == null &&
-            _game.result == null,
-      );
+  Widget _seatChip(
+    int seat, {
+    required bool showCards,
+    double scale = 1,
+    bool compact = false,
+  }) => SeatChip(
+    scale: scale,
+    compact: compact,
+    away: _away[seat],
+    // Who already played the trick under way: the others are left to.
+    played:
+        _game.trickWinner == null &&
+        _game.trick.any((play) => play.seat == seat) &&
+        _game.currentSeat != seat,
+    identity: _seats[seat],
+    bid: _game.bids.elementAtOrNull(seat),
+    tricksWon: _game.tricksWon.elementAtOrNull(seat) ?? 0,
+    score: _game.scores[seat],
+    cardsLeft: showCards ? _game.handSizes.elementAtOrNull(seat) : null,
+    isCurrent: _game.currentSeat == seat,
+    isDealer: _game.dealer == seat,
+    emphasizeBid: _game.revealingBids,
+    bidAccepted:
+        _game.acceptedBids.contains(seat) &&
+        _game.bids.elementAtOrNull(seat) == null,
+    wager: _game.wagers[seat],
+    bonus: _game.bonusInPlay.elementAtOrNull(seat) ?? 0,
+    hasHarry: _game.harrySeats.contains(seat),
+    showTokens: widget.settings?.trickTokens ?? false,
+    // Between two tricks, and while bids are open: who plays first.
+    leadsNext:
+        _game.leader == seat &&
+        _game.trick.isEmpty &&
+        _game.roundSummary == null &&
+        _game.result == null,
+  );
 
   /// What lies on the table. The trick is sized to show whole in [room].
   Widget _center({double maxCard = 104, required Size room}) {

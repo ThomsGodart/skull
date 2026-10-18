@@ -5,6 +5,15 @@ import '../ui/player_icons.dart';
 import '../ui/strings.dart';
 import 'seat_identity.dart';
 
+/// What became of a seat whose player dropped out of an online game.
+enum SeatAway {
+  /// Nobody plays the seat for now: it waits for its player, or for a bot.
+  away,
+
+  /// A bot plays the seat until its player is back.
+  bot,
+}
+
 /// A player at the table: who they are, what they bid, how many tricks they
 /// took, and whether they deal or lead.
 class SeatChip extends StatelessWidget {
@@ -25,6 +34,9 @@ class SeatChip extends StatelessWidget {
     this.hasHarry = false,
     this.showTokens = false,
     this.scale = 1,
+    this.played = false,
+    this.away,
+    this.compact = false,
   });
 
   final SeatIdentity identity;
@@ -66,6 +78,17 @@ class SeatChip extends StatelessWidget {
   /// Everything in the chip is this many times its usual size.
   final double scale;
 
+  /// The seat already put its card on the trick being played: it is greyed,
+  /// so the eye goes to those still to play.
+  final bool played;
+
+  /// The seat's player dropped out of the online game.
+  final SeatAway? away;
+
+  /// One line only: the avatar, the name, the bid and the tricks. For a
+  /// small screen, where the trick needs the room.
+  final bool compact;
+
   /// Gold on target, red once over the bid: a glance tells how a seat stands.
   Color get _tricksColor {
     final bid = this.bid;
@@ -76,115 +99,190 @@ class SeatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: Tokens.space2 * scale,
-        vertical: (Tokens.space1 + 2) * scale,
+    return Opacity(
+      key: played ? const Key('seat-played') : null,
+      opacity: played ? 0.4 : 1,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: Tokens.space2 * scale,
+          vertical: (compact ? Tokens.space1 : Tokens.space1 + 2) * scale,
+        ),
+        decoration: BoxDecoration(
+          color: isCurrent ? Tokens.panelRaised : Tokens.panel,
+          borderRadius: BorderRadius.circular(Tokens.radiusButton),
+          border: Border.all(
+            color: isCurrent ? Tokens.gold : Tokens.outline,
+            width: isCurrent ? 2.5 : 1,
+          ),
+        ),
+        child: compact ? _compactContent() : _content(),
       ),
-      decoration: BoxDecoration(
-        color: isCurrent ? Tokens.panelRaised : Tokens.panel,
-        borderRadius: BorderRadius.circular(Tokens.radiusButton),
-        border: Border.all(
-          color: isCurrent ? Tokens.gold : Tokens.outline,
-          width: isCurrent ? 2.5 : 1,
+    );
+  }
+
+  Widget _avatar() {
+    if (identity.icon case final glyph?) {
+      return PlayerAvatar(
+        color: identity.color,
+        glyph: glyph,
+        radius: 11 * scale,
+      );
+    }
+    return CircleAvatar(
+      radius: 10 * scale,
+      backgroundColor: identity.color,
+      child: Text(
+        identity.initials,
+        style: TextStyle(
+          fontSize: 9 * scale,
+          fontWeight: FontWeight.w800,
+          color: Tokens.onAvatar,
         ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _fitted(
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (identity.icon case final glyph?)
-                  PlayerAvatar(
-                    color: identity.color,
-                    glyph: glyph,
-                    radius: 11 * scale,
-                  )
-                else
-                  CircleAvatar(
-                    radius: 10 * scale,
-                    backgroundColor: identity.color,
-                    child: Text(
-                      identity.initials,
-                      style: TextStyle(
-                        fontSize: 9 * scale,
-                        fontWeight: FontWeight.w800,
-                        color: Tokens.onAvatar,
-                      ),
-                    ),
-                  ),
-                SizedBox(width: (Tokens.space1 + 2) * scale),
-                Text(
-                  identity.name,
-                  style: TextStyle(
-                    color: identity.color,
-                    fontSize: 14 * scale,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                if (isDealer) _badge(Strings.dealerMark, Strings.dealer),
-                if (leadsNext) _badge(Strings.leadMark, Strings.leadsNext),
-              ],
-            ),
-          ),
-          SizedBox(height: 2 * scale),
-          _fitted(
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!identity.isGhost) ...[
-                  if (bidAccepted && bid == null)
-                    _bidAcceptedMark()
-                  else
-                    _stat(
-                      Strings.counterBid,
-                      bid?.toString() ?? '?',
-                      Tokens.text,
-                      boxed: emphasizeBid,
-                    ),
-                  SizedBox(width: Tokens.space3 * scale),
-                ],
-                _stat(Strings.counterTricks, '$tricksWon', _tricksColor),
-              ],
-            ),
-          ),
-          if (showTokens && bid != null && !identity.isGhost) _tokens(bid!),
-          if (wager != null || hasHarry || bonus != 0)
-            _fitted(
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (bonus != 0)
-                    KeyedSubtree(
-                      key: const Key('bonus-in-play'),
-                      child: _badge(
-                        Strings.bonusBadge(bonus),
-                        Strings.bonusBadgeHelp,
-                      ),
-                    ),
-                  if (wager case final amount?)
-                    _badge(
-                      Strings.wagerBadge(amount),
-                      Strings.wagerBadgeHelp(amount),
-                    ),
-                  if (hasHarry)
-                    _badge(Strings.harryBadge, Strings.harryBadgeHelp),
-                ],
+    );
+  }
+
+  Widget _name() => Text(
+    identity.name,
+    style: TextStyle(
+      color: identity.color,
+      fontSize: 14 * scale,
+      fontWeight: FontWeight.w800,
+    ),
+  );
+
+  /// Says that the player dropped out, and whether a bot plays for them.
+  Widget? _awayBadge() => switch (away) {
+    null => null,
+    SeatAway.away => KeyedSubtree(
+      key: const Key('seat-away'),
+      child: _badge(Strings.awayBadge, Strings.awayBadgeHelp, alert: true),
+    ),
+    SeatAway.bot => KeyedSubtree(
+      key: const Key('seat-bot'),
+      child: _badge(Strings.botBadge, Strings.botBadgeHelp, alert: true),
+    ),
+  };
+
+  /// The chip on one line: who, what they bid, what they took.
+  Widget _compactContent() => _fitted(
+    Row(
+      key: const Key('seat-compact'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _avatar(),
+        SizedBox(width: Tokens.space1 * scale),
+        _name(),
+        ?_awayBadge(),
+        if (isDealer) _badge(Strings.dealerMark, Strings.dealer),
+        if (leadsNext) _badge(Strings.leadMark, Strings.leadsNext),
+        SizedBox(width: Tokens.space2 * scale),
+        if (!identity.isGhost) ...[
+          if (bidAccepted && bid == null)
+            Icon(
+              Icons.check_circle,
+              key: const Key('bid-accepted'),
+              size: 16 * scale,
+              color: Tokens.gold,
+            )
+          else
+            Text(
+              bid?.toString() ?? '?',
+              style: TextStyle(
+                color: emphasizeBid ? Tokens.gold : Tokens.text,
+                fontSize: 16 * scale,
+                fontWeight: FontWeight.w900,
               ),
             ),
-          _fitted(
-            Text(
-              [
-                identity.isGhost ? Strings.ghostLabel : Strings.points(score),
-                if (cardsLeft != null) Strings.cardsLeft(cardsLeft!),
-              ].join(' · '),
-              style: TextStyle(color: Tokens.mutedText, fontSize: 12 * scale),
-            ),
+          Text(
+            ' / ',
+            style: TextStyle(color: Tokens.mutedText, fontSize: 14 * scale),
           ),
         ],
-      ),
+        Text(
+          '$tricksWon',
+          style: TextStyle(
+            color: _tricksColor,
+            fontSize: 16 * scale,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _content() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _fitted(
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _avatar(),
+              SizedBox(width: (Tokens.space1 + 2) * scale),
+              _name(),
+              ?_awayBadge(),
+              if (isDealer) _badge(Strings.dealerMark, Strings.dealer),
+              if (leadsNext) _badge(Strings.leadMark, Strings.leadsNext),
+            ],
+          ),
+        ),
+        SizedBox(height: 2 * scale),
+        _fitted(
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!identity.isGhost) ...[
+                if (bidAccepted && bid == null)
+                  _bidAcceptedMark()
+                else
+                  _stat(
+                    Strings.counterBid,
+                    bid?.toString() ?? '?',
+                    Tokens.text,
+                    boxed: emphasizeBid,
+                  ),
+                SizedBox(width: Tokens.space3 * scale),
+              ],
+              _stat(Strings.counterTricks, '$tricksWon', _tricksColor),
+            ],
+          ),
+        ),
+        if (showTokens && bid != null && !identity.isGhost) _tokens(bid!),
+        if (wager != null || hasHarry || bonus != 0)
+          _fitted(
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (bonus != 0)
+                  KeyedSubtree(
+                    key: const Key('bonus-in-play'),
+                    child: _badge(
+                      Strings.bonusBadge(bonus),
+                      Strings.bonusBadgeHelp,
+                    ),
+                  ),
+                if (wager case final amount?)
+                  _badge(
+                    Strings.wagerBadge(amount),
+                    Strings.wagerBadgeHelp(amount),
+                  ),
+                if (hasHarry)
+                  _badge(Strings.harryBadge, Strings.harryBadgeHelp),
+              ],
+            ),
+          ),
+        _fitted(
+          Text(
+            [
+              identity.isGhost ? Strings.ghostLabel : Strings.points(score),
+              if (cardsLeft != null) Strings.cardsLeft(cardsLeft!),
+            ].join(' · '),
+            style: TextStyle(color: Tokens.mutedText, fontSize: 12 * scale),
+          ),
+        ),
+      ],
     );
   }
 
@@ -277,14 +375,14 @@ class SeatChip extends StatelessWidget {
         ],
       );
 
-  Widget _badge(String mark, String meaning) => Padding(
+  Widget _badge(String mark, String meaning, {bool alert = false}) => Padding(
     padding: EdgeInsets.only(left: (Tokens.space1 + 2) * scale),
     child: Tooltip(
       message: meaning,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 5 * scale, vertical: scale),
         decoration: BoxDecoration(
-          color: Tokens.gold,
+          color: alert ? Tokens.danger : Tokens.gold,
           borderRadius: BorderRadius.circular(6 * scale),
         ),
         child: Text(

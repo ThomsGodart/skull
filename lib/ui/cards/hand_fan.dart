@@ -17,6 +17,7 @@ class HandFan extends StatelessWidget {
     this.onInspect,
     this.cardWidth = 64,
     this.namedPirates = false,
+    this.faceDown = false,
   });
 
   final List<Card> cards;
@@ -28,6 +29,9 @@ class HandFan extends StatelessWidget {
   final ValueChanged<Card>? onInspect;
   final double cardWidth;
   final bool namedPirates;
+
+  /// The cards are turned over: their backs only, and nothing to tap.
+  final bool faceDown;
 
   static const _lift = 18.0;
 
@@ -58,7 +62,7 @@ class HandFan extends StatelessWidget {
                       ? Duration.zero
                       : const Duration(milliseconds: 120),
                   left: left + index * step,
-                  top: card == selected ? 0 : _lift,
+                  top: card == selected && !faceDown ? 0 : _lift,
                   child: _tappable(card),
                 ),
             ],
@@ -69,6 +73,9 @@ class HandFan extends StatelessWidget {
   }
 
   Widget _tappable(Card card) {
+    if (faceDown) {
+      return CardBack(key: Key('hand-${card.id}'), width: cardWidth);
+    }
     // No [legal] list yet: every card may be pre-selected for when the turn
     // comes. Once the turn is open, only legal cards use [onTap].
     final awaitingTurn = legal == null;
