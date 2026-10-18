@@ -47,6 +47,7 @@ class TableScreen extends StatefulWidget {
     this.chat,
     this.awaySeats,
     this.initialAwaySeats = const {},
+    this.onAwayTap,
     this.screenAwake = const WakelockScreenAwake(),
   });
 
@@ -54,6 +55,10 @@ class TableScreen extends StatefulWidget {
   /// changes, and whether a bot plays for them.
   final Stream<Map<int, SeatAway>>? awaySeats;
   final Map<int, SeatAway> initialAwaySeats;
+
+  /// Set on the host's phone: the away badge of [seat] was tapped, to wait
+  /// for its player rather than let a bot play, or the other way round.
+  final void Function(int seat, SeatAway away)? onAwayTap;
 
   /// The player's play options. Defaults apply when there are none.
   final AppSettings? settings;
@@ -1243,6 +1248,10 @@ class _TableScreenState extends State<TableScreen> {
     scale: scale,
     compact: compact,
     away: _away[seat],
+    onAwayTap: switch ((_away[seat], widget.onAwayTap)) {
+      (final away?, final tap?) => () => tap(seat, away),
+      _ => null,
+    },
     // Who already played the trick under way: the others are left to.
     played:
         _game.trickWinner == null &&

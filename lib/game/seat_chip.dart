@@ -37,6 +37,7 @@ class SeatChip extends StatelessWidget {
     this.played = false,
     this.away,
     this.compact = false,
+    this.onAwayTap,
   });
 
   final SeatIdentity identity;
@@ -84,6 +85,10 @@ class SeatChip extends StatelessWidget {
 
   /// The seat's player dropped out of the online game.
   final SeatAway? away;
+
+  /// Set on the host's phone: a tap on the away badge switches the seat
+  /// between waiting for its player and a bot playing for them.
+  final VoidCallback? onAwayTap;
 
   /// One line only: the avatar, the name, the bid and the tricks. For a
   /// small screen, where the trick needs the room.
@@ -152,17 +157,35 @@ class SeatChip extends StatelessWidget {
   );
 
   /// Says that the player dropped out, and whether a bot plays for them.
-  Widget? _awayBadge() => switch (away) {
-    null => null,
-    SeatAway.away => KeyedSubtree(
-      key: const Key('seat-away'),
-      child: _badge(Strings.awayBadge, Strings.awayBadgeHelp, alert: true),
-    ),
-    SeatAway.bot => KeyedSubtree(
-      key: const Key('seat-bot'),
-      child: _badge(Strings.botBadge, Strings.botBadgeHelp, alert: true),
-    ),
-  };
+  Widget? _awayBadge() {
+    final away = this.away;
+    if (away == null) return null;
+    final tap = onAwayTap;
+    final (key, mark, help) = switch (away) {
+      SeatAway.away => (
+        const Key('seat-away'),
+        Strings.awayBadge,
+        tap == null ? Strings.awayBadgeHelp : Strings.awayBadgeHostHelp,
+      ),
+      SeatAway.bot => (
+        const Key('seat-bot'),
+        Strings.botBadge,
+        tap == null ? Strings.botBadgeHelp : Strings.botBadgeHostHelp,
+      ),
+    };
+    final badge = _badge(
+      tap == null ? mark : '$mark ${Strings.switchMark}',
+      help,
+      alert: true,
+    );
+    if (tap == null) return KeyedSubtree(key: key, child: badge);
+    return GestureDetector(
+      key: key,
+      behavior: HitTestBehavior.opaque,
+      onTap: tap,
+      child: badge,
+    );
+  }
 
   /// The chip on one line: who, what they bid, what they took.
   Widget _compactContent() => _fitted(

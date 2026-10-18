@@ -179,6 +179,41 @@ void main() {
     expect(find.byKey(const Key('seat-away')), findsOneWidget);
   });
 
+  testWidgets('on the host\'s phone, a tap on the away badge switches '
+      'between waiting and a bot; elsewhere it does nothing', (tester) async {
+    tester.view.physicalSize = const Size(360, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final taps = <(int, SeatAway)>[];
+    Future<void> open({required bool host}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: Tokens.theme(),
+          home: TableScreen(
+            key: UniqueKey(),
+            controller: GameController(
+              config: const GameConfig(players: 4, seed: 3),
+              bot: randomBot(Random(3)),
+              speed: TableSpeed.instant,
+            ),
+            initialAwaySeats: const {1: SeatAway.bot, 2: SeatAway.away},
+            onAwayTap: host ? (seat, away) => taps.add((seat, away)) : null,
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    await open(host: true);
+    await tester.tap(find.byKey(const Key('seat-bot')));
+    await tester.tap(find.byKey(const Key('seat-away')));
+    expect(taps, [(1, SeatAway.bot), (2, SeatAway.away)]);
+
+    await open(host: false);
+    await tester.tap(find.byKey(const Key('seat-bot')), warnIfMissed: false);
+    expect(taps, hasLength(2));
+  });
+
   testWidgets('with single-tap play, a tap out of turn only lifts the card', (
     tester,
   ) async {

@@ -440,6 +440,13 @@ Widget _onlineTable({
   ),
   awaySeats: absences.map((list) => awaySeats(seating, list)),
   initialAwaySeats: awaySeats(seating, initialAbsences),
+  onAwayTap: onKeepWaiting == null || onReplaceNow == null
+      ? null
+      : (seat, away) {
+          final id = seating.occupantAt(seat)?.id;
+          if (id == null) return;
+          away == SeatAway.bot ? onKeepWaiting(id) : onReplaceNow(id);
+        },
   leaveWarning: leaveWarning,
   roomCode: roomCode,
   canFinishEarly: canFinishEarly,

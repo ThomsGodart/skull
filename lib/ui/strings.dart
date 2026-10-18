@@ -122,6 +122,11 @@ abstract final class Strings {
   static const botBadge = 'Bot';
   static const botBadgeHelp =
       'Déconnecté : un bot joue à sa place jusqu\'à son retour';
+  static const awayBadgeHostHelp =
+      'Déconnecté, on l\'attend · touche pour mettre un bot à sa place';
+  static const botBadgeHostHelp =
+      'Un bot joue à sa place · touche pour l\'attendre plutôt';
+  static const switchMark = '⇄';
   static const hideHand = 'Cacher mes cartes';
   static const showHand = 'Montrer mes cartes';
   static const handHidden = 'Cartes cachées';
