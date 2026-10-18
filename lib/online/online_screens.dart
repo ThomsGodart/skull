@@ -459,9 +459,9 @@ Map<int, SeatAway> awaySeats(Seating seating, List<Absence> absences) => {
             : SeatAway.away,
 };
 
-/// Says who dropped out of the game and what becomes of their seat: the
-/// seconds left before a bot takes it, and, for the host, the way to wait
-/// for them instead or to put the bot there at once.
+/// Says who dropped out of the game while their seat waits for a decision:
+/// the seconds left before a bot takes it, and, for the host, the way to
+/// wait for them instead or to put the bot there at once.
 class AbsenceNotices extends StatefulWidget {
   const AbsenceNotices({
     super.key,
@@ -514,7 +514,11 @@ class _AbsenceNoticesState extends State<AbsenceNotices> {
 
   @override
   Widget build(BuildContext context) {
-    final shown = _absences.where((a) => a.id != widget.selfId).toList();
+    // Once the host decided — wait, or put a bot there — the seat's own
+    // badge says it: the banner would only take room from the table.
+    final shown = _absences
+        .where((a) => a.id != widget.selfId && a.state == AbsenceState.counting)
+        .toList();
     if (shown.isEmpty) return const SizedBox.shrink();
     return Column(
       mainAxisSize: MainAxisSize.min,

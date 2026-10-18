@@ -486,6 +486,36 @@ void main() {
     await host.close();
   });
 
+  testWidgets('a dropped-out player has a banner only until the host '
+      'decides: wait, or a bot', (tester) async {
+    Absence away(String id, AbsenceState state) => Absence(
+      id: id,
+      name: id,
+      state: state,
+      until: state == AbsenceState.counting
+          ? DateTime.now().add(const Duration(seconds: 30))
+          : null,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AbsenceNotices(
+            absences: const Stream.empty(),
+            initial: [
+              away('counting', AbsenceState.counting),
+              away('held', AbsenceState.held),
+              away('replaced', AbsenceState.replaced),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('absence-counting')), findsOneWidget);
+    expect(find.byKey(const Key('absence-held')), findsNothing);
+    expect(find.byKey(const Key('absence-replaced')), findsNothing);
+  });
+
   testWidgets('the emblem picked in the profile is saved and shown', (
     tester,
   ) async {
